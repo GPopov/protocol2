@@ -1,0 +1,70 @@
+TODO
+
+For article (no particular order)
+
+Cover checksum, possibility of corruption even with UDP checksum (16bit only)
+
+How to write signed integers (the alternating +/-)
+
+Floating point quantization and the +0.5 that must happen.
+
+Other ways to write (eg. proto buffers, flatbuffers, xml, yaml etc)
+
+Unattributed stream. We know lots of data is the same on both sides, eg. the type and bounds of a particular variable.
+
+Matching read/write functions.
+
+Structs. Different compilers may have different layouts/alignment. Also pointers. Can't just send those over the network.
+
+Little and big endian.
+
+Bitpacker working one byte at a time. Machines don't work this way.
+
+Bitpacker working a machine word at a time (32bit), and working internally with 64bit integer. Much more modern.
+
+The basic library (open source part) is the serializer, bitpacker, packet read/write, factory etc.
+
+Then in later articles I can develop more example source code using this common code (the serializer) to build interesting things.
+
+This is a good way to structure the library so that a "taste" is for free (and a very useful part...), and it is a one header library, as well as being very useful on its own, and not bloated.
+
+Make sure that the example code does not use a bunch of STL. But don't worry too much about hardening it. eg. use "asserts" raw, use printfs, and don't use modern C++. use new/delete. If somebody wants to take this code and integrate it into their engine it should be work. This is not a middleware product.
+
+Cover the unified serialize function.
+
+Cover serialize read/write and template usage.
+
+Extend tests to cover a bunch of different integer types, including bitfields.
+
+Add examples in the article for serializing vectors, quaternions (useful).
+
+Encoding relative integers.
+
+Encoding quaternions with smallest three.
+
+Encoding a value relative to another, eg. a position relative to another position.
+
+Encoding an array of values.
+
+Encoding a string.
+
+Alignment of serialization.
+
+Serialization checkpoints for safety.
+
+Flush bits at the end of write.
+
+Maybe extend to support seeking?
+
+Need more unit tests for stream. They don't exercise everything.
+
+PopCount and the code that calculates the bits required via template (compile time)
+
+Would be nice if I could remember that trick for encoding normals from pandemic.
+
+Common pattern of serializing a flag (bit) and if true then branching, else serialize something else.
+
+Safety when reading and writing packets: if overflowing, don't write. If reading past end of buffer, always read zeros.
+
+Generally, assert heavily while writing packets. While reading packets, if anything is incorrect, drop the packet.
+
