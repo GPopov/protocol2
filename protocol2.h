@@ -1,4 +1,10 @@
-// Copyright © 2015, The Network Protocol Company, Inc. All Rights Reserved.
+/*
+    Protocol2 by Glenn Fiedler <glenn.fiedler@gmail.com>
+
+    This software is in the public domain. Where that dedication is not
+    recognized, you are granted a perpetual, irrevocable license to copy,
+    distribute, and modify this file as you see fit.
+*/
 
 #ifndef PROTOCOL2_H
 #define PROTOCOL2_H
@@ -131,6 +137,8 @@ namespace protocol2
 
     #endif
 
+    // todo: some GCC only stuff below, need portable versions
+
     inline uint32_t host_to_network( uint32_t value )
     {
 #if PROTOCOL2_BIG_ENDIAN
@@ -187,7 +195,7 @@ namespace protocol2
             m_scratch = 0;
             m_bitIndex = 0;
             m_wordIndex = 0;
-            m_overflow = false;
+            m_overflowed = false;
             memset( m_data, 0, bytes );
         }
 
@@ -199,7 +207,7 @@ namespace protocol2
 
             if ( m_bitsWritten + bits > m_numBits )
             {
-                m_overflow = true;
+                m_overflowed = true;
                 return;
             }
 
@@ -237,7 +245,7 @@ namespace protocol2
             assert( GetAlignBits() == 0 );
             if ( m_bitsWritten + bytes * 8 >= m_numBits )
             {
-                m_overflow = true;
+                m_overflowed = true;
                 return;
             }
 
@@ -283,7 +291,7 @@ namespace protocol2
                 assert( m_wordIndex < m_numWords );
                 if ( m_wordIndex >= m_numWords )
                 {
-                    m_overflow = true;
+                    m_overflowed = true;
                     return;
                 }
                 m_data[m_wordIndex++] = host_to_network( uint32_t( m_scratch >> 32 ) );
@@ -320,9 +328,9 @@ namespace protocol2
             return m_numWords * 4;
         }
 
-        bool IsOverflow() const
+        bool IsOverflowed() const
         {
-            return m_overflow;
+            return m_overflowed;
         }
 
     private:
@@ -334,7 +342,7 @@ namespace protocol2
         int m_bitsWritten;
         int m_bitIndex;
         int m_wordIndex;
-        bool m_overflow;
+        bool m_overflowed;
     };
 
     class BitReader
@@ -350,7 +358,7 @@ namespace protocol2
             m_bitIndex = 0;
             m_wordIndex = 0;
             m_scratch = network_to_host( m_data[0] );
-            m_overflow = false;
+            m_overflowed = false;
         }
 
         uint32_t ReadBits( int bits )
@@ -361,7 +369,7 @@ namespace protocol2
 
             if ( m_bitsRead + bits > m_numBits )
             {
-                m_overflow = true;
+                m_overflowed = true;
                 return 0;
             }
 
@@ -415,7 +423,7 @@ namespace protocol2
             if ( m_bitsRead + bytes * 8 >= m_numBits )
             {
                 memset( data, 0, bytes );
-                m_overflow = true;
+                m_overflowed = true;
                 return;
             }
 
@@ -484,9 +492,9 @@ namespace protocol2
             return m_numBits * 8;
         }
 
-        bool IsOverflow() const
+        bool IsOverflowed() const
         {
-            return m_overflow;
+            return m_overflowed;
         }
 
     private:
@@ -498,7 +506,7 @@ namespace protocol2
         int m_bitsRead;
         int m_bitIndex;
         int m_wordIndex;
-        bool m_overflow;
+        bool m_overflowed;
     };
 
     class WriteStream
@@ -585,9 +593,9 @@ namespace protocol2
             return m_writer.GetTotalBytes();
         }
 
-        bool IsOverflow() const
+        bool IsOverflowed() const
         {
-            return m_writer.IsOverflow();
+            return m_writer.IsOverflowed();
         }
 
         void SetContext( const void* context )
@@ -624,7 +632,7 @@ namespace protocol2
         enum { IsWriting = 0 };
         enum { IsReading = 1 };
 
-        ReadStream( uint8_t* buffer, int bytes ) : m_bitsRead(0), m_reader( buffer, bytes ), m_context( NULL ), m_aborted( false ) {}
+        ReadStream( const uint8_t* buffer, int bytes ) : m_bitsRead(0), m_reader( buffer, bytes ), m_context( NULL ), m_aborted( false ) {}
 
         void SerializeInteger( int32_t & value, int32_t min, int32_t max )
         {
@@ -680,9 +688,9 @@ namespace protocol2
             return m_bitsRead / 8 + ( m_bitsRead % 8 ? 1 : 0 );
         }
 
-        bool IsOverflow() const
+        bool IsOverflowed() const
         {
-            return m_reader.IsOverflow();
+            return m_reader.IsOverflowed();
         }
 
         void SetContext( const void* context )
@@ -787,7 +795,7 @@ namespace protocol2
             return m_totalBytes * 8;
         }
 
-        bool IsOverflow() const
+        bool IsOverflowed() const
         {
             return m_bitsWritten > m_totalBytes * 8;
         }
@@ -834,6 +842,8 @@ namespace protocol2
     {                        
         object.SerializeMeasure( stream );
     }
+
+    // todo: we actually need to clamp on read below, as well as error the stream (returns 0 on error?)
 
     #define serialize_int( stream, value, min, max )            \
         do                                                      \

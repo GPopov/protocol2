@@ -127,8 +127,6 @@ void test_stream_object()
 
     uint8_t buffer[BufferSize];
 
-    // write the object
-
     TestStreamObject writeObject;
     writeObject.Init();
     {
@@ -137,15 +135,11 @@ void test_stream_object()
         writeStream.Flush();
     }
 
-    // read the object back
-
     TestStreamObject readObject;
     {
         protocol2::ReadStream readStream( buffer, BufferSize );
         readObject.SerializeRead( readStream );
     }
-
-    // verify both objects match
 
     check( readObject.a == writeObject.a );
     check( readObject.b == writeObject.b );
@@ -195,8 +189,6 @@ void test_stream_context()
     context.min = -10;
     context.max = +7;
 
-    // write the object with context
-
     TestContextObject writeObject;
     writeObject.a = 2;
     writeObject.b = 7;
@@ -214,8 +206,6 @@ void test_stream_context()
         writeStream.Flush();
     }
 
-    // read the object back with context
-
     TestContextObject readObject;
     {
         protocol2::ReadStream readStream( buffer, BufferSize );
@@ -226,8 +216,6 @@ void test_stream_context()
 
         readObject.SerializeRead( readStream );
     }
-
-    // verify both objects match
 
     check( readObject.a == writeObject.a );
     check( readObject.b == writeObject.b );
@@ -332,12 +320,6 @@ void test_packet_factory()
     packetFactory.DestroyPacket( b );
     packetFactory.DestroyPacket( c );
 }
-
-// todo: actual packet serialization
-
-// todo: look for good quick (and simple) hash or checksum for packet
-
-// todo: idea, protocol id is hash + number -- if the hash plus the number specified matches, then the packet belongs to our protocol
 
 int main()
 {
