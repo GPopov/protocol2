@@ -1,12 +1,12 @@
 /*
-    Example source code for "Serializing Packets" in "Building a Game Network Protocol" series
+    Example source code for "Serializing Packets"
     http://gafferongames.com/building-a-game-network-protocol/serializing-packets/
-
-    This software is in the public domain. Where that dedication is not
-    recognized, you are granted a perpetual, irrevocable license to copy,
-    distribute, and modify this file as you see fit.
+    This software is in the public domain. Where that dedication is not recognized, 
+    you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
 */
 
+#include "protocol2.h"
+#define PROTOCOL2_IMPLEMENTATION
 #include "protocol2.h"
 #include <stdio.h>
 #include <time.h>
@@ -36,6 +36,7 @@ struct TestPacketA : public protocol2::Packet
         serialize_int( stream, a, -10, 10 );
         serialize_int( stream, b, -20, 20 );
         serialize_int( stream, c, -30, 30 );
+        return true;
     }
 };
 
@@ -53,6 +54,7 @@ struct TestPacketB : public protocol2::Packet
     {
         serialize_int( stream, x, -5, +5 );
         serialize_int( stream, y, -5, +5 );
+        return true;
     }
 };
 
@@ -70,6 +72,7 @@ struct TestPacketC : public protocol2::Packet
     {
         for ( int i = 0; i < sizeof( data ); ++i )
             serialize_int( stream, data[i], 0, 255 );
+        return true;
     }
 };
 
@@ -89,76 +92,18 @@ struct TestPacketFactory : public protocol2::PacketFactory
     }
 };
 
-int WritePacket( protocol2::Packet *packet, const TestPacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId )
-{
-    assert( packet );
-    assert( buffer );
-    assert( bufferSize > 0 );
-    assert( protocolId != 0 );
-
-    protocol2::WriteStream stream( buffer, bufferSize );
-
-    // write zero where the checksum will be
-
-    stream.SerializeInteger( packet->GetType(), 0, packetFactory.GetNumTypes() );
-
-    packet->SerializeWrite( stream );
-
-    // todo: write magic at end
-
-    // todo: calculate checksum (including shadow protocol id)
-
-    // todo: write checksum (32bit)
-
-    stream.Flush();
-
-    assert( !stream.Aborted() );
-    assert( !stream.IsOverflowed() );
-
-    return stream.GetBytesProcessed();
-}
-
-protocol2::Packet* ReadPacket( TestPacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId )
-{
-    assert( buffer );
-    assert( bufferSize > 0 );
-    assert( protocolId != 0 );
-
-    const int paddedSize = 4 * ( bufferSize / 4 ) + ( ( bufferSize % 4 ) ? 4 : 0 );
-
-    assert( paddedSize >= bufferSize );
-
-    // todo: read checksum, clear 4 bytes to zero, calculate checksum, discard packet if checksum doesn't match
-
-    protocol2::ReadStream stream( buffer, paddedSize );
-
-    int packetType;
-
-    stream.SerializeInteger( packetType, 0, packetFactory.GetNumTypes() );
-
-    // todo: need error checking here -- if outside range, throw away and don't create packet
-
-    protocol2::Packet *packet = packetFactory.CreatePacket( packetType );
-
-    if ( !packet )
-        return NULL;
-
-    packet->SerializeRead( stream );
-
-    // todo: error handling. check if packet is overflowed, or if it is in error
-
-    // todo: read magic, if magic fails, return NULL
-
-    return packet;
-}
-
 int main()
 {
     srand( time( NULL ) );
 
     TestPacketFactory packetFactory;
 
-    for ( int i = 0; i < 10; ++i )
+    int num_packets_written = 0;
+    int num_packets_read = 0;
+
+    const int num_iterations = 10;
+
+    for ( int i = 0; i < num_iterations; ++i )
     {
         const int packetType = rand() % TEST_PACKET_NUM_TYPES;
 
@@ -172,26 +117,49 @@ int main()
 
         uint8_t buffer[MaxPacketSize];
 
-        const int bytes_written = WritePacket( packet, packetFactory, buffer, MaxPacketSize, ProtocolId );
+        const int bytes_written = protocol2::write_packet( packet, packetFactory, buffer, MaxPacketSize, ProtocolId );
 
         assert( bytes_written <= sizeof( buffer ) );
 
         packetFactory.DestroyPacket( packet );
 
-        if ( bytes_written <= 0 )
+        if ( bytes_written > 0 )
+        {
+            num_packets_written++;
+        }
+        else
         {
             printf( "failed to write packet\n" );
-            exit(1);
         }
 
-        protocol2::Packet *readPacket = ReadPacket( packetFactory, buffer, bytes_written, ProtocolId );
+        printf( "bytes written = %d\n", bytes_written );
+
+        protocol2::Packet *readPacket = protocol2::read_packet( packetFactory, buffer, bytes_written, ProtocolId );
 
         if ( readPacket )
         {
             printf( "read packet type %d\n", readPacket->GetType() );
-
             packetFactory.DestroyPacket( readPacket );
+            num_packets_read++;
+        }
+        else
+        {
+            printf( "failed to read packet type %d\n", packetType );        // todo: print out error reason
         }
     }
-    return 0;
+
+    printf( "num_iterations = %d\n", num_iterations );
+    printf( "num_packets_read = %d\n", num_packets_read );
+    printf( "num_packets_written = %d\n", num_packets_written );
+
+    if ( num_packets_written == num_iterations && num_packets_read == num_iterations )
+    {
+        printf( "success.\n" );
+        return 0;
+    }
+    else
+    {
+        printf( "failure\n" );
+        return 1;
+    }
 }

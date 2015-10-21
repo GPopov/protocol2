@@ -1,4 +1,39 @@
+CHANGES
+
+    Implement unit tests
+
+    Sketched out packet read/write for article 001
+
+    Added concept of multiple errors: overflow, invalid, abort
+
+    GetError() returns 0 if no error (PROTOCOL2_STREAM_ERROR_NONE)
+
+    Make SerializeInteger return true/false on success/failure again
+
+    Update macros to return false on failure
+
+    Make sure there is not double checking for overflow (stream and bit reader etc.)
+
+    Find public domain CRC32 implementation
+
+    Clean up the CRC impl.
+
+    Write functions to calculate packet CRC
+
+    Move read and write packet into protocol2.h (generally useful)
+
+    Split apart protocol2.h into implementation and header, STB style.
+
 TODO
+
+    Split existing template fns to seriali`ze_x_internal and wrap with macros for return false.
+
+    Add unit tests for all integer types that support serialization (probe bounds)
+
+    Need to add serialize measure tests.
+
+
+=========================
 
 For article (no particular order)
 

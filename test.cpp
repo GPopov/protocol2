@@ -1,4 +1,8 @@
-// Copyright © 2015, The Network Protocol Company, Inc. All Rights Reserved.
+/*
+    Protocol 2 by Glenn Fiedler <glenn.fiedler@gmail.com>
+    This software is in the public domain. Where that dedication is not recognized, 
+    you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
+*/
 
 #include "protocol2.h"
 #include <stdio.h>
@@ -32,7 +36,7 @@ void test_bitpacker()
 
     const int bitsWritten = 1 + 1 + 8 + 8 + 10 + 16 + 32;
 
-    check( writer.GetBytesWritten() == 3*4 );
+    check( writer.GetBytesWritten() == 10 );
     check( writer.GetTotalBytes() == BufferSize );
     check( writer.GetBitsWritten() == bitsWritten );
     check( writer.GetBitsAvailable() == BufferSize * 8 - bitsWritten );
@@ -116,8 +120,16 @@ struct TestStreamObject : public protocol2::Object
         serialize_int( stream, numItems, 0, MaxItems - 1 );
         for ( int i = 0; i < numItems; ++i )
             serialize_bits( stream, items[i], 8 );
+
+        return true;
     }
 };
+
+// todo: should cover all cases of writing different integer types
+
+// todo: should check for overflow, abort, invalid cases on read
+
+// todo: should have test for crc32. randomly generate packets and pass into fuzz test
 
 void test_stream_object()
 {
@@ -174,6 +186,7 @@ struct TestContextObject : public protocol2::Object
         const TestContext & context = *(const TestContext*) stream.GetContext();
         serialize_int( stream, a, context.min, context.max );
         serialize_int( stream, b, context.min, context.max );
+        return true;
     }
 };
 
@@ -245,6 +258,7 @@ struct TestPacketA : public protocol2::Packet
         serialize_int( stream, a, -10, 10 );
         serialize_int( stream, b, -20, 20 );
         serialize_int( stream, c, -30, 30 );
+        return true;
     }
 };
 
@@ -262,6 +276,7 @@ struct TestPacketB : public protocol2::Packet
     {
         serialize_int( stream, x, -5, +5 );
         serialize_int( stream, y, -5, +5 );
+        return true;
     }
 };
 
@@ -279,6 +294,7 @@ struct TestPacketC : public protocol2::Packet
     {
         for ( int i = 0; i < sizeof( data ); ++i )
             serialize_int( stream, data[i], 0, 255 );
+        return true;
     }
 };
 
