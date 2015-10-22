@@ -4,6 +4,7 @@
     you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
 */
 
+#define PROTOCOL2_IMPLEMENTATION
 #include "protocol2.h"
 #include <stdio.h>
 

@@ -1,10 +1,8 @@
 /*
-    Protocol 2 by Glenn Fiedler <glenn.fiedler@gmail.com>
+    Protocol2 by Glenn Fiedler <glenn.fiedler@gmail.com>
     This software is in the public domain. Where that dedication is not recognized, 
     you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
 */
-
-#ifndef PROTOCOL2_IMPLEMENTATION
 
 #ifndef PROTOCOL2_H
 #define PROTOCOL2_H
@@ -97,11 +95,14 @@ namespace protocol2
 
     template <int64_t min, int64_t max> struct BitsRequired
     {
-        static const uint32_t result = ( min == max ) ? 0 : Log2<uint32_t(max-min)>::result + 1;
+        static const uint32_t result = ( min == max ) ? 0 : ( Log2<uint32_t(max-min)>::result + 1 );
     };
 
     inline uint32_t popcount( uint32_t x )
     {
+#ifdef __GNUC__
+        return __builtin_popcount( x );
+#else // #ifdef __GNUC__
         const uint32_t a = x - ( ( x >> 1 )       & 0x55555555 );
         const uint32_t b =   ( ( ( a >> 2 )       & 0x33333333 ) + ( a & 0x33333333 ) );
         const uint32_t c =   ( ( ( b >> 4 ) + b ) & 0x0f0f0f0f );
@@ -109,16 +110,17 @@ namespace protocol2
         const uint32_t e =   d + ( d >> 16 );
         const uint32_t result = e & 0x0000003f;
         return result;
+#endif // #ifdef __GNUC__
     }
 
-    #ifdef __GNUC__
+#ifdef __GNUC__
 
     inline int bits_required( uint32_t min, uint32_t max )
     {
         return 32 - __builtin_clz( max - min );
     }
 
-    #else
+#else // #ifdef __GNUC__
 
     inline uint32_t log2( uint32_t x )
     {
@@ -136,14 +138,16 @@ namespace protocol2
         return ( min == max ) ? 0 : log2( max - min ) + 1;
     }
 
-    #endif
-
-    // todo: some GCC only stuff below, need portable versions
+#endif // #ifdef __GNUC__
 
     inline uint32_t host_to_network( uint32_t value )
     {
 #if PROTOCOL2_BIG_ENDIAN
+    #ifdef __GNUC__
         return __builtin_bswap32( value );
+    #else // #ifdef __GNUC__
+        // todo: need portable version
+    #endif // #ifdef __GNUC__
 #else // #if PROTOCOL2_BIG_ENDIAN
         return value;
 #endif // #if PROTOCOL2_BIG_ENDIAN
@@ -152,7 +156,11 @@ namespace protocol2
     inline uint32_t network_to_host( uint32_t value )
     {
 #if PROTOCOL2_BIG_ENDIAN
+    #ifdef __GNUC__
         return __builtin_bswap32( value );
+    #else // #ifdef __GNUC__
+        // todo: need portable version
+    #endif // #ifdef __GNUC__
 #else // #if PROTOCOL2_BIG_ENDIAN
         return value;
 #endif // #if PROTOCOL2_BIG_ENDIAN
@@ -885,6 +893,34 @@ namespace protocol2
 
     #define serialize_bool( stream, value ) serialize_bits( stream, value, 1 )
 
+    template <typename Stream> bool serialize_float_internal( Stream & stream, float & value )
+    {
+        union FloatInt
+        {
+            float float_value;
+            uint32_t int_value;
+        };
+
+        FloatInt tmp;
+        if ( Stream::IsWriting )
+            tmp.float_value = value;
+
+        bool result = stream.SerializeBits( tmp.int_value, 32 );
+
+        if ( Stream::IsReading )
+            value = tmp.float_value;
+
+        return result;
+    }
+
+    #define serialize_float( stream, value )                                        \
+        do                                                                          \
+        {                                                                           \
+            if ( !protocol2::serialize_float_internal( stream, value ) )            \
+                return false;                                                       \
+        } while (0)
+
+
     // todo: have to use defines for these. can't do the return false thing otherwise
 
     /*
@@ -934,24 +970,6 @@ namespace protocol2
         serialize_bits( stream, hi, 32 );
         if ( Stream::IsReading )
             value = ( int64_t(hi) << 32 ) | lo;
-    }
-
-    template <typename Stream> void serialize_float( Stream & stream, float & value )
-    {
-        union FloatInt
-        {
-            float float_value;
-            uint32_t int_value;
-        };
-
-        FloatInt tmp;
-        if ( Stream::IsWriting )
-            tmp.float_value = value;
-
-        serialize_uint32( stream, tmp.int_value );
-
-        if ( Stream::IsReading )
-            value = tmp.float_value;
     }
 
     template <typename Stream> inline void internal_serialize_float( Stream & stream, float & value, float min, float max, float res )
@@ -1068,6 +1086,8 @@ namespace protocol2
         Packet & operator = ( const Packet & other );
     };
 
+    // todo: move packet factory into implementation
+
     class PacketFactory
     {        
 #if PROTOCOL2_DEBUG_MEMORY_LEAKS
@@ -1075,7 +1095,7 @@ namespace protocol2
 #endif // #if PROTOCOL2_DEBUG_MEMORY_LEAKS
 
         int m_numTypes;
-        
+
         int m_numAllocatedPackets;          // todo: make this dev build only
 
     public:
@@ -1152,16 +1172,21 @@ namespace protocol2
 
     uint32_t calculate_crc32( const uint8_t *buffer, size_t length, uint32_t crc32 = 0 );
 
-    // todo: error codes for write packet, read packet
-
     int write_packet( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId );
 
-    Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId );
+    #define PROTOCOL2_READ_PACKET_ERROR_NONE                0
+    #define PROTOCOL2_READ_PACKET_ERROR_CRC32               1
+    #define PROTOCOL2_READ_PACKET_INVALID_PACKET_TYPE       2
+    #define PROTOCOL2_READ_PACKET_FAILED_TO_CREATE_PACKET   3
+    #define PROTOCOL2_READ_PACKET_SERIALIZE_PACKET_FAILED   4
+    #define PROTOCOL2_READ_PACKET_SERIALIZE_CHECK_FAILED    5
+
+    Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, int *error = NULL );
 }
 
 #endif // #ifndef PROTOCOL2_H
 
-#else // #ifndef PROTOCOL2_IMPLEMENTATION
+#ifdef PROTOCOL2_IMPLEMENTATION
 
 namespace protocol2
 {
@@ -1209,8 +1234,6 @@ namespace protocol2
         return crc32 ^ 0xFFFFFFFF;
     }
 
-    // todo: error codes for write packet, read packet
-
     inline int write_packet( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId )
     {
         assert( packet );
@@ -1239,8 +1262,6 @@ namespace protocol2
 
         *((uint32_t*)buffer) = host_to_network( crc32 );
 
-        printf( "write crc32: %x\n", crc32 );
-
         assert( !stream.GetError() );
 
         if ( stream.GetError() )
@@ -1249,7 +1270,7 @@ namespace protocol2
         return stream.GetBytesProcessed();
     }
 
-    inline Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId )
+    inline Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, int *error )
     {
         assert( buffer );
         assert( bufferSize > 0 );
@@ -1266,18 +1287,14 @@ namespace protocol2
         uint32_t read_crc32;
         stream.SerializeBits( read_crc32, 32 );
 
-        printf( "read crc32: %x\n", read_crc32 );
-
         *((uint32_t*)buffer) = 0;
 
         const uint32_t crc32 = calculate_crc32( buffer, bufferSize );
 
-        printf( "actual crc32: %x\n", crc32 );
-
         if ( crc32 != read_crc32 )
         {
-            // todo: set CRC failure error
-            printf( "crc failure\n" );
+            if ( error )
+                *error = PROTOCOL2_READ_PACKET_ERROR_CRC32;
             return NULL;
         }
 
@@ -1285,35 +1302,39 @@ namespace protocol2
 
         if ( !stream.SerializeInteger( packetType, 0, packetFactory.GetNumTypes() ) )
         {
-            // todo: set invalid packet type error
+            if ( error )
+                *error = PROTOCOL2_READ_PACKET_INVALID_PACKET_TYPE;
             return NULL;
         }
 
         protocol2::Packet *packet = packetFactory.CreatePacket( packetType );
-
         if ( !packet )
         {
-            // todo: set failed to create packet error
+            if ( error )
+                *error = PROTOCOL2_READ_PACKET_FAILED_TO_CREATE_PACKET;
             return NULL;
         }
 
-        packet->SerializeRead( stream );
-
-        // todo: detect serialize read error?
-
-        stream.SerializeCheck( protocolId );
-
-        // todo: detect stream check error
-
-        if ( stream.GetError() )
+        if ( !packet->SerializeRead( stream ) )
         {
-            // todo: set stream error
-            packetFactory.DestroyPacket( packet );
-            return NULL;
+            if ( error )
+                *error = PROTOCOL2_READ_PACKET_SERIALIZE_PACKET_FAILED;
+            goto failure;
+        }
+
+        if ( !stream.SerializeCheck( protocolId ) )
+        {
+            if ( error )
+                *error = PROTOCOL2_READ_PACKET_SERIALIZE_CHECK_FAILED;
+            goto failure;
         }
 
         return packet;
+
+    failure:
+        packetFactory.DestroyPacket( packet );
+        return NULL;
     }
 }
 
-#endif // #ifndef PROTOCOL2_IMPLEMENTATION
+#endif // #ifdef PROTOCOL2_IMPLEMENTATION

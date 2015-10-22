@@ -5,7 +5,6 @@
     you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
 */
 
-#include "protocol2.h"
 #define PROTOCOL2_IMPLEMENTATION
 #include "protocol2.h"
 #include <stdio.h>
@@ -20,15 +19,24 @@ enum TestPacketTypes
     TEST_PACKET_NUM_TYPES
 };
 
+inline int random_int( int min, int max )
+{
+    assert( max > min );
+    int result = min + rand() % ( max - min + 1 );
+    assert( result >= min );
+    assert( result <= max );
+    return result;
+}
+
 struct TestPacketA : public protocol2::Packet
 {
     int a,b,c;
 
     TestPacketA() : Packet( TEST_PACKET_A )
     {
-        a = 1;
-        b = 2;
-        c = 3;        
+        a = random_int( -10, +10 );
+        b = random_int( -20, +20 );
+        c = random_int( -30, +30 );
     }
 
     PROTOCOL2_SERIALIZE_OBJECT( stream )
@@ -40,38 +48,92 @@ struct TestPacketA : public protocol2::Packet
     }
 };
 
+static const int MaxItems = 32;
+
 struct TestPacketB : public protocol2::Packet
 {
-    int x, y;
+    int numItems;
+    int items[MaxItems];
 
     TestPacketB() : Packet( TEST_PACKET_B )
     {
-        x = 0;
-        y = 1;
+        numItems = random_int( 0, MaxItems );
+        for ( int i = 0; i < numItems; ++i )
+            items[i] = random_int( -100, +100 );
     }
 
     PROTOCOL2_SERIALIZE_OBJECT( stream )
     {
-        serialize_int( stream, x, -5, +5 );
-        serialize_int( stream, y, -5, +5 );
+        serialize_int( stream, numItems, 0, MaxItems );
+        for ( int i = 0; i < numItems; ++i )
+            serialize_int( stream, items[i], -100, +100 );
         return true;
     }
 };
 
+struct Vector
+{
+    float x,y,z;
+};
+
+inline float random_float( float min, float max )
+{
+    const int res = 10000000;
+    double scale = ( rand() % res ) / double( res - 1 );
+    return (float) ( min + (double) ( max - min ) * scale );
+}
+
 struct TestPacketC : public protocol2::Packet
 {
-    uint8_t data[16];
+    Vector position;
+    Vector velocity;
 
     TestPacketC() : Packet( TEST_PACKET_C )
     {
-        for ( int i = 0; i < sizeof( data ); ++i )
-            data[i] = i;
+        position.x = random_float( -1000, +1000 );
+        position.y = random_float( -1000, +1000 );
+        position.z = random_float( -1000, +1000 );
+
+        if ( rand() % 2 )
+        {
+            velocity.x = random_float( -100, +100 );
+            velocity.y = random_float( -100, +100 );
+            velocity.z = random_float( -100, +100 );
+        }
+        else
+        {
+            velocity.x = 0.0f;
+            velocity.y = 0.0f;
+            velocity.z = 0.0f;
+        }
     }
 
     PROTOCOL2_SERIALIZE_OBJECT( stream )
     {
-        for ( int i = 0; i < sizeof( data ); ++i )
-            serialize_int( stream, data[i], 0, 255 );
+        serialize_float( stream, position.x );
+        serialize_float( stream, position.y );
+        serialize_float( stream, position.z );
+
+        bool at_rest = Stream::IsWriting && velocity.x == 0.0f && velocity.y == 0.0f && velocity.z == 0.0f;
+
+        serialize_bool( stream, at_rest );
+
+        if ( !at_rest )
+        {
+            serialize_float( stream, velocity.x );
+            serialize_float( stream, velocity.y );
+            serialize_float( stream, velocity.z );
+        }
+        else
+        {
+            if ( Stream::IsReading )
+            {
+                velocity.x = 0.0f;
+                velocity.y = 0.0f;
+                velocity.z = 0.0f;
+            }
+        }
+
         return true;
     }
 };
@@ -98,12 +160,12 @@ int main()
 
     TestPacketFactory packetFactory;
 
-    int num_packets_written = 0;
-    int num_packets_read = 0;
+    int numPacketsWritten = 0;
+    int numPacketsRead = 0;
 
-    const int num_iterations = 10;
+    const int NumIterations = 10;
 
-    for ( int i = 0; i < num_iterations; ++i )
+    for ( int i = 0; i < NumIterations; ++i )
     {
         const int packetType = rand() % TEST_PACKET_NUM_TYPES;
 
@@ -117,49 +179,43 @@ int main()
 
         uint8_t buffer[MaxPacketSize];
 
-        const int bytes_written = protocol2::write_packet( packet, packetFactory, buffer, MaxPacketSize, ProtocolId );
-
-        assert( bytes_written <= sizeof( buffer ) );
+        const int bytesWritten = protocol2::write_packet( packet, packetFactory, buffer, MaxPacketSize, ProtocolId );
 
         packetFactory.DestroyPacket( packet );
 
-        if ( bytes_written > 0 )
+        if ( bytesWritten > 0 )
         {
-            num_packets_written++;
+            printf( "wrote packet type %d (%d bytes)\n", packet->GetType(), bytesWritten );
+            numPacketsWritten++;
         }
         else
         {
             printf( "failed to write packet\n" );
         }
 
-        printf( "bytes written = %d\n", bytes_written );
-
-        protocol2::Packet *readPacket = protocol2::read_packet( packetFactory, buffer, bytes_written, ProtocolId );
+        int readError;
+        protocol2::Packet *readPacket = protocol2::read_packet( packetFactory, buffer, bytesWritten, ProtocolId, &readError );
 
         if ( readPacket )
         {
-            printf( "read packet type %d\n", readPacket->GetType() );
+            printf( "read packet type %d (%d bytes)\n", readPacket->GetType(), bytesWritten );
             packetFactory.DestroyPacket( readPacket );
-            num_packets_read++;
+            numPacketsRead++;
         }
         else
         {
-            printf( "failed to read packet type %d\n", packetType );        // todo: print out error reason
+            printf( "failed to read packet: %d\n", readError );
         }
     }
 
-    printf( "num_iterations = %d\n", num_iterations );
-    printf( "num_packets_read = %d\n", num_packets_read );
-    printf( "num_packets_written = %d\n", num_packets_written );
-
-    if ( num_packets_written == num_iterations && num_packets_read == num_iterations )
+    if ( numPacketsWritten == NumIterations && numPacketsRead == NumIterations )
     {
         printf( "success.\n" );
         return 0;
     }
     else
     {
-        printf( "failure\n" );
+        printf( "failure.\n" );
         return 1;
     }
 }

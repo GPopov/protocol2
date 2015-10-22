@@ -24,14 +24,37 @@ CHANGES
 
     Split apart protocol2.h into implementation and header, STB style.
 
+    Add enum for packet read error. Packet write error can only have one cause (serialize write failure), and you can already check it on the stream.
+
+    Add more interesting serialization examples to make up the packets, eg. an array of things, a string, some byte data, position/velocity with at rest flag.
+
+    Randomize the data sent in the packets
+
+    Add prints showing the numbers of bytes in packets
+
+    Added serialize_float (uncompressed)
+
 TODO
 
-    Split existing template fns to seriali`ze_x_internal and wrap with macros for return false.
+    Verify the packets received match the packet data sent
+
+    Make sure stream properly handles overflow. Add tests to make sure it does. test_stream_overflow, test_stream_abort, test_stream_invalid etc.
+
+    Split rest of existing template serialize fns to serialize_x_internal and wrap with macros for return false.
 
     Add unit tests for all integer types that support serialization (probe bounds)
 
-    Need to add serialize measure tests.
+    Add unit tests for functions like bswap, pop count, templated versions etc.
 
+    Add serialize measure tests.
+
+    Get code running on windows.
+
+    Fix GCC specific stuff (eg. __builtin_bswap etc)
+
+    Get building with maximum warning levels on clang
+
+    Compile with a gcc on linux
 
 =========================
 
