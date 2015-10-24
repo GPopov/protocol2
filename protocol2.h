@@ -381,14 +381,23 @@ namespace protocol2
             }
             else
             {
-                m_wordIndex++;
-                assert( m_wordIndex < m_numWords );
-                const uint32_t a = 32 - m_bitIndex;
-                const uint32_t b = bits - a;
-                m_scratch <<= a;
-                m_scratch |= network_to_host( m_data[m_wordIndex] );
-                m_scratch <<= b;
-                m_bitIndex = b;
+                if ( m_wordIndex < m_numWords - 1 )
+                {
+                    m_wordIndex++;
+                    const uint32_t a = 32 - m_bitIndex;
+                    const uint32_t b = bits - a;
+                    m_scratch <<= a;
+                    m_scratch |= network_to_host( m_data[m_wordIndex] );
+                    m_scratch <<= b;
+                    m_bitIndex = b;
+                }
+                else
+                {
+                    const uint32_t a = 32 - m_bitIndex;
+                    const uint32_t b = bits - a;
+                    m_scratch <<= ( a + b );
+                    m_bitIndex = b;
+                }
             }
 
             const uint32_t output = uint32_t( m_scratch >> 32 );
@@ -688,6 +697,10 @@ namespace protocol2
             uint32_t value = 0;
             SerializeBits( value, 32 );
             // todo: this should not just return false, it should also set error INVALID
+            if ( value != magic )
+            {
+                printf( "%x != magic %x\n", value, magic );
+            }
             assert( value == magic );
             return value == magic;
 #else // #if PROTOCOL2_SERIALZE_CHECKS
@@ -1181,7 +1194,7 @@ namespace protocol2
     #define PROTOCOL2_READ_PACKET_SERIALIZE_PACKET_FAILED   4
     #define PROTOCOL2_READ_PACKET_SERIALIZE_CHECK_FAILED    5
 
-    Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, int *error = NULL );
+    Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, int *errorCode = NULL );
 }
 
 #endif // #ifndef PROTOCOL2_H
@@ -1270,7 +1283,7 @@ namespace protocol2
         return stream.GetBytesProcessed();
     }
 
-    inline Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, int *error )
+    inline Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, int *errorCode )
     {
         assert( buffer );
         assert( bufferSize > 0 );
@@ -1293,8 +1306,8 @@ namespace protocol2
 
         if ( crc32 != read_crc32 )
         {
-            if ( error )
-                *error = PROTOCOL2_READ_PACKET_ERROR_CRC32;
+            if ( errorCode )
+                *errorCode = PROTOCOL2_READ_PACKET_ERROR_CRC32;
             return NULL;
         }
 
@@ -1302,36 +1315,36 @@ namespace protocol2
 
         if ( !stream.SerializeInteger( packetType, 0, packetFactory.GetNumTypes() ) )
         {
-            if ( error )
-                *error = PROTOCOL2_READ_PACKET_INVALID_PACKET_TYPE;
+            if ( errorCode )
+                *errorCode = PROTOCOL2_READ_PACKET_INVALID_PACKET_TYPE;
             return NULL;
         }
 
         protocol2::Packet *packet = packetFactory.CreatePacket( packetType );
         if ( !packet )
         {
-            if ( error )
-                *error = PROTOCOL2_READ_PACKET_FAILED_TO_CREATE_PACKET;
+            if ( errorCode )
+                *errorCode = PROTOCOL2_READ_PACKET_FAILED_TO_CREATE_PACKET;
             return NULL;
         }
 
         if ( !packet->SerializeRead( stream ) )
         {
-            if ( error )
-                *error = PROTOCOL2_READ_PACKET_SERIALIZE_PACKET_FAILED;
-            goto failure;
+            if ( errorCode )
+                *errorCode = PROTOCOL2_READ_PACKET_SERIALIZE_PACKET_FAILED;
+            goto fail_and_destroy_packet;
         }
 
         if ( !stream.SerializeCheck( protocolId ) )
         {
-            if ( error )
-                *error = PROTOCOL2_READ_PACKET_SERIALIZE_CHECK_FAILED;
-            goto failure;
+            if ( errorCode )
+                *errorCode = PROTOCOL2_READ_PACKET_SERIALIZE_CHECK_FAILED;
+            goto fail_and_destroy_packet;
         }
 
         return packet;
 
-    failure:
+fail_and_destroy_packet:
         packetFactory.DestroyPacket( packet );
         return NULL;
     }

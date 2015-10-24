@@ -1,0 +1,38 @@
+CHANGES
+
+21st October 2015
+=================
+
+    Implement unit tests
+
+    Sketched out packet read/write for article 001
+
+    Added concept of multiple errors: overflow, invalid, abort
+
+    GetError() returns 0 if no error (PROTOCOL2_STREAM_ERROR_NONE)
+
+    Make SerializeInteger return true/false on success/failure again
+
+    Update macros to return false on failure
+
+    Make sure there is not double checking for overflow (stream and bit reader etc.)
+
+    Find public domain CRC32 implementation
+
+    Clean up the CRC impl.
+
+    Write functions to calculate packet CRC
+
+    Move read and write packet into protocol2.h (generally useful)
+
+    Split apart protocol2.h into implementation and header, STB style.
+
+    Add enum for packet read error. Packet write error can only have one cause (serialize write failure), and you can already check it on the stream.
+
+    Add more interesting serialization examples to make up the packets, eg. an array of things, a string, some byte data, position/velocity with at rest flag.
+
+    Randomize the data sent in the packets
+
+    Add prints showing the numbers of bytes in packets
+
+    Added serialize_float (uncompressed)
