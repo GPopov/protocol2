@@ -2,9 +2,13 @@ CHANGES
 
     Fixed weird serialization error.
 
+    Make sure code doesn't blow up if only one packet is defined.
+
 TODO
 
     ---------
+
+    Handle the protocol id in the checksum calculation, eg. pre-header
 
     Verify the packets received match the packet data sent
 
@@ -97,4 +101,3 @@ Common pattern of serializing a flag (bit) and if true then branching, else seri
 Safety when reading and writing packets: if overflowing, don't write. If reading past end of buffer, always read zeros.
 
 Generally, assert heavily while writing packets. While reading packets, if anything is incorrect, drop the packet.
-

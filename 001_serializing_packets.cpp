@@ -6,6 +6,7 @@
 */
 
 #define PROTOCOL2_IMPLEMENTATION
+
 #include "protocol2.h"
 #include <stdio.h>
 #include <time.h>

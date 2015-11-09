@@ -5,6 +5,7 @@
 */
 
 #define PROTOCOL2_IMPLEMENTATION
+
 #include "protocol2.h"
 #include <stdio.h>
 
@@ -337,6 +338,12 @@ void test_packet_factory()
     packetFactory.DestroyPacket( b );
     packetFactory.DestroyPacket( c );
 }
+
+// todo: test read and write packet w. multple packets
+
+// todo: test read and wrte packet w. just one packet def
+
+// todo: test the packets receved actually match what sent
 
 int main()
 {

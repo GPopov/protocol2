@@ -34,6 +34,10 @@
   #define PROTOCOL2_BIG_ENDIAN 1
 #endif
 
+#ifdef _MSC_VER
+#include "intrins.h"
+#endif // #ifdef _MSC_VER
+
 namespace protocol2
 {
     template <typename T> const T & min( const T & a, const T & b )
@@ -1263,7 +1267,14 @@ namespace protocol2
 
         int packetType = packet->GetType();
 
-        stream.SerializeInteger( packetType, 0, packetFactory.GetNumTypes() );
+        const int numPacketTypes = packetFactory.GetNumTypes();
+
+        assert( numPacketTypes > 0 );
+
+        if ( numPacketTypes > 1 )
+        {
+            stream.SerializeInteger( packetType, 0, numPacketTypes );
+        }
 
         packet->SerializeWrite( stream );
 
@@ -1311,13 +1322,20 @@ namespace protocol2
             return NULL;
         }
 
-        int packetType;
+        int packetType = 0;
 
-        if ( !stream.SerializeInteger( packetType, 0, packetFactory.GetNumTypes() ) )
+        const int numPacketTypes = packetFactory.GetNumTypes();
+
+        assert( numPacketTypes > 0 );
+
+        if ( numPacketTypes > 1 )
         {
-            if ( errorCode )
-                *errorCode = PROTOCOL2_READ_PACKET_INVALID_PACKET_TYPE;
-            return NULL;
+            if ( !stream.SerializeInteger( packetType, 0, numPacketTypes ) )
+            {
+                if ( errorCode )
+                    *errorCode = PROTOCOL2_READ_PACKET_INVALID_PACKET_TYPE;
+                return NULL;
+            }
         }
 
         protocol2::Packet *packet = packetFactory.CreatePacket( packetType );
@@ -1332,19 +1350,19 @@ namespace protocol2
         {
             if ( errorCode )
                 *errorCode = PROTOCOL2_READ_PACKET_SERIALIZE_PACKET_FAILED;
-            goto fail_and_destroy_packet;
+            goto cleanup;
         }
 
         if ( !stream.SerializeCheck( protocolId ) )
         {
             if ( errorCode )
                 *errorCode = PROTOCOL2_READ_PACKET_SERIALIZE_CHECK_FAILED;
-            goto fail_and_destroy_packet;
+            goto cleanup;
         }
 
         return packet;
 
-fail_and_destroy_packet:
+    cleanup:
         packetFactory.DestroyPacket( packet );
         return NULL;
     }
