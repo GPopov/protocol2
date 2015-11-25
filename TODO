@@ -1,16 +1,8 @@
 CHANGES
 
-    Fixed weird serialization error.
-
-    Make sure code doesn't blow up if only one packet is defined.
-
 TODO
 
-    ---------
-
-    Handle the protocol id in the checksum calculation, eg. pre-header
-
-    Verify the packets received match the packet data sent
+    Convert stream errors to PROTOCOL2_ERROR_* form and add to error_string fn.
 
     Make sure stream properly handles overflow. Add tests to make sure it does. test_stream_overflow, test_stream_abort, test_stream_invalid etc.
 
@@ -22,6 +14,8 @@ TODO
 
     Add serialize measure tests.
 
+    Add premake file for clean, make all etc. annoying to manually delete bins before checking in.
+
     Get code running on windows.
 
     Fix GCC specific stuff (eg. __builtin_bswap etc)
@@ -31,6 +25,62 @@ TODO
     Compile with a gcc on linux
 
     Add a soak test (soak.cpp)
+
+=========================
+
+For article in order, start with different options, eg. json, key value, protobuf etc.
+
+Discuss why game network protocols are usually not a good fit for this (version is not a problem, because different
+versions of the game don't talk to each other...), bandwidth is most important, we want to only send data that is
+essential, zero overhead. => unattributed stream of data.
+
+First attempt. send structs. fails because of endianness. (discussion of endianness)
+
+next, basic read/write methods, eg. read int, write int, read byte, write byte etc. short, float etc.
+
+separate read and write functions for packets. show what they look like.
+
+fails because often quantities are one bit only. very wasteful to spend one byte (8 bits) to send just one bit of information.
+
+but a good start, because it is now endian correct.
+
+bitpacker.
+
+(maybe bitpacker can work with 128bit words, and then we can write 32 and 64 bit quantities to the bit stream in one go, work out overflow, and flush while > 32 bits in int?)
+
+separate read/write functions.
+
+easy to desync these functions, hard to track down where you went wrong.
+
+go into details about algorithm for bitpacker (write word at a time, overflow, diagrams etc.)
+
+solution: unify serialization function
+
+concept of "stream". read/write mode.
+
+avoid runtime overhead by using templates to generate optimal code for read and write.
+
+can also have a "measure" stream for when you need to know how large something would be when encoded (all encodings are variable length, so sometimes you need to know this!)
+
+(probably want more examples with bools in them)
+
+need to be really safe on read. macros that return false if anything doesn't check out. DON'T USE EXCEPTIONS THEY'RE REALLY SLOW
+
+redundancy. also, don't serialize # of bits for ints, instead prefer to serialize within a min/max range.
+
+that way anything that comes in outside that range can automatically be rejected and return false (aborting the packet read)
+
+now onto more detais about reading and writing packets
+
+ - crc32, basic properties.
+ - protocol id -- pre-header concept
+ - maliciously constructed packets: need to be really safe on read (don't crash!)
+ - serialize checks: end of packet. it's easy to send a truncated packet and not notice because the serialization stops (or aborts reading zeros...). adding a serialize check at the end fixes this.
+ - packet journal: possible to also insert a sequence of what was written vs. what was read in another form, for validation. (blows out packet size, you'll need packet fragmentation and re-assembly to support this)
+
+serialization examples:
+
+...
 
 =========================
 

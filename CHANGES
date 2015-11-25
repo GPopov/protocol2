@@ -1,7 +1,21 @@
-CHANGES
+November 25th, 2015
+==============]===
 
-21st October 2015
-=================
+    Fixed weird serialization error.
+
+    Make sure code doesn't blow up if only one packet is defined.
+
+    Handle the protocol id in the checksum calculation, eg. pre-header
+
+    Add code to get strings for various enums (especially error codes)
+
+    Add comparison operators (==) to test packet types.
+
+    Verify the packets received match the packet data sent.
+
+
+October 21st, 2015
+==================
 
     Implement unit tests
 

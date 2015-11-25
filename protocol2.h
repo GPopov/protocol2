@@ -1,5 +1,6 @@
 /*
     Protocol2 by Glenn Fiedler <glenn.fiedler@gmail.com>
+
     This software is in the public domain. Where that dedication is not recognized, 
     you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
 */
@@ -205,6 +206,7 @@ namespace protocol2
         return ( n >> 1 ) ^ ( -( n & 1 ) );
     }
 
+    // todo: convert these errors into PROTOCOL2_ERROR_* style and unify with other errors
     #define PROTOCOL2_STREAM_ERROR_NONE         0
     #define PROTOCOL2_STREAM_ERROR_OVERFLOW     1
     #define PROTOCOL2_STREAM_ERROR_INVALID      2
@@ -337,7 +339,7 @@ namespace protocol2
 
         int GetTotalBytes() const
         {
-            return m_numWords * 4;              // todo: same here kinda
+            return m_numWords * 4;
         }
 
     private:
@@ -414,6 +416,7 @@ namespace protocol2
         void ReadAlign()
         {
             const int remainderBits = m_bitsRead % 8;
+
             if ( remainderBits != 0 )
             {
                 #ifdef NDEBUG
@@ -492,8 +495,7 @@ namespace protocol2
 
         int GetTotalBytes() const
         {
-            // todo: this is completely fucking wrong!
-            return m_numBits * 8;
+            return m_numBits / 8;
         }
 
     private:
@@ -1162,7 +1164,8 @@ namespace protocol2
 
         void DestroyPacket( Packet* packet )
         {
-            assert( packet );
+            if ( !packet )
+                return;
 
 #if PROTOCOL2_DEBUG_MEMORY_LEAKS
             printf( "destroy packet %p\n", packet );
@@ -1191,14 +1194,16 @@ namespace protocol2
 
     int write_packet( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId );
 
-    #define PROTOCOL2_READ_PACKET_ERROR_NONE                0
-    #define PROTOCOL2_READ_PACKET_ERROR_CRC32               1
-    #define PROTOCOL2_READ_PACKET_INVALID_PACKET_TYPE       2
-    #define PROTOCOL2_READ_PACKET_FAILED_TO_CREATE_PACKET   3
-    #define PROTOCOL2_READ_PACKET_SERIALIZE_PACKET_FAILED   4
-    #define PROTOCOL2_READ_PACKET_SERIALIZE_CHECK_FAILED    5
-
     Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, int *errorCode = NULL );
+
+    #define PROTOCOL2_ERROR_NONE                        0
+    #define PROTOCOL2_ERROR_CRC32_MISMATCH              1
+    #define PROTOCOL2_ERROR_INVALID_PACKET_TYPE         2
+    #define PROTOCOL2_ERROR_CREATE_PACKET_FAILED        3
+    #define PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED     4
+    #define PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED      5
+
+    const char* error_string( int error );
 }
 
 #endif // #ifndef PROTOCOL2_H
@@ -1278,11 +1283,15 @@ namespace protocol2
 
         packet->SerializeWrite( stream );
 
+#if PROTOCOL2_SERIALIZE_CHECKS
         stream.SerializeCheck( protocolId );
+#endif // #if PROTOCOL2_SERIALIZE_CHECKS
 
         stream.Flush();
 
-        crc32 = calculate_crc32( buffer, stream.GetBytesProcessed() );
+        protocolId = host_to_network( protocolId );
+        crc32 = calculate_crc32( (uint8_t*) &protocolId, 4 );
+        crc32 = calculate_crc32( buffer, stream.GetBytesProcessed(), crc32 );
 
         *((uint32_t*)buffer) = host_to_network( crc32 );
 
@@ -1313,12 +1322,14 @@ namespace protocol2
 
         *((uint32_t*)buffer) = 0;
 
-        const uint32_t crc32 = calculate_crc32( buffer, bufferSize );
+        protocolId = host_to_network( protocolId );
+        uint32_t crc32 = calculate_crc32( (const uint8_t*) &protocolId, 4 );
+        crc32 = calculate_crc32( buffer, bufferSize, crc32 );
 
         if ( crc32 != read_crc32 )
         {
             if ( errorCode )
-                *errorCode = PROTOCOL2_READ_PACKET_ERROR_CRC32;
+                *errorCode = PROTOCOL2_ERROR_CRC32_MISMATCH;
             return NULL;
         }
 
@@ -1333,7 +1344,7 @@ namespace protocol2
             if ( !stream.SerializeInteger( packetType, 0, numPacketTypes ) )
             {
                 if ( errorCode )
-                    *errorCode = PROTOCOL2_READ_PACKET_INVALID_PACKET_TYPE;
+                    *errorCode = PROTOCOL2_ERROR_INVALID_PACKET_TYPE;
                 return NULL;
             }
         }
@@ -1342,29 +1353,46 @@ namespace protocol2
         if ( !packet )
         {
             if ( errorCode )
-                *errorCode = PROTOCOL2_READ_PACKET_FAILED_TO_CREATE_PACKET;
+                *errorCode = PROTOCOL2_ERROR_CREATE_PACKET_FAILED;
             return NULL;
         }
 
         if ( !packet->SerializeRead( stream ) )
         {
             if ( errorCode )
-                *errorCode = PROTOCOL2_READ_PACKET_SERIALIZE_PACKET_FAILED;
+                *errorCode = PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED;
             goto cleanup;
         }
 
+#if PROTOCOL2_SERIALIZE_CHECKS
         if ( !stream.SerializeCheck( protocolId ) )
         {
             if ( errorCode )
-                *errorCode = PROTOCOL2_READ_PACKET_SERIALIZE_CHECK_FAILED;
+                *errorCode = PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED;
             goto cleanup;
         }
+#endif // #if PROTOCOL2_SERIALIZE_CHECKS
 
         return packet;
 
     cleanup:
         packetFactory.DestroyPacket( packet );
         return NULL;
+    }
+
+    const char* error_string( int error )
+    {
+        switch ( error )
+        {
+            case PROTOCOL2_ERROR_NONE:                          return "no error";
+            case PROTOCOL2_ERROR_CRC32_MISMATCH:                return "crc32 mismatch";
+            case PROTOCOL2_ERROR_INVALID_PACKET_TYPE:           return "invalid packet type";
+            case PROTOCOL2_ERROR_CREATE_PACKET_FAILED:          return "create packet failed";
+            case PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED:       return "serialize packet failed";
+            case PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED:        return "serialize check failed";
+            default:
+                return "???";
+        }
     }
 }
 

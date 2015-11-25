@@ -1,6 +1,8 @@
 /*
     Example source code for "Serializing Packets"
+
     http://gafferongames.com/building-a-game-network-protocol/serializing-packets/
+
     This software is in the public domain. Where that dedication is not recognized, 
     you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
 */
@@ -12,12 +14,23 @@
 #include <time.h>
 #include <list>
 
+const int NumIterations = 10;
+
+const uint32_t MaxPacketSize = 1024;
+
+const uint32_t ProtocolId = 0x12345678;
+
 enum TestPacketTypes
 {
     TEST_PACKET_A,
     TEST_PACKET_B,
     TEST_PACKET_C,
     TEST_PACKET_NUM_TYPES
+};
+
+struct Vector
+{
+    float x,y,z;
 };
 
 inline int random_int( int min, int max )
@@ -27,6 +40,13 @@ inline int random_int( int min, int max )
     assert( result >= min );
     assert( result <= max );
     return result;
+}
+
+inline float random_float( float min, float max )
+{
+    const int res = 10000000;
+    double scale = ( rand() % res ) / double( res - 1 );
+    return (float) ( min + (double) ( max - min ) * scale );
 }
 
 struct TestPacketA : public protocol2::Packet
@@ -46,6 +66,16 @@ struct TestPacketA : public protocol2::Packet
         serialize_int( stream, b, -20, 20 );
         serialize_int( stream, c, -30, 30 );
         return true;
+    }
+
+    bool operator == ( const TestPacketA & other ) const
+    {
+        return a == other.a && b == other.b && c == other.c;
+    }
+
+    bool operator != ( const TestPacketA & other ) const
+    {
+        return ! ( *this == other );
     }
 };
 
@@ -70,19 +100,24 @@ struct TestPacketB : public protocol2::Packet
             serialize_int( stream, items[i], -100, +100 );
         return true;
     }
-};
 
-struct Vector
-{
-    float x,y,z;
-};
+    bool operator == ( const TestPacketB & other ) const
+    {
+        if ( numItems != other.numItems )
+            return false;
+        for ( int i = 0; i < numItems; ++i )
+        {
+            if ( items[i] != other.items[i] )
+                return false;
+        }
+        return true;
+    }
 
-inline float random_float( float min, float max )
-{
-    const int res = 10000000;
-    double scale = ( rand() % res ) / double( res - 1 );
-    return (float) ( min + (double) ( max - min ) * scale );
-}
+    bool operator != ( const TestPacketB & other ) const
+    {
+        return ! ( *this == other );
+    }
+};
 
 struct TestPacketC : public protocol2::Packet
 {
@@ -137,6 +172,16 @@ struct TestPacketC : public protocol2::Packet
 
         return true;
     }
+
+    bool operator == ( const TestPacketC & other )
+    {
+        return position.x == other.position.x &&
+               position.y == other.position.y &&
+               position.z == other.position.z &&
+               velocity.x == other.velocity.x &&
+               velocity.y == other.velocity.y &&
+               velocity.z == other.velocity.z;
+    }
 };
 
 struct TestPacketFactory : public protocol2::PacketFactory
@@ -155,68 +200,77 @@ struct TestPacketFactory : public protocol2::PacketFactory
     }
 };
 
+bool CheckPacketsAreIdentical( protocol2::Packet *p1, protocol2::Packet *p2 )
+{
+    assert( p1 );
+    assert( p2 );
+
+    if ( p1->GetType() != p2->GetType() )
+        return false;
+
+    switch ( p1->GetType() )
+    {
+        case TEST_PACKET_A:     return *((TestPacketA*)p1) == *((TestPacketA*)p2);
+        case TEST_PACKET_B:     return *((TestPacketB*)p1) == *((TestPacketB*)p2);
+        case TEST_PACKET_C:     return *((TestPacketC*)p1) == *((TestPacketC*)p2);
+        default:
+            return false;
+    }
+}
+
 int main()
 {
     srand( time( NULL ) );
 
     TestPacketFactory packetFactory;
 
-    int numPacketsWritten = 0;
-    int numPacketsRead = 0;
-
-    const int NumIterations = 10;
-
     for ( int i = 0; i < NumIterations; ++i )
     {
         const int packetType = rand() % TEST_PACKET_NUM_TYPES;
 
-        protocol2::Packet *packet = packetFactory.CreatePacket( packetType );
+        protocol2::Packet *writePacket = packetFactory.CreatePacket( packetType );
 
-        assert( packet );
-        assert( packet->GetType() == packetType );
-
-        const uint32_t MaxPacketSize = 1024;
-        const uint32_t ProtocolId = 0x12345678;
+        assert( writePacket );
+        assert( writePacket->GetType() == packetType );
 
         uint8_t buffer[MaxPacketSize];
 
-        const int bytesWritten = protocol2::write_packet( packet, packetFactory, buffer, MaxPacketSize, ProtocolId );
+        bool error = false;
 
-        packetFactory.DestroyPacket( packet );
-
+        const int bytesWritten = protocol2::write_packet( writePacket, packetFactory, buffer, MaxPacketSize, ProtocolId );
         if ( bytesWritten > 0 )
         {
-            printf( "wrote packet type %d (%d bytes)\n", packet->GetType(), bytesWritten );
-            numPacketsWritten++;
+            printf( "wrote packet type %d (%d bytes)\n", writePacket->GetType(), bytesWritten );
         }
         else
         {
-            printf( "failed to write packet\n" );
+            printf( "write packet error\n" );
+            error = true;
         }
 
         int readError;
         protocol2::Packet *readPacket = protocol2::read_packet( packetFactory, buffer, bytesWritten, ProtocolId, &readError );
-
         if ( readPacket )
         {
             printf( "read packet type %d (%d bytes)\n", readPacket->GetType(), bytesWritten );
-            packetFactory.DestroyPacket( readPacket );
-            numPacketsRead++;
+            if ( !CheckPacketsAreIdentical( readPacket, writePacket ) )
+            {
+                printf( "read packet does not match written packet!\n" );
+                error = true;
+            }
         }
         else
         {
-            printf( "failed to read packet: %d\n", readError );
+            printf( "read packet error: %s\n", protocol2::error_string( readError ) );
+            error = true;
         }
+
+        packetFactory.DestroyPacket( readPacket );
+        packetFactory.DestroyPacket( writePacket );
+
+        if ( error )
+            return 1;
     }
 
-    if ( numPacketsWritten == NumIterations && numPacketsRead == NumIterations )
-    {
-        printf( "success.\n" );
-        return 0;
-    }
-    else
-    {
-        printf( "failure.\n" );
-        return 1;
-    }
+    return 0;
 }
