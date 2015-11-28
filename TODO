@@ -1,44 +1,52 @@
 CHANGES
 
-TODO
-
     Convert stream errors to PROTOCOL2_ERROR_* form and add to error_string fn.
-
-    Make sure stream properly handles overflow. Add tests to make sure it does. test_stream_overflow, test_stream_abort, test_stream_invalid etc.
-
-    Split rest of existing template serialize fns to serialize_x_internal and wrap with macros for return false.
-
-    Add unit tests for all integer types that support serialization (probe bounds)
-
-    Add unit tests for functions like bswap, pop count, templated versions etc.
-
-    Add serialize measure tests.
-
-    Add premake file for clean, make all etc. annoying to manually delete bins before checking in.
-
-    Get code running on windows.
 
     Fix GCC specific stuff (eg. __builtin_bswap etc)
 
-    Get building with maximum warning levels on clang
+    Make sure stream properly handles overflow on read. On write, stream should assert (it's your fault!)
 
-    Compile with a gcc on linux
+    Split rest of existing template serialize fns to serialize_x_internal and wrap with macros for return false.
 
-    Add a soak test (soak.cpp)
+TODO
+
+    Move the packet factory into implementation section
+
+    Make sure all serialize functions are getting called.
+
+    Add tests to make sure these serialize functions are getting called.
+
+    Add tests to make sure the stream handles overflow (make sure serialize_int, serialize_bits, serialize_check and serialize_align all handle overflow)
+
+    -------------------------
+
+    Add premake file for clean, make all etc. annoying to manually delete bins before checking in.
+
+    Get building with maximum warning levels on clang.
+
+    Get code building and running clean on windows.
+
+    Compile with a gcc on linux.
+
+    Ready to write article.
 
 =========================
 
-For article in order, start with different options, eg. json, key value, protobuf etc.
+For article in order, start with different options, eg. xml, json, key value, protobuf, capn proto, flatbuffers etc.
 
 Discuss why game network protocols are usually not a good fit for this (version is not a problem, because different
 versions of the game don't talk to each other...), bandwidth is most important, we want to only send data that is
-essential, zero overhead. => unattributed stream of data.
+essential, zero overhead. binary not text. => completely unattributed stream of data.
 
 First attempt. send structs. fails because of endianness. (discussion of endianness)
 
 next, basic read/write methods, eg. read int, write int, read byte, write byte etc. short, float etc.
 
 separate read and write functions for packets. show what they look like.
+
+first start writing local variables, eg. read data and process it in same function.
+
+soon, you realize you often want to read data into a struct and separate the serialization (read/write) from the processing of the packet.
 
 fails because often quantities are one bit only. very wasteful to spend one byte (8 bits) to send just one bit of information.
 
@@ -66,6 +74,8 @@ can also have a "measure" stream for when you need to know how large something w
 
 need to be really safe on read. macros that return false if anything doesn't check out. DON'T USE EXCEPTIONS THEY'RE REALLY SLOW
 
+write doesn't need to be as safe. write can assert. it's YOUR fault if you fuck up the write function and overflow bits. it shouldn't happen in production code.
+
 redundancy. also, don't serialize # of bits for ints, instead prefer to serialize within a min/max range.
 
 that way anything that comes in outside that range can automatically be rejected and return false (aborting the packet read)
@@ -81,6 +91,10 @@ now onto more detais about reading and writing packets
 serialization examples:
 
 ...
+
+how to go even further: range encoding. fractional bits. models. link to Fabian Giesen's example code.
+
+next article link
 
 =========================
 

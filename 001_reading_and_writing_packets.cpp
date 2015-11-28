@@ -1,7 +1,7 @@
 /*
-    Example source code for "Serializing Packets"
+    Example source code for "Reading and Writing Packets"
 
-    http://gafferongames.com/building-a-game-network-protocol/serializing-packets/
+    http://gafferongames.com/building-a-game-network-protocol/reading-and-writing-packets/
 
     This software is in the public domain. Where that dedication is not recognized, 
     you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
@@ -14,7 +14,7 @@
 #include <time.h>
 #include <list>
 
-const int NumIterations = 10;
+const int NumIterations = 32;
 
 const uint32_t MaxPacketSize = 1024;
 
@@ -255,7 +255,7 @@ int main()
             printf( "read packet type %d (%d bytes)\n", readPacket->GetType(), bytesWritten );
             if ( !CheckPacketsAreIdentical( readPacket, writePacket ) )
             {
-                printf( "read packet does not match written packet!\n" );
+                printf( "read packet is not the same as written packet. something wrong with serialize function?\n" );
                 error = true;
             }
         }

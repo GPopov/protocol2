@@ -127,15 +127,34 @@ struct TestStreamObject : public protocol2::Object
     }
 };
 
-// todo: should cover all cases of writing different integer types
-
-// todo: should check for overflow, abort, invalid cases on read
-
-// todo: should have test for crc32. randomly generate packets and pass into fuzz test
-
-void test_stream_object()
+struct TestContext
 {
-    printf( "test_stream_object\n" );
+    int min;
+    int max;
+};
+
+struct TestContextObject : public protocol2::Object
+{
+    int a,b;
+
+    TestContextObject()
+    {
+        a = 0;
+        b = 0;
+    }
+
+    PROTOCOL2_SERIALIZE_OBJECT( stream )
+    {
+        const TestContext & context = *(const TestContext*) stream.GetContext();
+        serialize_int( stream, a, context.min, context.max );
+        serialize_int( stream, b, context.min, context.max );
+        return true;
+    }
+};
+
+void test_stream()
+{
+    printf( "test_stream\n" );
 
     const int BufferSize = 256;
 
@@ -165,75 +184,6 @@ void test_stream_object()
     check( readObject.numItems == writeObject.numItems );
     for ( int i = 0; i < readObject.numItems; ++i )
         check( readObject.items[i] == writeObject.items[i] );
-}
-
-struct TestContext
-{
-    int min;
-    int max;
-};
-
-struct TestContextObject : public protocol2::Object
-{
-    int a,b;
-
-    TestContextObject()
-    {
-        a = 0;
-        b = 0;
-    }
-
-    PROTOCOL2_SERIALIZE_OBJECT( stream )
-    {
-        const TestContext & context = *(const TestContext*) stream.GetContext();
-        serialize_int( stream, a, context.min, context.max );
-        serialize_int( stream, b, context.min, context.max );
-        return true;
-    }
-};
-
-void test_stream_context()
-{
-    printf( "test_stream_context\n" );
-
-    const int BufferSize = 256;
-
-    uint8_t buffer[BufferSize];
-
-    TestContext context;
-    context.min = -10;
-    context.max = +7;
-
-    TestContextObject writeObject;
-    writeObject.a = 2;
-    writeObject.b = 7;
-    {
-        protocol2::WriteStream writeStream( buffer, BufferSize );
-
-        check( writeStream.GetContext() == NULL );
-
-        writeStream.SetContext( &context );
-
-        check( writeStream.GetContext() == &context );
-
-        writeObject.SerializeWrite( writeStream );
-
-        writeStream.Flush();
-    }
-
-    TestContextObject readObject;
-    {
-        protocol2::ReadStream readStream( buffer, BufferSize );
-
-        readStream.SetContext( &context );
-
-        check( readStream.GetContext() == &context );
-
-        readObject.SerializeRead( readStream );
-    }
-
-    check( readObject.a == writeObject.a );
-    check( readObject.b == writeObject.b );
 }
 
 enum TestPacketTypes
@@ -316,9 +266,9 @@ struct TestPacketFactory : public protocol2::PacketFactory
     }
 };
 
-void test_packet_factory()
+void test_packets()
 {
-    printf( "test packet factory\n" );
+    printf( "test packets\n" );
 
     TestPacketFactory packetFactory;
 
@@ -339,17 +289,10 @@ void test_packet_factory()
     packetFactory.DestroyPacket( c );
 }
 
-// todo: test read and write packet w. multple packets
-
-// todo: test read and wrte packet w. just one packet def
-
-// todo: test the packets receved actually match what sent
-
 int main()
 {
     test_bitpacker();   
-    test_stream_object();
-    test_stream_context();
-    test_packet_factory();
+    test_stream();
+    test_packets();
     return 0;
 }

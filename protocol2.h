@@ -151,7 +151,7 @@ namespace protocol2
     #ifdef __GNUC__
         return __builtin_bswap32( value );
     #else // #ifdef __GNUC__
-        // todo: need portable version
+        return ( value & 0x000000ff ) << 24 | ( value & 0x0000ff00 ) << 8 | ( value & 0x00ff0000 ) >> 8 | ( value & 0xff000000 ) >> 24;
     #endif // #ifdef __GNUC__
 #else // #if PROTOCOL2_BIG_ENDIAN
         return value;
@@ -164,7 +164,7 @@ namespace protocol2
     #ifdef __GNUC__
         return __builtin_bswap32( value );
     #else // #ifdef __GNUC__
-        // todo: need portable version
+        return ( value & 0x000000ff ) << 24 | ( value & 0x0000ff00 ) << 8 | ( value & 0x00ff0000 ) >> 8 | ( value & 0xff000000 ) >> 24;
     #endif // #ifdef __GNUC__
 #else // #if PROTOCOL2_BIG_ENDIAN
         return value;
@@ -206,12 +206,6 @@ namespace protocol2
         return ( n >> 1 ) ^ ( -( n & 1 ) );
     }
 
-    // todo: convert these errors into PROTOCOL2_ERROR_* style and unify with other errors
-    #define PROTOCOL2_STREAM_ERROR_NONE         0
-    #define PROTOCOL2_STREAM_ERROR_OVERFLOW     1
-    #define PROTOCOL2_STREAM_ERROR_INVALID      2
-    #define PROTOCOL2_STREAM_ERROR_ABORTED      3
-
     class BitWriter
     {
     public:
@@ -226,8 +220,6 @@ namespace protocol2
             m_bitIndex = 0;
             m_wordIndex = 0;
         }
-
-        // todo: need "WouldOverflow( int bits )"
 
         void WriteBits( uint32_t value, int bits )
         {
@@ -368,7 +360,10 @@ namespace protocol2
             m_scratch = network_to_host( m_data[0] );
         }
 
-        // todo: need function to check if n bits would overflow, e.g.: if ( WouldOverflow( bits ) )
+        bool WouldOverflow( int bits ) const
+        {
+            return m_bitsRead + bits > m_numBits;
+        }
 
         uint32_t ReadBits( int bits )
         {
@@ -509,6 +504,17 @@ namespace protocol2
         int m_wordIndex;
     };
 
+    #define PROTOCOL2_ERROR_NONE                        0
+    #define PROTOCOL2_ERROR_CRC32_MISMATCH              1
+    #define PROTOCOL2_ERROR_INVALID_PACKET_TYPE         2
+    #define PROTOCOL2_ERROR_CREATE_PACKET_FAILED        3
+    #define PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED     4
+    #define PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED      5
+    #define PROTOCOL2_ERROR_STREAM_OVERFLOW             6
+    #define PROTOCOL2_ERROR_STREAM_ABORTED              7
+
+    const char* error_string( int error );
+
     class WriteStream
     {
     public:
@@ -516,30 +522,23 @@ namespace protocol2
         enum { IsWriting = 1 };
         enum { IsReading = 0 };
 
-        WriteStream( uint8_t* buffer, int bytes ) : m_writer( buffer, bytes ), m_error( PROTOCOL2_STREAM_ERROR_NONE ), m_context( NULL ) {}
+        WriteStream( uint8_t* buffer, int bytes ) : m_writer( buffer, bytes ), m_error( PROTOCOL2_ERROR_NONE ), m_context( NULL ) {}
 
         bool SerializeInteger( int32_t value, int32_t min, int32_t max )
         {
             assert( min < max );
             assert( value >= min );
             assert( value <= max );
-            if ( GetError() )
-                return false;
             const int bits = bits_required( min, max );
             uint32_t unsigned_value = value - min;
             m_writer.WriteBits( unsigned_value, bits );
             return true;
         }
 
-        // todo: need a version with min/max and bits required to serialize so values can be checked for compile time bits required
-        // todo: make sure this version checks that the bits are enough to handle the min/max (assert only)
-
         bool SerializeBits( uint32_t value, int bits )
         {
             assert( bits > 0 );
             assert( bits <= 32 );
-            // todo: detect error, return false
-            // todo: check for overflow, return false
             m_writer.WriteBits( value, bits );
             return true;
         }
@@ -556,8 +555,6 @@ namespace protocol2
 
         bool SerializeAlign()
         {
-            if ( GetError() )
-                return false;
             m_writer.WriteAlign();
             return true;
         }
@@ -621,11 +618,6 @@ namespace protocol2
             return m_context;
         }
 
-        void Abort()
-        {
-            m_error = PROTOCOL2_STREAM_ERROR_ABORTED;
-        }
-
         int GetError() const
         {
             return m_error;
@@ -645,28 +637,32 @@ namespace protocol2
         enum { IsWriting = 0 };
         enum { IsReading = 1 };
 
-        ReadStream( const uint8_t* buffer, int bytes ) : m_bitsRead(0), m_reader( buffer, bytes ), m_context( NULL ), m_error( PROTOCOL2_STREAM_ERROR_NONE ) {}
+        ReadStream( const uint8_t* buffer, int bytes ) : m_bitsRead(0), m_reader( buffer, bytes ), m_context( NULL ), m_error( PROTOCOL2_ERROR_NONE ) {}
 
         bool SerializeInteger( int32_t & value, int32_t min, int32_t max )
         {
             assert( min < max );
-            // todo: check for existing error
             const int bits = bits_required( min, max );
-            // todo: check for overflow
+            if ( m_reader.WouldOverflow( bits ) )
+            {
+                m_error = PROTOCOL2_ERROR_STREAM_OVERFLOW;
+                return false;
+            }
             uint32_t unsigned_value = m_reader.ReadBits( bits );
             value = (int32_t) unsigned_value + min;
             m_bitsRead += bits;
             return true;
         }
 
-        // todo: need version that takes min,max and bits
-
         bool SerializeBits( uint32_t & value, int bits )
         {
             assert( bits > 0 );
             assert( bits <= 32 );
-            // todo: check for existing error
-            // todo: check for overflow
+            if ( m_reader.WouldOverflow( bits ) )
+            {
+                m_error = PROTOCOL2_ERROR_STREAM_OVERFLOW;
+                return false;
+            }
             uint32_t read_value = m_reader.ReadBits( bits );
             value = read_value;
             m_bitsRead += bits;
@@ -675,9 +671,13 @@ namespace protocol2
 
         bool SerializeBytes( uint8_t* data, int bytes )
         {
-            // todo: check for existing error
-            // todo: check for overflow
-            SerializeAlign();
+            if ( !SerializeAlign() )
+                return false;
+            if ( m_reader.WouldOverflow( bytes * 8 ) )
+            {
+                m_error = PROTOCOL2_ERROR_STREAM_OVERFLOW;
+                return false;
+            }
             m_reader.ReadBytes( data, bytes );
             m_bitsRead += bytes * 8;
             return true;
@@ -685,8 +685,11 @@ namespace protocol2
 
         bool SerializeAlign()
         {
-            // todo: check for existing error
-            // todo: check for overflow
+            if ( m_reader.WouldOverflow( m_reader.GetAlignBits() ) )
+            {
+                m_error = PROTOCOL2_ERROR_STREAM_OVERFLOW;
+                return false;
+            }
             m_reader.ReadAlign();
             return true;
         }
@@ -702,7 +705,6 @@ namespace protocol2
             SerializeAlign();
             uint32_t value = 0;
             SerializeBits( value, 32 );
-            // todo: this should not just return false, it should also set error INVALID
             if ( value != magic )
             {
                 printf( "%x != magic %x\n", value, magic );
@@ -734,11 +736,6 @@ namespace protocol2
             return m_context;
         }
 
-        void Abort()
-        {
-            m_error = PROTOCOL2_STREAM_ERROR_ABORTED;
-        }
-
         int GetError() const
         {
             return m_error;
@@ -764,7 +761,7 @@ namespace protocol2
         enum { IsWriting = 1 };
         enum { IsReading = 0 };
 
-        MeasureStream( int bytes ) : m_totalBytes( bytes ), m_bitsWritten(0), m_context( NULL ), m_error( PROTOCOL2_STREAM_ERROR_NONE ) {}
+        MeasureStream( int bytes ) : m_totalBytes( bytes ), m_bitsWritten(0), m_context( NULL ), m_error( PROTOCOL2_ERROR_NONE ) {}
 
         bool SerializeInteger( int32_t value, int32_t min, int32_t max )
         {
@@ -840,11 +837,6 @@ namespace protocol2
             return m_context;
         }
 
-        void Abort()
-        {
-            m_error = PROTOCOL2_STREAM_ERROR_ABORTED;
-        }
-
         int GetError() const
         {
             return m_error;
@@ -873,8 +865,6 @@ namespace protocol2
         return object.SerializeMeasure( stream );
     }
 
-    // todo: we need to clamp on read below, as well as error the stream (returns 0 on error?)
-
     #define serialize_int( stream, value, min, max )                    \
         do                                                              \
         {                                                               \
@@ -891,8 +881,8 @@ namespace protocol2
             if ( Stream::IsReading )                                    \
             {                                                           \
                 value = int32_value;                                    \
-                assert( value >= min );                                 \
-                assert( value <= max );                                 \
+                if ( value < min || value > max )                       \
+                    return false;                                       \
             }                                                           \
         } while (0)
 
@@ -939,21 +929,7 @@ namespace protocol2
                 return false;                                                       \
         } while (0)
 
-
-    // todo: have to use defines for these. can't do the return false thing otherwise
-
-    /*
-    template <typename Stream> void serialize_uint16( Stream & stream, uint16_t & value )
-    {
-        serialize_bits( stream, value, 16 );
-    }
-
-    template <typename Stream> void serialize_uint32( Stream & stream, uint32_t & value )
-    {
-        serialize_bits( stream, value, 32 );
-    }
-
-    template <typename Stream> void serialize_uint64( Stream & stream, uint64_t & value )
+    template <typename Stream> bool serialize_uint64_internal( Stream & stream, uint64_t & value )
     {
         uint32_t hi,lo;
         if ( Stream::IsWriting )
@@ -965,64 +941,17 @@ namespace protocol2
         serialize_bits( stream, hi, 32 );
         if ( Stream::IsReading )
             value = ( uint64_t(hi) << 32 ) | lo;
+        return true;
     }
 
-    template <typename Stream> void serialize_int16( Stream & stream, int16_t & value )
-    {
-        serialize_bits( stream, value, 16 );
-    }
+    #define serialize_uint64( stream, value )                                       \
+        do                                                                          \
+        {                                                                           \
+            if ( !protocol2::serialize_uint64_internal( stream, value ) )           \
+                return false;                                                       \
+        } while (0)
 
-    template <typename Stream> void serialize_int32( Stream & stream, int32_t & value )
-    {
-        serialize_bits( stream, value, 32 );
-    }
-
-    template <typename Stream> void serialize_int64( Stream & stream, int64_t & value )
-    {
-        uint32_t hi,lo;
-        if ( Stream::IsWriting )
-        {
-            lo = uint64_t(value) & 0xFFFFFFFF;
-            hi = uint64_t(value) >> 32;
-        }
-        serialize_bits( stream, lo, 32 );
-        serialize_bits( stream, hi, 32 );
-        if ( Stream::IsReading )
-            value = ( int64_t(hi) << 32 ) | lo;
-    }
-
-    template <typename Stream> inline void internal_serialize_float( Stream & stream, float & value, float min, float max, float res )
-    {
-        const float delta = max - min;
-        const float values = delta / res;
-        const uint32_t maxIntegerValue = (uint32_t) ceil( values );
-        const int bits = bits_required( 0, maxIntegerValue );
-        
-        uint32_t integerValue = 0;
-        
-        if ( Stream::IsWriting )
-        {
-            float normalizedValue = clamp( ( value - min ) / delta, 0.0f, 1.0f );
-            integerValue = (uint32_t) floor( normalizedValue * maxIntegerValue + 0.5f );
-        }
-        
-        stream.SerializeBits( integerValue, bits );
-
-        if ( Stream::IsReading )
-        {
-            const float normalizedValue = integerValue / float( maxIntegerValue );
-            value = normalizedValue * delta + min;
-        }
-    }
-
-    #define serialize_compressed_float( stream, value, min, max, res )                                        \
-    do                                                                                                        \
-    {                                                                                                         \
-        internal_serialize_float( stream, value, min, max, res );                                             \
-    }                                                                                                         \
-    while(0)
-
-    template <typename Stream> void serialize_double( Stream & stream, double & value )
+    template <typename Stream> bool serialize_double_internal( Stream & stream, double & value )
     {
         union DoubleInt
         {
@@ -1038,14 +967,30 @@ namespace protocol2
 
         if ( Stream::IsReading )
             value = tmp.double_value;
+
+        return true;
     }
 
-    template <typename Stream> void serialize_bytes( Stream & stream, uint8_t* data, int bytes )
+    #define serialize_double( stream, value )                                       \
+        do                                                                          \
+        {                                                                           \
+            if ( !protocol2::serialize_double_internal( stream, value ) )           \
+                return false;                                                       \
+        } while (0)
+
+    template <typename Stream> bool serialize_bytes_internal( Stream & stream, uint8_t* data, int bytes )
     {
-        stream.SerializeBytes( data, bytes );        
+        return stream.SerializeBytes( data, bytes );
     }
 
-    template <typename Stream> void serialize_string( Stream & stream, char* string, int buffer_size )
+    #define serialize_bytes( stream, data, bytes )                                  \
+        do                                                                          \
+        {                                                                           \
+            if ( !protocol2::serialize_bytes_internal( stream, data, bytes ) )      \
+                return false;                                                       \
+        } while (0)
+
+    template <typename Stream> void serialize_string_internal( Stream & stream, char* string, int buffer_size )
     {
         uint32_t length;
         if ( Stream::IsWriting )
@@ -1058,11 +1003,24 @@ namespace protocol2
             string[length] = '\0';
     }
 
-    template <typename Stream> bool serialize_check( Stream & stream, uint32_t magic )
+    #define serialize_string( stream, string, buffer_size )                                 \
+        do                                                                                  \
+        {                                                                                   \
+            if ( !protocol2::serialize_string_internal( stream, string, buffer_size ) )     \
+                return false;                                                               \
+        } while (0)
+
+    template <typename Stream> bool serialize_check_internal( Stream & stream, uint32_t value )
     {
-        return stream.SerializeCheck( magic );
+        return stream.SerializeCheck( value );
     }
-    */
+
+    #define serialize_check( stream, value )                                                \
+        do                                                                                  \
+        {                                                                                   \
+            if ( !protocol2::serialize_check_internal( stream, value ) )                    \
+                return false;                                                               \
+        } while (0)
 
     class Object
     {  
@@ -1109,13 +1067,11 @@ namespace protocol2
 
     class PacketFactory
     {        
+        int m_numTypes;
+        int m_numAllocatedPackets;          // todo: make this dev build only
 #if PROTOCOL2_DEBUG_MEMORY_LEAKS
         std::map<void*,int> allocated_packets;
 #endif // #if PROTOCOL2_DEBUG_MEMORY_LEAKS
-
-        int m_numTypes;
-
-        int m_numAllocatedPackets;          // todo: make this dev build only
 
     public:
 
@@ -1195,15 +1151,6 @@ namespace protocol2
     int write_packet( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId );
 
     Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, int *errorCode = NULL );
-
-    #define PROTOCOL2_ERROR_NONE                        0
-    #define PROTOCOL2_ERROR_CRC32_MISMATCH              1
-    #define PROTOCOL2_ERROR_INVALID_PACKET_TYPE         2
-    #define PROTOCOL2_ERROR_CREATE_PACKET_FAILED        3
-    #define PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED     4
-    #define PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED      5
-
-    const char* error_string( int error );
 }
 
 #endif // #ifndef PROTOCOL2_H
@@ -1317,7 +1264,7 @@ namespace protocol2
 
         Stream stream( buffer, paddedSize );
 
-        uint32_t read_crc32;
+        uint32_t read_crc32 = 0;
         stream.SerializeBits( read_crc32, 32 );
 
         *((uint32_t*)buffer) = 0;
@@ -1390,6 +1337,7 @@ namespace protocol2
             case PROTOCOL2_ERROR_CREATE_PACKET_FAILED:          return "create packet failed";
             case PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED:       return "serialize packet failed";
             case PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED:        return "serialize check failed";
+            case PROTOCOL2_ERROR_STREAM_OVERFLOW:               return "stream overflow";
             default:
                 return "???";
         }
