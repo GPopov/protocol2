@@ -781,16 +781,18 @@ namespace protocol2
             return true;
         }
 
-        void SerializeBytes( const uint8_t* data, int bytes )
+        bool SerializeBytes( const uint8_t* data, int bytes )
         {
             SerializeAlign();
             m_bitsWritten += bytes * 8;
+            return true;
         }
 
-        void SerializeAlign()
+        bool SerializeAlign()
         {
             const int alignBits = GetAlignBits();
             m_bitsWritten += alignBits;
+            return true;
         }
 
         int GetAlignBits() const
@@ -1015,6 +1017,13 @@ namespace protocol2
         return stream.SerializeCheck( value );
     }
 
+    #define serialize_align( stream )                                                       \
+        do                                                                                  \
+        {                                                                                   \
+            if ( !stream.SerializeAlign() )                                                 \
+                return false;                                                               \
+        } while (0)
+
     #define serialize_check( stream, value )                                                \
         do                                                                                  \
         {                                                                                   \
@@ -1063,83 +1072,25 @@ namespace protocol2
         Packet & operator = ( const Packet & other );
     };
 
-    // todo: move packet factory into implementation
-
     class PacketFactory
     {        
         int m_numTypes;
-        int m_numAllocatedPackets;          // todo: make this dev build only
+        int m_numAllocatedPackets;  
 #if PROTOCOL2_DEBUG_MEMORY_LEAKS
         std::map<void*,int> allocated_packets;
 #endif // #if PROTOCOL2_DEBUG_MEMORY_LEAKS
 
     public:
 
-        PacketFactory( int numTypes )
-        {
-            m_numTypes = numTypes;
-            m_numAllocatedPackets = 0;
-        }
+        PacketFactory( int numTypes );
 
-        ~PacketFactory()
-        {
-#if PROTOCOL2_DEBUG_MEMORY_LEAKS
-            if ( allocated_packets.size() )
-            {
-                printf( "you leaked packets!\n" );
-                printf( "%d packets leaked\n", m_numAllocatedPackets );
-                for ( auto itor : allocated_packets )
-                {
-                    auto p = itor.first;
-                    printf( "leaked packet %p\n", p );
-                }
-            }
-#endif // #if PROTOCOL2_DEBUG_MEMORY_LEAKS
+        ~PacketFactory();
 
-            assert( m_numAllocatedPackets == 0 );
-        }
+        Packet* CreatePacket( int type );
 
-        Packet* CreatePacket( int type )
-        {
-            assert( type >= 0 );
-            assert( type < m_numTypes );
+        void DestroyPacket( Packet *packet );
 
-            Packet * packet = CreateInternal( type );
-            
-#if PROTOCOL2_DEBUG_MEMORY_LEAKS
-            printf( "create packet %p\n", packet );
-            allocated_packets[packet] = 1;
-            auto itor = allocated_packets.find( packet );
-            assert( itor != allocated_packets.end() );
-#endif // #if PROTOCOL2_DEBUG_MEMORY_LEAKS
-            
-            m_numAllocatedPackets++;
-
-            return packet;
-        }
-
-        void DestroyPacket( Packet* packet )
-        {
-            if ( !packet )
-                return;
-
-#if PROTOCOL2_DEBUG_MEMORY_LEAKS
-            printf( "destroy packet %p\n", packet );
-            auto itor = allocated_packets.find( packet );
-            assert( itor != allocated_packets.end() );
-            allocated_packets.erase( packet );
-#endif // #if PROTOCOL2_DEBUG_MEMORY_LEAKS
-
-            assert( m_numAllocatedPackets > 0 );
-            m_numAllocatedPackets--;
-
-            delete packet;
-        }
-
-        int GetNumTypes() const
-        {
-            return m_numTypes;
-        }
+        int GetNumTypes() const;
 
     protected:
 
@@ -1341,6 +1292,73 @@ namespace protocol2
             default:
                 return "???";
         }
+    }
+
+    PacketFactory::PacketFactory( int numTypes )
+    {
+        m_numTypes = numTypes;
+        m_numAllocatedPackets = 0;
+    }
+
+    PacketFactory::~PacketFactory()
+    {
+#if PROTOCOL2_DEBUG_MEMORY_LEAKS
+        if ( allocated_packets.size() )
+        {
+            printf( "you leaked packets!\n" );
+            printf( "%d packets leaked\n", m_numAllocatedPackets );
+            for ( auto itor : allocated_packets )
+            {
+                auto p = itor.first;
+                printf( "leaked packet %p\n", p );
+            }
+        }
+#endif // #if PROTOCOL2_DEBUG_MEMORY_LEAKS
+
+        assert( m_numAllocatedPackets == 0 );
+    }
+
+    Packet* PacketFactory::CreatePacket( int type )
+    {
+        assert( type >= 0 );
+        assert( type < m_numTypes );
+
+        Packet * packet = CreateInternal( type );
+        
+#if PROTOCOL2_DEBUG_MEMORY_LEAKS
+        printf( "create packet %p\n", packet );
+        allocated_packets[packet] = 1;
+        auto itor = allocated_packets.find( packet );
+        assert( itor != allocated_packets.end() );
+#endif // #if PROTOCOL2_DEBUG_MEMORY_LEAKS
+        
+        m_numAllocatedPackets++;
+
+        return packet;
+    }
+
+    void PacketFactory::DestroyPacket( Packet* packet )
+    {
+        if ( !packet )
+            return;
+
+#if PROTOCOL2_DEBUG_MEMORY_LEAKS
+        printf( "destroy packet %p\n", packet );
+        auto itor = allocated_packets.find( packet );
+        assert( itor != allocated_packets.end() );
+        allocated_packets.erase( packet );
+#endif // #if PROTOCOL2_DEBUG_MEMORY_LEAKS
+
+        assert( m_numAllocatedPackets > 0 );
+
+        m_numAllocatedPackets--;
+
+        delete packet;
+    }
+
+    int PacketFactory::GetNumTypes() const
+    {
+        return m_numTypes;
     }
 }
 

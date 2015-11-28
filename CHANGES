@@ -1,5 +1,34 @@
+
+November 29th, 2015
+===================
+
+    Convert stream errors to PROTOCOL2_ERROR_* form and add to error_string fn.
+
+    Fix GCC specific stuff (eg. __builtin_bswap etc)
+
+    Make sure stream properly handles overflow on read. On write, stream should assert (it's your fault!)
+
+    Split rest of existing template serialize fns to serialize_x_internal and wrap with macros for return false.
+
+    Move the packet factory into implementation section.
+
+    Make a list of all serialize functions to test.
+
+        1. serialize_int
+        2. serialize_bits
+        3. serialize_bool
+        4. serialize_float
+        5. serialize_uint64
+        6. serialize_double
+        7. serialize_bytes
+        8. serialize_string
+        9. serialize_align
+        10. serialize_check
+        11. serialize_object
+
+
 November 25th, 2015
-==============]===
+===================
 
     Fixed weird serialization error.
 

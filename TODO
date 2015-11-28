@@ -1,24 +1,8 @@
 CHANGES
 
-    Convert stream errors to PROTOCOL2_ERROR_* form and add to error_string fn.
-
-    Fix GCC specific stuff (eg. __builtin_bswap etc)
-
-    Make sure stream properly handles overflow on read. On write, stream should assert (it's your fault!)
-
-    Split rest of existing template serialize fns to serialize_x_internal and wrap with macros for return false.
+    Make sure all serialize functions are getting called from test.cpp
 
 TODO
-
-    Move the packet factory into implementation section
-
-    Make sure all serialize functions are getting called.
-
-    Add tests to make sure these serialize functions are getting called.
-
-    Add tests to make sure the stream handles overflow (make sure serialize_int, serialize_bits, serialize_check and serialize_align all handle overflow)
-
-    -------------------------
 
     Add premake file for clean, make all etc. annoying to manually delete bins before checking in.
 

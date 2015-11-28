@@ -70,7 +70,7 @@ void test_bitpacker()
 
 const int MaxItems = 16;
 
-struct TestStreamObject : public protocol2::Object
+struct TestData
 {
     int a,b,c;
     uint32_t d : 8;
@@ -79,60 +79,90 @@ struct TestStreamObject : public protocol2::Object
     bool g;
     int numItems;
     int items[MaxItems];
+    float float_value;
+    double double_value;
+    uint64_t uint64_value;
+};
 
-    TestStreamObject()
+struct TestObject : public protocol2::Object
+{
+    TestData data;
+
+    TestObject()
     {
-        a = 0;
-        b = 0;
-        c = 0;
-        d = 0;
-        e = 0;
-        f = 0;
-        g = false;
-        numItems = 0;
-        memset( items, 0, sizeof(items) );
+        memset( &data, 0, sizeof( data ) );
     }
 
     void Init()
     {
-        a = 1;
-        b = -2;
-        c = 150;
-        d = 55;
-        e = 255;
-        f = 127;
-        g = true;
-        numItems = MaxItems / 2;
-        for ( int i = 0; i < numItems; ++i )
-            items[i] = i + 10;        
+        data.a = 1;
+        data.b = -2;
+        data.c = 150;
+        data.d = 55;
+        data.e = 255;
+        data.f = 127;
+        data.g = true;
+
+        data.numItems = MaxItems / 2;
+        for ( int i = 0; i < data.numItems; ++i )
+            data.items[i] = i + 10;     
+
+        data.float_value = 3.1415926f;
+        data.double_value = 1 / 3.0;   
+        data.uint64_value = 0x1234567898765432L;
     }
 
     PROTOCOL2_SERIALIZE_OBJECT( stream )
     {
-        serialize_int( stream, a, 0, 10 );
-        serialize_int( stream, b, -5, +5 );
-        serialize_int( stream, c, -100, 10000 );
+        serialize_int( stream, data.a, 0, 10 );
 
-        serialize_bits( stream, d, 6 );
-        serialize_bits( stream, e, 8 );
-        serialize_bits( stream, f, 7 );
+        serialize_int( stream, data.b, -5, +5 );
+        serialize_int( stream, data.c, -100, 10000 );
 
-        serialize_bool( stream, g );
+        serialize_bits( stream, data.d, 6 );
+        serialize_bits( stream, data.e, 8 );
+        serialize_bits( stream, data.f, 7 );
 
-        serialize_int( stream, numItems, 0, MaxItems - 1 );
-        for ( int i = 0; i < numItems; ++i )
-            serialize_bits( stream, items[i], 8 );
+        serialize_align( stream );
+
+        serialize_bool( stream, data.g );
+
+        serialize_check( stream, 0x55225500 );
+
+        serialize_int( stream, data.numItems, 0, MaxItems - 1 );
+        for ( int i = 0; i < data.numItems; ++i )
+            serialize_bits( stream, data.items[i], 8 );
+
+        serialize_float( stream, data.float_value );
+
+        serialize_double( stream, data.double_value );
+
+        serialize_uint64( stream, data.uint64_value );
+
+        serialize_check( stream, 0x12341111 );
 
         return true;
     }
+
+    bool operator == ( const TestObject & other ) const
+    {
+        return memcmp( &data, &other.data, sizeof( TestData ) ) == 0;
+    }
+
+    bool operator != ( const TestObject & other ) const
+    {
+        return ! ( *this == other );
+    }
 };
 
+// todo: merge the context into the test stream above
 struct TestContext
 {
     int min;
     int max;
 };
 
+// todo: merge into TestObject
 struct TestContextObject : public protocol2::Object
 {
     int a,b;
@@ -156,11 +186,11 @@ void test_stream()
 {
     printf( "test_stream\n" );
 
-    const int BufferSize = 256;
+    const int BufferSize = 1024;
 
     uint8_t buffer[BufferSize];
 
-    TestStreamObject writeObject;
+    TestObject writeObject;
     writeObject.Init();
     {
         protocol2::WriteStream writeStream( buffer, BufferSize );
@@ -168,22 +198,13 @@ void test_stream()
         writeStream.Flush();
     }
 
-    TestStreamObject readObject;
+    TestObject readObject;
     {
         protocol2::ReadStream readStream( buffer, BufferSize );
         readObject.SerializeRead( readStream );
     }
 
-    check( readObject.a == writeObject.a );
-    check( readObject.b == writeObject.b );
-    check( readObject.c == writeObject.c );
-    check( readObject.d == writeObject.d );
-    check( readObject.e == writeObject.e );
-    check( readObject.f == writeObject.f );
-    check( readObject.g == writeObject.g );
-    check( readObject.numItems == writeObject.numItems );
-    for ( int i = 0; i < readObject.numItems; ++i )
-        check( readObject.items[i] == writeObject.items[i] );
+    check( readObject == writeObject );
 }
 
 enum TestPacketTypes
@@ -216,7 +237,7 @@ struct TestPacketA : public protocol2::Packet
 
 struct TestPacketB : public protocol2::Packet
 {
-    int x, y;
+    int x,y;
 
     TestPacketB() : Packet( TEST_PACKET_B )
     {
