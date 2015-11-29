@@ -9,7 +9,23 @@
 #include "protocol2.h"
 #include <stdio.h>
 
-#define check assert
+static void CheckHandler( const char * condition, 
+                   const char * function,
+                   const char * file,
+                   int line )
+{
+    printf( "check failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
+    __builtin_trap();
+}
+
+#define check( condition )                                                     \
+do                                                                             \
+{                                                                              \
+    if ( !(condition) )                                                        \
+    {                                                                          \
+        CheckHandler( #condition, __FUNCTION__, __FILE__, __LINE__ );          \
+    }                                                                          \
+} while(0)
 
 void test_bitpacker()
 {

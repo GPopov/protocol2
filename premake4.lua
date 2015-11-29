@@ -1,6 +1,6 @@
 solution "protocol2"
     platforms { "x64" }
-    configurations { "Release", "Debug" }
+    configurations { "Debug", "Release" }
     flags { "Symbols", "ExtraWarnings", "EnableSSE2", "FloatFast" , "NoRTTI", "NoExceptions" }
     configuration "Release"
         flags { "OptimizeSpeed" }
@@ -53,6 +53,21 @@ if not os.is "windows" then
         execute = function ()
             if os.execute "make -j4 test" == 0 then
                 os.execute "./test"
+            end
+        end
+    }
+
+    newaction
+    {
+        trigger     = "001",
+        description = "Build example source for reading and writing packets",
+        valid_kinds = premake.action.get("gmake").valid_kinds,
+        valid_languages = premake.action.get("gmake").valid_languages,
+        valid_tools = premake.action.get("gmake").valid_tools,
+     
+        execute = function ()
+            if os.execute "make -j4 001_reading_and_writing_packets" == 0 then
+                os.execute "./001_reading_and_writing_packets"
             end
         end
     }

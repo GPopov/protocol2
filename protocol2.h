@@ -522,7 +522,7 @@ namespace protocol2
         enum { IsWriting = 1 };
         enum { IsReading = 0 };
 
-        WriteStream( uint8_t* buffer, int bytes ) : m_writer( buffer, bytes ), m_error( PROTOCOL2_ERROR_NONE ), m_context( NULL ) {}
+        WriteStream( uint8_t* buffer, int bytes ) : m_error( PROTOCOL2_ERROR_NONE ), m_context( NULL ), m_writer( buffer, bytes ) {}
 
         bool SerializeInteger( int32_t value, int32_t min, int32_t max )
         {
@@ -637,7 +637,7 @@ namespace protocol2
         enum { IsWriting = 0 };
         enum { IsReading = 1 };
 
-        ReadStream( const uint8_t* buffer, int bytes ) : m_bitsRead(0), m_reader( buffer, bytes ), m_context( NULL ), m_error( PROTOCOL2_ERROR_NONE ) {}
+        ReadStream( const uint8_t* buffer, int bytes ) : m_context( NULL ), m_error( PROTOCOL2_ERROR_NONE ), m_bitsRead(0), m_reader( buffer, bytes ) {}
 
         bool SerializeInteger( int32_t & value, int32_t min, int32_t max )
         {
@@ -761,7 +761,7 @@ namespace protocol2
         enum { IsWriting = 1 };
         enum { IsReading = 0 };
 
-        MeasureStream( int bytes ) : m_totalBytes( bytes ), m_bitsWritten(0), m_context( NULL ), m_error( PROTOCOL2_ERROR_NONE ) {}
+        MeasureStream( int bytes ) : m_context( NULL ), m_error( PROTOCOL2_ERROR_NONE ), m_totalBytes( bytes ), m_bitsWritten(0) {}
 
         bool SerializeInteger( int32_t value, int32_t min, int32_t max )
         {
