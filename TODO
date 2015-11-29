@@ -1,24 +1,6 @@
 CHANGES
 
-    Make sure all serialize functions are getting called from test.cpp
-
-    Add premake file for clean, make all etc. annoying to manually delete bins before checking in.
-
-    Fix a bunch of bullshit with dev environment being broken by el capitan
-
-    Get building with maximum warning levels on clang.
-
-    Fix compiler warnings in release build (check macro needs to not be assert)
-
-    Make sure it builds and works in release and debug builds.
-
 TODO
-
-    Clean up test to consolidate the context into the one test_stream function.
-
-    Get code building and running clean on windows.
-
-    Compile on linux box.
 
     Ready to write article.
 
@@ -45,8 +27,6 @@ fails because often quantities are one bit only. very wasteful to spend one byte
 but a good start, because it is now endian correct.
 
 bitpacker.
-
-(maybe bitpacker can work with 128bit words, and then we can write 32 and 64 bit quantities to the bit stream in one go, work out overflow, and flush while > 32 bits in int?)
 
 separate read/write functions.
 

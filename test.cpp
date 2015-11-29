@@ -100,6 +100,12 @@ struct TestData
     uint64_t uint64_value;
 };
 
+struct TestContext
+{
+    int min;
+    int max;
+};
+
 struct TestObject : public protocol2::Object
 {
     TestData data;
@@ -130,9 +136,11 @@ struct TestObject : public protocol2::Object
 
     PROTOCOL2_SERIALIZE_OBJECT( stream )
     {
-        serialize_int( stream, data.a, 0, 10 );
+        const TestContext & context = *(const TestContext*) stream.GetContext();
 
-        serialize_int( stream, data.b, -5, +5 );
+        serialize_int( stream, data.a, context.min, context.max );
+        serialize_int( stream, data.b, context.min, context.max );
+
         serialize_int( stream, data.c, -100, 10000 );
 
         serialize_bits( stream, data.d, 6 );
@@ -171,33 +179,6 @@ struct TestObject : public protocol2::Object
     }
 };
 
-// todo: merge the context into the test stream above
-struct TestContext
-{
-    int min;
-    int max;
-};
-
-// todo: merge into TestObject
-struct TestContextObject : public protocol2::Object
-{
-    int a,b;
-
-    TestContextObject()
-    {
-        a = 0;
-        b = 0;
-    }
-
-    PROTOCOL2_SERIALIZE_OBJECT( stream )
-    {
-        const TestContext & context = *(const TestContext*) stream.GetContext();
-        serialize_int( stream, a, context.min, context.max );
-        serialize_int( stream, b, context.min, context.max );
-        return true;
-    }
-};
-
 void test_stream()
 {
     printf( "test_stream\n" );
@@ -206,10 +187,15 @@ void test_stream()
 
     uint8_t buffer[BufferSize];
 
+    TestContext context;
+    context.min = -10;
+    context.max = +10;
+
     TestObject writeObject;
     writeObject.Init();
     {
         protocol2::WriteStream writeStream( buffer, BufferSize );
+        writeStream.SetContext( &context );
         writeObject.SerializeWrite( writeStream );
         writeStream.Flush();
     }
@@ -217,6 +203,7 @@ void test_stream()
     TestObject readObject;
     {
         protocol2::ReadStream readStream( buffer, BufferSize );
+        readStream.SetContext( &context );
         readObject.SerializeRead( readStream );
     }
 
