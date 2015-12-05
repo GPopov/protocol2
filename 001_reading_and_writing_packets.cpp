@@ -237,6 +237,7 @@ int main()
         bool error = false;
 
         const int bytesWritten = protocol2::write_packet( writePacket, packetFactory, buffer, MaxPacketSize, ProtocolId );
+
         if ( bytesWritten > 0 )
         {
             printf( "wrote packet type %d (%d bytes)\n", writePacket->GetType(), bytesWritten );
@@ -248,7 +249,9 @@ int main()
         }
 
         int readError;
+
         protocol2::Packet *readPacket = protocol2::read_packet( packetFactory, buffer, bytesWritten, ProtocolId, &readError );
+        
         if ( readPacket )
         {
             printf( "read packet type %d (%d bytes)\n", readPacket->GetType(), bytesWritten );

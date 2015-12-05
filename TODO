@@ -74,3 +74,10 @@ TODO
 
     If the packet loss is typically bursty anyway then it's going to clump together moreso than truly random chance per-packet of loss.
 
+    Weakness of current implementation:
+
+     - extra packet copies?
+
+    But in multiplayer games, especially on dedicated servers, packets are infrequent enough (n times per-second, per-client)
+    that packet copies are not a significant overhead in practice (for higher throughput packets like web servers servicing
+    millions of requests per-second, may be another story.)
