@@ -1,7 +1,7 @@
 /*
-    Example source code for "Reading and Writing Packets"
+    Example source code for "Packet Fragmentation and Reassembly"
 
-    http://gafferongames.com/building-a-game-network-protocol/reading-and-writing-packets
+    http://gafferongames.com/building-a-game-network-protocol/packet-fragmentation-and-reassembly
 
     This software is in the public domain. Where that dedication is not recognized, 
     you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
@@ -14,13 +14,48 @@
 #include <time.h>
 
 const int NumIterations = 32;
+const int PacketBufferSize = 32;                        // size of packet buffer, eg. number of historical packets for which we can buffer fragments
+const int MaxFragmentSize = 1024;                       // maximum size of a packet fragment
+const int MaxFragmentsPerPacket = 256;                  // maximum number of fragments per-packet
+const int MaxPacketSize = MaxFragmentSize * MaxFragmentsPerPacket;
 
-const uint32_t MaxPacketSize = 1024;
+const uint32_t ProtocolId = 0x55667788;
 
-const uint32_t ProtocolId = 0x12345678;
+struct Fragment
+{
+    int size;                                           // fragment size in bytes (zero if fragment not received)
+    uint8_t *data;                                      // pointer to fragment data for this fragment (dynamically allocated, NULL if not allocated)
+};
+
+struct PacketBufferEntry
+{
+    uint32_t sequence : 16;                             // packet sequence number
+    uint32_t total_fragments : 8;                       // total number of fragments for this packet
+    uint32_t received_fragments : 8;                    // number of received fragments so far
+    Fragment fragments[MaxFragmentsPerPacket];          // fragment data for this packet
+};
+
+struct PacketBuffer
+{
+    PacketBuffer() { memset( this, 0, sizeof( PacketBuffer ) ); }
+
+    uint16_t current_sequence;                          // buffered packets older than current_sequence - PacketBufferSize + 1 are discarded.
+
+    PacketBufferEntry entries[PacketBufferSize];        // buffered packets in range [ current_sequence - PacketBufferSize + 1, current_sequence ] (modulo 65536)
+
+    void Advance( uint16_t sequence )
+    {
+        // 1. find entries older than sequence + 
+    }
+};
+
+static PacketBuffer packet_buffer;
+
+// todo: functions to work with packet buffer
 
 enum TestPacketTypes
 {
+    PACKET_FRAGMENT = 0,                                // packet type 0 is reserved for fragment packets
     TEST_PACKET_A,
     TEST_PACKET_B,
     TEST_PACKET_C,
@@ -78,7 +113,7 @@ struct TestPacketA : public protocol2::Packet
     }
 };
 
-static const int MaxItems = 32;
+static const int MaxItems = 4096;
 
 struct TestPacketB : public protocol2::Packet
 {

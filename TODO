@@ -2,138 +2,75 @@ CHANGES
 
 TODO
 
-    Ready to write article.
+    Get started on packets split up.
 
-=========================
+    Design: 16 bit packet sequence, 8 bit chunk id, 8 bit num chunks for this packet.
 
-For article in order, start with different options, eg. xml, json, key value, protobuf, capn proto, flatbuffers etc.
+    Make sure to implement an align after the packet type if 0 type, so the rest of the packet
+    and the packet data can align nicely and be read without bit seeking.
 
-Discuss why game network protocols are usually not a good fit for this (version is not a problem, because different
-versions of the game don't talk to each other...), bandwidth is most important, we want to only send data that is
-essential, zero overhead. binary not text. => completely unattributed stream of data.
+    Need to include length of packet fragment? No. It can be inferred because the packet header
+    for a fragment being a known number of bytes. Saves 16bits minimum (fragments are > 8bits in length)
 
-First attempt. send structs. fails because of endianness. (discussion of endianness)
+    What data structure is required to handle it on the receiver side?
 
-next, basic read/write methods, eg. read int, write int, read byte, write byte etc. short, float etc.
+    What data structure is required to send on the sender side? (just send all at once? Yes, do this = simplest.)
 
-separate read and write functions for packets. show what they look like.
+    Data structure, array of 256 pointers for each entry in sliding window data structure.
 
-first start writing local variables, eg. read data and process it in same function.
+    Each sliding window structure is:
 
-soon, you realize you often want to read data into a struct and separate the serialization (read/write) from the processing of the packet.
+        + 16 bit packet sequence
+        + num sequence for packet
+        + total fragments for this packet
+        + num fragments received so far
+        + array of 256 pointers to the fragment data
 
-fails because often quantities are one bit only. very wasteful to spend one byte (8 bits) to send just one bit of information.
+    How to efficiently free old fragments? Ideally walk over old fragments older than 
+    oldest sequence to be considered, free all fragments and then clear sequence entry.
 
-but a good start, because it is now endian correct.
+    This article then would double as a good introduction also to the data structure
+    of the sequence array as a useful data structure for network programming.
 
-bitpacker.
+    Trick: Reserve packet type 0 as "fragment". When writing packet fragment,
+    use same basic format, eg. protocol id fake prefix, crc32, packet type,
 
-separate read/write functions.
+    BUT if the packet type is zero, then packet fragment information follows.
 
-easy to desync these functions, hard to track down where you went wrong.
+    Otherwise, throw the packet through the existing packet 
 
-go into details about algorithm for bitpacker (write word at a time, overflow, diagrams etc.)
+    Voila: packet fragmentation and re-assembly with overhead for non-fragmented packets of 1/64th of a bit.
 
-solution: unify serialization function
+    Should packet fragmentation and reassembly be built in to the protocol2.h?
 
-concept of "stream". read/write mode.
+    I don't think so. It will add complicated data structures, and the existing read/write packet
+    function can be worked around, eg. with dummy packet 0 to get the effect desired for the second
+    article.
 
-avoid runtime overhead by using templates to generate optimal code for read and write.
+    Seems important to make a token effort to deliver buffered packets in sequence number order,
+    so I think all packets, even if one fragment should go through the buffer.
 
-can also have a "measure" stream for when you need to know how large something would be when encoded (all encodings are variable length, so sometimes you need to know this!)
+    Consider, how can a malicious sender mess up the packet fragment buffer on receive? 
 
-(probably want more examples with bools in them)
+     + They could rapidly advance the packet sequence forward so existing packets are buffered, 
+       but this would just stop packets getting through give no benefit to the attacker. Don't worry about that.
+     + They could try to go outside bounds of what could be buffered, eg. send fragment 99 for a buffered packet with only 10 fragments.
+     + All fragment values must be rigorously checked, if any value doesn't make sense or is out of bounds, discard the packet.
+     + They could flood the server with maximum size packets, causing worst case memory allocation for their client, 
+     + To handle this put a limit on the maximum # of packet fragments to buffer per-client
+     + If the client hast that number of packet fragments in their buffer already, just discard the fragment.
+     + This lets you set a more reasonable worst case, eg. 1024 fragments max = 1mb per-client worst case
+       vs. 256 * 256 * 1024 = 256mb worst case if you don't implement this limit. Ouch. (32 clients = 8gig... = server crash)
+     + This works well provided you can work out the number of packet fragments that are required under average conditions.
+     + This depends on the depth of your packet buffer, as well as the average size of packets, eg. how many fragments per-packet on average.
+     + Also, remember you don't need to buffer packets once they are received, but a malicious attacker could send packets with 256 packets,
+       and then only send you 255 fragments, giving you worst case behavior. So you need to handle this.
 
-need to be really safe on read. macros that return false if anything doesn't check out. DON'T USE EXCEPTIONS THEY'RE REALLY SLOW
+    Perform analysis of how packet loss affects the packets you receive, as the number of fragments per-packet increases.
 
-write doesn't need to be as safe. write can assert. it's YOUR fault if you fuck up the write function and overflow bits. it shouldn't happen in production code.
+    Conclusion. Packet fragmentation and re-assembly amplifies packet loss as the number of fragments per-packet increases.
 
-redundancy. also, don't serialize # of bits for ints, instead prefer to serialize within a min/max range.
+    Bursty packet loss vs. random loss % per-packet. Do some research as to how it looks online.
 
-that way anything that comes in outside that range can automatically be rejected and return false (aborting the packet read)
+    If the packet loss is typically bursty anyway then it's going to clump together moreso than truly random chance per-packet of loss.
 
-now onto more detais about reading and writing packets
-
- - crc32, basic properties.
- - protocol id -- pre-header concept
- - maliciously constructed packets: need to be really safe on read (don't crash!)
- - serialize checks: end of packet. it's easy to send a truncated packet and not notice because the serialization stops (or aborts reading zeros...). adding a serialize check at the end fixes this.
- - packet journal: possible to also insert a sequence of what was written vs. what was read in another form, for validation. (blows out packet size, you'll need packet fragmentation and re-assembly to support this)
-
-serialization examples:
-
-...
-
-how to go even further: range encoding. fractional bits. models. link to Fabian Giesen's example code.
-
-next article link
-
-=========================
-
-For article (no particular order)
-
-Cover checksum, possibility of corruption even with UDP checksum (16bit only)
-
-How to write signed integers (the alternating +/-)
-
-Floating point quantization and the +0.5 that must happen.
-
-Other ways to write (eg. proto buffers, flatbuffers, xml, yaml etc)
-
-Unattributed stream. We know lots of data is the same on both sides, eg. the type and bounds of a particular variable.
-
-Matching read/write functions.
-
-Structs. Different compilers may have different layouts/alignment. Also pointers. Can't just send those over the network.
-
-Little and big endian.
-
-Bitpacker working one byte at a time. Machines don't work this way.
-
-Bitpacker working a machine word at a time (32bit), and working internally with 64bit integer. Much more modern.
-
-The basic library (open source part) is the serializer, bitpacker, packet read/write, factory etc.
-
-Then in later articles I can develop more example source code using this common code (the serializer) to build interesting things.
-
-This is a good way to structure the library so that a "taste" is for free (and a very useful part...), and it is a one header library, as well as being very useful on its own, and not bloated.
-
-Make sure that the example code does not use a bunch of STL. But don't worry too much about hardening it. eg. use "asserts" raw, use printfs, and don't use modern C++. use new/delete. If somebody wants to take this code and integrate it into their engine it should be work. This is not a middleware product.
-
-Cover the unified serialize function.
-
-Cover serialize read/write and template usage.
-
-Extend tests to cover a bunch of different integer types, including bitfields.
-
-Add examples in the article for serializing vectors, quaternions (useful).
-
-Encoding relative integers.
-
-Encoding quaternions with smallest three.
-
-Encoding a value relative to another, eg. a position relative to another position.
-
-Encoding an array of values.
-
-Encoding a string.
-
-Alignment of serialization.
-
-Serialization checkpoints for safety.
-
-Flush bits at the end of write.
-
-Maybe extend to support seeking?
-
-Need more unit tests for stream. They don't exercise everything.
-
-PopCount and the code that calculates the bits required via template (compile time)
-
-Would be nice if I could remember that trick for encoding normals from pandemic.
-
-Common pattern of serializing a flag (bit) and if true then branching, else serialize something else.
-
-Safety when reading and writing packets: if overflowing, don't write. If reading past end of buffer, always read zeros.
-
-Generally, assert heavily while writing packets. While reading packets, if anything is incorrect, drop the packet.

@@ -14,7 +14,7 @@
 #include <string.h>
 
 #define PROTOCOL2_SERIALIZE_CHECKS 1
-#define PROTOCOL2_DEBUG_PACKET_LEAKS 1
+#define PROTOCOL2_DEBUG_PACKET_LEAKS 0
 
 #if PROTOCOL2_DEBUG_PACKET_LEAKS
 #include <stdio.h>
@@ -705,13 +705,9 @@ namespace protocol2
             SerializeAlign();
             uint32_t value = 0;
             SerializeBits( value, 32 );
-            if ( value != magic )
-            {
-                printf( "%x != magic %x\n", value, magic );
-            }
             assert( value == magic );
             return value == magic;
-#else // #if PROTOCOL2_SERIALZE_CHECKS
+#else // #if PROTOCOL2_SERIALIZE_CHECKS
             return true;
 #endif // #if PROTOCOL2_SERIALIZE_CHECKS
         }

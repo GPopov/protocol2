@@ -10,12 +10,19 @@
 #include <stdio.h>
 
 static void CheckHandler( const char * condition, 
-                   const char * function,
-                   const char * file,
-                   int line )
+                          const char * function,
+                          const char * file,
+                          int line )
 {
     printf( "check failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
-    __builtin_trap();
+#ifndef NDEBUG
+    #if defined( __GNUC__ )
+        __builtin_trap();
+    #elif defined( _MSC_VER )
+        __debugbreak();
+    #endif
+#endif
+    exit( 1 );
 }
 
 #define check( condition )                                                     \
