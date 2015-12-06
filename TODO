@@ -1,8 +1,15 @@
 CHANGES
+    
+    Almost finished function to split packets apart into fragment packets
+
+    Convert remaining comment pseudocode into code for the split packet function.
 
 TODO
+    
+    Work out what function is required to actually process packet fragment, eg. actually read in the 
+    packet, look at the packet type, and add the packet where appropriate.
 
-    ....
+    Need to store fragment (without header) in packet buffer.
 
     ==========================================
 

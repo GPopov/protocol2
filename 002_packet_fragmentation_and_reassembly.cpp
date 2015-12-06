@@ -215,22 +215,46 @@ struct PacketBuffer
     }
 };
 
-void SplitPacketIntoFragments( uint32_t protocolId, const uint8_t *inputPacketData, int inputPacketSize, int & numFragments, PacketData *fragmentPackets )
+void SplitPacketIntoFragments( uint32_t protocolId, const uint8_t *packetData, int packetSize, int & numFragments, PacketData *fragmentPackets )
 {
     numFragments = 0;
 
-    // 0. assert if packet is larger than max packet size
+    assert( protocolId != 0 );
+    assert( packetData );
+    assert( packetSize > 0 );
+    assert( packetSize < MaxPacketSize );
+    assert( fragmentPackets );
 
-    // 1. determine how many fragments to split into (1 or more)
+    numFragments = ( packetSize / MaxFragmentSize ) + ( ( packetSize % MaxFragmentSize ) != 0 ? 1 : 0 );
 
-    // 2. assert if too many fragments are required for packet (MaxFragmentsPerPacket)
+    assert( numFragments > 0 );
+    assert( numFragments <= MaxFragmentsPerPacket );
 
-    // 3. iterate across each fragment
+    const uint8_t *src = packetData;
 
-    //    + determine size of packet fragment header + fragment data => size of fragment packet
-    //    + write packet fragment header, eg. checksum, packet type 0, align to byte, flush (assert expected length)
-    //    + memcpy fragment data after header
-    //    + increment numFragments
+    for ( int i = 0; i < numFragments; ++i )
+    {
+        // fragment packet format: [crc32] (dword) | [packet type = 0] (byte) | (fragment data)
+
+        const int fragmentSize = ( i == numFragments - 1 ) ? ( packetData + packetSize - src ) : MaxFragmentSize;
+
+        fragmentPackets[i].size = fragmentSize + 5;
+        fragmentPackets[i].data = new uint8_t[fragmentSize + 5];
+
+        memset( fragmentPackets[i].data, 0, 5 );
+
+        memcpy( fragmentPackets[i].data + 5, src, fragmentSize );
+
+        protocolId = protocol2::host_to_network( protocolId );
+        uint32_t crc32 = protocol2::calculate_crc32( (uint8_t*) &protocolId, 4 );
+        crc32 = protocol2::calculate_crc32( fragmentPackets[i].data, fragmentPackets[i].size, crc32 );
+
+        *((uint32_t*)fragmentPackets[i].data) = protocol2::host_to_network( crc32 );
+
+        src += fragmentSize;
+    }
+
+    assert( src == packetData + packetSize );
 }
 
 void ProcessPacket( const uint8_t *packetData, int packetSize )
@@ -477,6 +501,35 @@ int main()
             printf( "write packet error\n" );
             error = true;
         }
+
+        // ===================
+
+        if ( bytesWritten > MaxFragmentSize )
+        {
+            int numFragments;
+            PacketData fragmentPackets[MaxFragmentsPerPacket];
+            SplitPacketIntoFragments( ProtocolId, buffer, bytesWritten, numFragments, fragmentPackets );
+
+            printf( "split packet into %d fragents\n", numFragments );
+
+            // todo: process fragment packets into packet buffer (need new function to process each of these fragments, check crc32)
+
+            // todo: delete 
+        }
+        else
+        {
+            printf( "sending original packet\n" );
+
+            // todo: send original packet as a special single fragment to packet buffer
+        }
+
+        // todo: get packets from packet buffer
+
+        // todo: process each packet in order
+
+        // todo: delete packet once processed
+
+        // ===================
 
         int readError;
         
