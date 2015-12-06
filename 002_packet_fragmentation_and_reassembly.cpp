@@ -196,7 +196,7 @@ struct PacketBuffer
         return true;
     }
 
-    void GetPackets( int & numPackets, PacketData packetData[] )
+    void ReceivePackets( int & numPackets, PacketData packetData[] )
     {
         numPackets = 0;
 
@@ -234,11 +234,12 @@ void SplitPacketIntoFragments( uint32_t protocolId, const uint8_t *packetData, i
 
     for ( int i = 0; i < numFragments; ++i )
     {
-        // fragment packet format: [crc32] (dword) | [packet type = 0] (byte) | (fragment data)
+        // fragment packet format: 
+        // [crc32] (dword) | [packet type 0] (byte) | [sequence] | [fragment id] (byte) | [total fragments] (byte) || ... (fragment data) ...
 
         const int fragmentSize = ( i == numFragments - 1 ) ? ( packetData + packetSize - src ) : MaxFragmentSize;
 
-        fragmentPackets[i].size = fragmentSize + 5;
+        fragmentPackets[i].size = fragmentSize + 7;
         fragmentPackets[i].data = new uint8_t[fragmentSize + 5];
 
         memset( fragmentPackets[i].data, 0, 5 );
