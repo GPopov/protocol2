@@ -4,45 +4,13 @@ CHANGES
 
     Convert remaining comment pseudocode into code for the split packet function.
 
+    Added "Header" protocol object which provides an in for the user creating their own header for packets.
+
 TODO
 
     Whoops, forgot to add packet sequence, fragmentId and totalFragments to fragment packet header.
 
-    Need to add these in.
-
-    ===========================
-
-    Problem: We don't have sequence for non-fragment packets.
-
-    This needs to be added in. There is no situation where sending packets over UDP
-    without sequence number is useful.
-
-    Should standardize on:
-
-    [crc32][sequence16][type](packet data)
-
-    Maybe can take a pointer to an optional header that has already been written, therefore 
-    the read/write packet can be made a bit more general than it is right now, 
-
-    eg. in future it can be expanded to have sequence, ack, ack_bits if necessary.
-
-    Should the header need to round up to nearest byte? I think it's probably for the best that it does.
-
-    Much simpler, and really not a lot to be gained by making the header a variable encoded
-    number of bits.
-
-    (Except with seq/ack/ack_bits it is a nice optimization to only send one bit if no packets lost
-    for ack_bits...)
-
-    Should header be a serializable object? eg. serialize header in/out
-
-    Template read/write packet on header object? Overkill? I think yes.
-
-    Instead of this, could pass in a protocol object with virtual serialize fns.
-
-    I think this is much nicer, and general.
-
-    If you pass in a NULL header object, then no header is written.
+    Need to add these in for 002, but while for 001, there is really no need. Optional header. Leave to article 2.
 
     ===========================
     

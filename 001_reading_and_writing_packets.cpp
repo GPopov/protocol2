@@ -250,7 +250,7 @@ int main()
 
         int readError;
 
-        protocol2::Packet *readPacket = protocol2::read_packet( packetFactory, buffer, bytesWritten, ProtocolId, &readError );
+        protocol2::Packet *readPacket = protocol2::read_packet( packetFactory, buffer, bytesWritten, ProtocolId, NULL, &readError );
         
         if ( readPacket )
         {

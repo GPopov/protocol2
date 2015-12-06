@@ -534,7 +534,9 @@ int main()
 
         int readError;
         
-        protocol2::Packet *readPacket = protocol2::read_packet( packetFactory, buffer, bytesWritten, ProtocolId, &readError );
+        // todo: need to add header (uint16_t sequence)
+
+        protocol2::Packet *readPacket = protocol2::read_packet( packetFactory, buffer, bytesWritten, ProtocolId, NULL, &readError );
         
         if ( readPacket )
         {

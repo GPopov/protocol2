@@ -508,10 +508,11 @@ namespace protocol2
     #define PROTOCOL2_ERROR_CRC32_MISMATCH              1
     #define PROTOCOL2_ERROR_INVALID_PACKET_TYPE         2
     #define PROTOCOL2_ERROR_CREATE_PACKET_FAILED        3
-    #define PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED     4
-    #define PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED      5
-    #define PROTOCOL2_ERROR_STREAM_OVERFLOW             6
-    #define PROTOCOL2_ERROR_STREAM_ABORTED              7
+    #define PROTOCOL2_ERROR_SERIALIZE_HEADER_FAILED     4
+    #define PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED     5
+    #define PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED      6
+    #define PROTOCOL2_ERROR_STREAM_OVERFLOW             7
+    #define PROTOCOL2_ERROR_STREAM_ABORTED              8
 
     const char* error_string( int error );
 
@@ -1095,9 +1096,9 @@ namespace protocol2
 
     uint32_t calculate_crc32( const uint8_t *buffer, size_t length, uint32_t crc32 = 0 );
 
-    int write_packet( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId );
+    int write_packet( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL );
 
-    Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, int *errorCode = NULL );
+    Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL, int *errorCode = NULL );
 }
 
 #endif // #ifndef PROTOCOL2_H
@@ -1150,7 +1151,7 @@ namespace protocol2
         return crc32 ^ 0xFFFFFFFF;
     }
 
-    inline int write_packet( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId )
+    inline int write_packet( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header )
     {
         assert( packet );
         assert( buffer );
@@ -1163,6 +1164,12 @@ namespace protocol2
 
         uint32_t crc32 = 0;
         stream.SerializeBits( crc32, 32 );
+
+        if ( header )
+        {
+            if ( !header->SerializeWrite( stream ) )
+                return 0;
+        }
 
         int packetType = packet->GetType();
 
@@ -1197,7 +1204,7 @@ namespace protocol2
         return stream.GetBytesProcessed();
     }
 
-    inline Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, int *errorCode )
+    inline Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header, int *errorCode )
     {
         assert( buffer );
         assert( bufferSize > 0 );
@@ -1225,6 +1232,16 @@ namespace protocol2
             if ( errorCode )
                 *errorCode = PROTOCOL2_ERROR_CRC32_MISMATCH;
             return NULL;
+        }
+
+        if ( header )
+        {
+            if ( !header->SerializeRead( stream ) )
+            {
+                if ( errorCode )
+                    *errorCode = PROTOCOL2_ERROR_SERIALIZE_HEADER_FAILED;
+                return NULL;
+            }
         }
 
         int packetType = 0;
@@ -1282,6 +1299,7 @@ namespace protocol2
             case PROTOCOL2_ERROR_CRC32_MISMATCH:                return "crc32 mismatch";
             case PROTOCOL2_ERROR_INVALID_PACKET_TYPE:           return "invalid packet type";
             case PROTOCOL2_ERROR_CREATE_PACKET_FAILED:          return "create packet failed";
+            case PROTOCOL2_ERROR_SERIALIZE_HEADER_FAILED:       return "serialize header failed";
             case PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED:       return "serialize packet failed";
             case PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED:        return "serialize check failed";
             case PROTOCOL2_ERROR_STREAM_OVERFLOW:               return "stream overflow";
