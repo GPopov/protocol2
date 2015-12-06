@@ -8,6 +8,16 @@ CHANGES
 
 TODO
 
+    Implement packet header object and pass it in to the 002_* example source code.
+
+    Packet header should include:
+
+        + uint16_t sequence
+
+    Going to need a function to swap uint16_t to network, back to host order etc.
+
+    ===========================
+
     Whoops, forgot to add packet sequence, fragmentId and totalFragments to fragment packet header.
 
     Need to add these in for 002, but while for 001, there is really no need. Optional header. Leave to article 2.
