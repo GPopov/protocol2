@@ -105,18 +105,13 @@ struct PacketBuffer
         of maliciously constructed packets attempting to overflow and corrupt the packet buffer!
     */
 
-    bool ProcessFragment( const uint8_t *fragmentData, int fragmentSize, uint16_t packetSequence, uint8_t fragmentId, uint8_t totalFragments )
+    bool ProcessFragment( const uint8_t *fragmentData, int fragmentSize, uint16_t packetSequence, int fragmentId, int totalFragments )
     {
         assert( fragmentData );
 
         // too many buffered fragments? discard the fragment
 
         if ( numFragments >= MaxBufferedFragments )
-            return false;
-
-        // total fragments is zero? discard the fragment.
-
-        if ( totalFragments == 0 )
             return false;
 
         // fragment size is <= zero? discard the fragment.
@@ -131,12 +126,12 @@ struct PacketBuffer
 
         // total fragments outside of range? discard the fragment
 
-        if ( totalFragments > MaxFragmentsPerPacket )
+        if ( totalFragments <= 0 || totalFragments > MaxFragmentsPerPacket )
             return false;
 
         // fragment index out of range? discard the fragment
 
-        if ( fragmentId >= totalFragments )
+        if ( fragmentId < 0 || fragmentId >= totalFragments )
             return false;
 
         // if this is not the last fragment in the packet and fragment size is not equal to MaxFragmentSize, discard the fragment
@@ -201,7 +196,7 @@ struct PacketBuffer
         return true;
     }
 
-    void ReadPacket( int & numPackets, PacketData packetData[] )
+    void GetPackets( int & numPackets, PacketData packetData[] )
     {
         numPackets = 0;
 
@@ -211,11 +206,45 @@ struct PacketBuffer
 
         // for each valid entry:
 
+        //      0. if not all fragments have arrived, skip this entry.
         //      1. calculate total size of packet (sum across all fragments)
-        //      2. allocate a buffer inside the packet and set size
+        //      2. allocate a buffer inside the packet data and set size
         //      3. copy across the packet data, iterating across all fragments in order
+        //      4. free all fragments in the packet entry
+        //      5. memset 0 the entry back to default values
     }
 };
+
+void SplitPacketIntoFragments( uint32_t protocolId, const uint8_t *inputPacketData, int inputPacketSize, int & numFragments, PacketData *fragmentPackets )
+{
+    numFragments = 0;
+
+    // 0. assert if packet is larger than max packet size
+
+    // 1. determine how many fragments to split into (1 or more)
+
+    // 2. assert if too many fragments are required for packet (MaxFragmentsPerPacket)
+
+    // 3. iterate across each fragment
+
+    //    + determine size of packet fragment header + fragment data => size of fragment packet
+    //    + write packet fragment header, eg. checksum, packet type 0, align to byte, flush (assert expected length)
+    //    + memcpy fragment data after header
+    //    + increment numFragments
+}
+
+void ProcessPacket( const uint8_t *packetData, int packetSize )
+{
+    // extract packet type
+
+    // if packet type is not zero, this is a normal packet -- process it as a special case single fragment packet to the packet buffer
+
+    // if packet type *is* zero, this is a fragment
+
+    // 1. verify checksum for this fragment
+    // 2. determine fragment size
+    // 3. pass to process fragment
+}
 
 static PacketBuffer packet_buffer;
 
