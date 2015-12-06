@@ -1,6 +1,23 @@
 CHANGES
 
+    Sketch out data structure for packet buffer
+
+    Implement advance function for packet buffer.
+
+    Implement process fragment function for packet buffer.
+
+
+
 TODO
+
+    Implement function to write packet fragment to buffer.
+
+    Write code to process incoming packets and pass them to the packet buffer.
+
+    Write code to read packets from the packet buffer in one loop, eg. fill in a bunch of structs
+    to return the packets to be received back to the caller, vs. repeatedly calling in.
+
+    ==========================================
 
     Get started on packets split up.
 
