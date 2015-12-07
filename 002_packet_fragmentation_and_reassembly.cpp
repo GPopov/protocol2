@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <time.h>
 
-const int PacketBufferSize = 32;                        // size of packet buffer, eg. number of historical packets for which we can buffer fragments
+const int PacketBufferSize = 256;                       // size of packet buffer, eg. number of historical packets for which we can buffer fragments
 const int MaxFragmentSize = 1024;                       // maximum size of a packet fragment
 const int MaxFragmentsPerPacket = 256;                  // maximum number of fragments per-packet
 const int MaxBufferedFragments = 256;                   // maximum number of buffered fragments (in total) per-packet buffer
@@ -215,7 +215,7 @@ struct PacketBuffer
     }
 };
 
-void SplitPacketIntoFragments( uint32_t protocolId, const uint8_t *packetData, int packetSize, int & numFragments, PacketData *fragmentPackets )
+void SplitPacketIntoFragments( uint32_t protocolId, uint16_t sequence, const uint8_t *packetData, int packetSize, int & numFragments, PacketData fragmentPackets[] )
 {
     numFragments = 0;
 
@@ -223,7 +223,6 @@ void SplitPacketIntoFragments( uint32_t protocolId, const uint8_t *packetData, i
     assert( packetData );
     assert( packetSize > 0 );
     assert( packetSize < MaxPacketSize );
-    assert( fragmentPackets );
 
     numFragments = ( packetSize / MaxFragmentSize ) + ( ( packetSize % MaxFragmentSize ) != 0 ? 1 : 0 );
 
@@ -235,16 +234,22 @@ void SplitPacketIntoFragments( uint32_t protocolId, const uint8_t *packetData, i
     for ( int i = 0; i < numFragments; ++i )
     {
         // fragment packet format: 
-        // [crc32] (dword) | [packet type 0] (byte) | [sequence] | [fragment id] (byte) | [total fragments] (byte) || ... (fragment data) ...
+        // [crc32] (uint32_t) | [sequence] (uint16_t) | [packet type 0] (uint8_t) | [fragment id] (uint8_t) | [total fragments] (uint8_t) | <fragment data>
+
+        static const int PacketHeaderBytes = 9;
 
         const int fragmentSize = ( i == numFragments - 1 ) ? ( packetData + packetSize - src ) : MaxFragmentSize;
 
-        fragmentPackets[i].size = fragmentSize + 7;
-        fragmentPackets[i].data = new uint8_t[fragmentSize + 5];
+        fragmentPackets[i].size = fragmentSize + PacketHeaderBytes;
+        fragmentPackets[i].data = new uint8_t[fragmentSize + PacketHeaderBytes];
 
-        memset( fragmentPackets[i].data, 0, 5 );
+        memset( fragmentPackets[i].data, 0, PacketHeaderBytes );
 
-        memcpy( fragmentPackets[i].data + 5, src, fragmentSize );
+        *((uint16_t*)fragmentPackets[i].data+4) = sequence;
+        *((uint8_t*)fragmentPackets[i].data+7) = i;
+        *((uint8_t*)fragmentPackets[i].data+8) = numFragments;
+
+        memcpy( fragmentPackets[i].data + PacketHeaderBytes, src, fragmentSize );
 
         protocolId = protocol2::host_to_network( protocolId );
         uint32_t crc32 = protocol2::calculate_crc32( (uint8_t*) &protocolId, 4 );
@@ -275,7 +280,7 @@ static PacketBuffer packet_buffer;
 
 enum TestPacketTypes
 {
-    PACKET_FRAGMENT = 0,                                // packet type 0 is reserved to indicate a packet fragment
+    PACKET_FRAGMENT = 0,                    // IMPORTANT: packet type 0 is reserved to indicate a packet fragment
     TEST_PACKET_A,
     TEST_PACKET_B,
     TEST_PACKET_C,
@@ -438,6 +443,17 @@ struct TestPacketC : public protocol2::Packet
     }
 };
 
+struct TestPacketHeader : public protocol2::Object
+{
+    uint16_t sequence;
+
+    PROTOCOL2_SERIALIZE_OBJECT( stream )
+    {
+        serialize_bits( stream, sequence, 16 );
+        return true;
+    }
+};
+
 struct TestPacketFactory : public protocol2::PacketFactory
 {
     TestPacketFactory() : PacketFactory( TEST_PACKET_NUM_TYPES ) {}
@@ -478,6 +494,8 @@ int main()
 
     TestPacketFactory packetFactory;
 
+    uint16_t sequence = 0;
+
     for ( int i = 0; i < NumIterations; ++i )
     {
         const int packetType = 1 + rand() % ( TEST_PACKET_NUM_TYPES - 1 );          // packet type 0 indicate a packet fragment
@@ -491,7 +509,10 @@ int main()
 
         bool error = false;
 
-        const int bytesWritten = protocol2::write_packet( writePacket, packetFactory, buffer, MaxPacketSize, ProtocolId );
+        TestPacketHeader writePacketHeader;
+        writePacketHeader.sequence = sequence++;
+
+        const int bytesWritten = protocol2::write_packet( writePacket, packetFactory, buffer, MaxPacketSize, ProtocolId, &writePacketHeader );
 
         if ( bytesWritten > 0 )
         {
@@ -509,7 +530,7 @@ int main()
         {
             int numFragments;
             PacketData fragmentPackets[MaxFragmentsPerPacket];
-            SplitPacketIntoFragments( ProtocolId, buffer, bytesWritten, numFragments, fragmentPackets );
+            SplitPacketIntoFragments( ProtocolId, sequence, buffer, bytesWritten, numFragments, fragmentPackets );
 
             printf( "split packet into %d fragents\n", numFragments );
 
@@ -533,10 +554,8 @@ int main()
         // ===================
 
         int readError;
-        
-        // todo: need to add header (uint16_t sequence)
-
-        protocol2::Packet *readPacket = protocol2::read_packet( packetFactory, buffer, bytesWritten, ProtocolId, NULL, &readError );
+        TestPacketHeader readPacketHeader;
+        protocol2::Packet *readPacket = protocol2::read_packet( packetFactory, buffer, bytesWritten, ProtocolId, &readPacketHeader, &readError );
         
         if ( readPacket )
         {

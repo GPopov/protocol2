@@ -1,4 +1,20 @@
 
+Monday December 8th, 2015
+=========================
+
+    Implement packet header object and pass it in to the 002_* example source code.
+
+    Packet header just contains uint16_t sequence.
+
+    Need a function to swap uint16_t to network, back to host order etc.
+
+    Insert sequence into fragment packet
+
+    Insert fragment id into fragment packet
+
+    Insert total fragments into fragment packet
+
+
 Sunday December 6th, 2015
 =========================
 
@@ -13,6 +29,12 @@ Sunday December 6th, 2015
     Sketch out code to process incoming packets and pass them to the packet buffer.
 
     Sketch out code to get packets from packet buffer in one loop
+
+    Almost finished function to split packets apart into fragment packets
+
+    Converted remaining comment pseudocode into code for the split packet function.
+
+    Added "Header" protocol object which provides an in for the user creating their own header for packets.
 
 
 November 30th, 2015

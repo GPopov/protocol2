@@ -171,6 +171,24 @@ namespace protocol2
 #endif // #if PROTOCOL2_BIG_ENDIAN
     }
 
+    inline uint16_t host_to_network( uint16_t value )
+    {
+#if PROTOCOL2_BIG_ENDIAN
+        return ( value & 0x00ff ) << 8 | ( value & 0xff00 ) >> 8;
+#else // #if PROTOCOL2_BIG_ENDIAN
+        return value;
+#endif // #if PROTOCOL2_BIG_ENDIAN
+    }
+
+    inline uint16_t network_to_host( uint16_t value )
+    {
+#if PROTOCOL2_BIG_ENDIAN
+        return ( value & 0x00ff ) << 8 | ( value & 0xff00 ) >> 8;
+#else // #if PROTOCOL2_BIG_ENDIAN
+        return value;
+#endif // #if PROTOCOL2_BIG_ENDIAN
+    }
+
     inline bool sequence_greater_than( uint16_t s1, uint16_t s2 )
     {
         return ( ( s1 > s2 ) && ( s1 - s2 <= 32768 ) ) || 
@@ -1338,6 +1356,8 @@ namespace protocol2
         assert( type < m_numTypes );
 
         Packet * packet = CreateInternal( type );
+        if ( !packet )
+            return NULL;
         
 #if PROTOCOL2_DEBUG_MEMORY_LEAKS
         printf( "create packet %p\n", packet );
