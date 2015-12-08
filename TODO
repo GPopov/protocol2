@@ -1,88 +1,32 @@
 CHANGES
+
+    Sketched out "ProcessPacket" function
+
+    Hooked up so it gets called. Verified that it correctly distinguishes between fragment and non-fragmented packets.
+
+    Added code to receive packets from packet buffer, vs. reading them directly off the packet write buffer.
     
+    Parse the rest of the packet fragment header. Print out the results as procesing each packet, eg. x/y of packet n
+
+    Parse the sequence number out of the regular packet too and print that.
+
+    Pass to the process packet inside the packet buffer.
+
 TODO
+
+    Pass in the single frame packet as a special one fragment packet to packet buffer.
     
-    Implement function to process packet, detect if it is a fragment or not, if a fragment, extract the info
-    and insert into the packet buffer, otherwise if a single packet, just insert whole packet into buffer.
+    Sequence number is not parsing correctly for non-fragmented packets. Is it getting written correctly?!
 
-    ==========================================
+    I think there is a difference with what is written through the serialize vs. what is written if I read/write
+    manually.
 
-    Get started on packets split up.
+    It seems that I have to go through serialization always.
 
-    Design: 16 bit packet sequence, 8 bit chunk id, 8 bit num chunks for this packet.
+    --------
 
-    Make sure to implement an align after the packet type if 0 type, so the rest of the packet
-    and the packet data can align nicely and be read without bit seeking.
+    Verify checksum for fragment packet
 
-    Need to include length of packet fragment? No. It can be inferred because the packet header
-    for a fragment being a known number of bytes. Saves 16bits minimum (fragments are > 8bits in length)
+    --------
 
-    What data structure is required to handle it on the receiver side?
-
-    What data structure is required to send on the sender side? (just send all at once? Yes, do this = simplest.)
-
-    Data structure, array of 256 pointers for each entry in sliding window data structure.
-
-    Each sliding window structure is:
-
-        + 16 bit packet sequence
-        + num sequence for packet
-        + total fragments for this packet
-        + num fragments received so far
-        + array of 256 pointers to the fragment data
-
-    How to efficiently free old fragments? Ideally walk over old fragments older than 
-    oldest sequence to be considered, free all fragments and then clear sequence entry.
-
-    This article then would double as a good introduction also to the data structure
-    of the sequence array as a useful data structure for network programming.
-
-    Trick: Reserve packet type 0 as "fragment". When writing packet fragment,
-    use same basic format, eg. protocol id fake prefix, crc32, packet type,
-
-    BUT if the packet type is zero, then packet fragment information follows.
-
-    Otherwise, throw the packet through the existing packet 
-
-    Voila: packet fragmentation and re-assembly with overhead for non-fragmented packets of 1/64th of a bit.
-
-    Should packet fragmentation and reassembly be built in to the protocol2.h?
-
-    I don't think so. It will add complicated data structures, and the existing read/write packet
-    function can be worked around, eg. with dummy packet 0 to get the effect desired for the second
-    article.
-
-    Seems important to make a token effort to deliver buffered packets in sequence number order,
-    so I think all packets, even if one fragment should go through the buffer.
-
-    Consider, how can a malicious sender mess up the packet fragment buffer on receive? 
-
-     + They could rapidly advance the packet sequence forward so existing packets are buffered, 
-       but this would just stop packets getting through give no benefit to the attacker. Don't worry about that.
-     + They could try to go outside bounds of what could be buffered, eg. send fragment 99 for a buffered packet with only 10 fragments.
-     + All fragment values must be rigorously checked, if any value doesn't make sense or is out of bounds, discard the packet.
-     + They could flood the server with maximum size packets, causing worst case memory allocation for their client, 
-     + To handle this put a limit on the maximum # of packet fragments to buffer per-client
-     + If the client hast that number of packet fragments in their buffer already, just discard the fragment.
-     + This lets you set a more reasonable worst case, eg. 1024 fragments max = 1mb per-client worst case
-       vs. 256 * 256 * 1024 = 256mb worst case if you don't implement this limit. Ouch. (32 clients = 8gig... = server crash)
-     + This works well provided you can work out the number of packet fragments that are required under average conditions.
-     + This depends on the depth of your packet buffer, as well as the average size of packets, eg. how many fragments per-packet on average.
-     + Also, remember you don't need to buffer packets once they are received, but a malicious attacker could send packets with 256 packets,
-       and then only send you 255 fragments, giving you worst case behavior. So you need to handle this.
-
-    Perform analysis of how packet loss affects the packets you receive, as the number of fragments per-packet increases.
-
-    Conclusion. Packet fragmentation and re-assembly amplifies packet loss as the number of fragments per-packet increases.
-
-    Bursty packet loss vs. random loss % per-packet. Do some research as to how it looks online.
-
-    If the packet loss is typically bursty anyway then it's going to clump together moreso than truly random chance per-packet of loss.
-
-    Weakness of current implementation:
-
-     - extra packet copies?
-
-    But in multiplayer games, especially on dedicated servers, packets are infrequent enough (n times per-second, per-client)
-    that packet copies are not a significant overhead in practice (for higher throughput packets like web servers servicing
-    millions of requests per-second, may be another story.)
+    Finish implementing the function to re-assemble and receive packets from the packet buffer.

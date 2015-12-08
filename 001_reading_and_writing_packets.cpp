@@ -245,6 +245,7 @@ int main()
         else
         {
             printf( "write packet error\n" );
+            
             error = true;
         }
 
@@ -255,15 +256,18 @@ int main()
         if ( readPacket )
         {
             printf( "read packet type %d (%d bytes)\n", readPacket->GetType(), bytesWritten );
+
             if ( !CheckPacketsAreIdentical( readPacket, writePacket ) )
             {
                 printf( "read packet is not the same as written packet. something wrong with serialize function?\n" );
+
                 error = true;
             }
         }
         else
         {
             printf( "read packet error: %s\n", protocol2::error_string( readError ) );
+
             error = true;
         }
 
