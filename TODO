@@ -1,27 +1,14 @@
 CHANGES
 
-    Sketched out "ProcessPacket" function
-
-    Hooked up so it gets called. Verified that it correctly distinguishes between fragment and non-fragmented packets.
-
-    Added code to receive packets from packet buffer, vs. reading them directly off the packet write buffer.
-    
-    Parse the rest of the packet fragment header. Print out the results as procesing each packet, eg. x/y of packet n
-
-    Parse the sequence number out of the regular packet too and print that.
-
-    Pass to the process packet inside the packet buffer.
-
 TODO
 
+    Convert code that writes packet fragment to use serialize write functions on stream.
+
+    Convert code that reads packet fragment to serialize read functions.
+
+    --------
+
     Pass in the single frame packet as a special one fragment packet to packet buffer.
-    
-    Sequence number is not parsing correctly for non-fragmented packets. Is it getting written correctly?!
-
-    I think there is a difference with what is written through the serialize vs. what is written if I read/write
-    manually.
-
-    It seems that I have to go through serialization always.
 
     --------
 
@@ -30,3 +17,13 @@ TODO
     --------
 
     Finish implementing the function to re-assemble and receive packets from the packet buffer.
+
+    --------
+
+    Pass over and clean up the code
+
+    --------
+
+    Ready to write the second article
+
+    --------

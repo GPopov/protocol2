@@ -1,5 +1,33 @@
 
-Monday December 8th, 2015
+Wednesday December 23rd, 2015
+=============================
+
+    At this point it's starting to feel that integrating support for fragments into the protocol2.h is worth considering
+
+    Here are the pros of that:
+
+        1. It's done once and it works for all other articles past this
+        2. It's reusable and exists for other examples without extra work
+        3. There is very little overhead with the approach of reserving packet type 0 for fragments
+        4. It's really annoying mirroring the packet read/write functions specially to handle fragments, it's also error prone
+
+    Cons:
+
+        1. It significantly complicates protocol2.h
+        2. It turns protocol2.h from a stateless header into something that maintains a data structure
+        3. The data structure has a lot of assumptions built in, like maximum number of fragments per-packet, max fragment size and so on.
+        4. Baggage to support fragmentation and re-assembly is carried across to other articles that don't need it
+        5. Now there are multiple versions of protocol2.h for each article *or* the protocol2.h gets really bulky, eg. lots of extra stuff
+        6. I'm not really making middleware here, but a bunch of articles showing how stuff is done. It's good for each article to basically
+           be self-contained. If somebody really wants the middleware for protocol2.h to be integrated together into a product they can
+           pay me to do that for them.
+        7. If I make this decision now, suddenly other things specific to articles will also get carried across to protocol2.h past this point
+        8. I'd really like to keep protocol2.h as simple as possible and not turn it into a library.
+
+    At the moment, I think I'm going to move forward with mirroring the packet read/write in the 002 article source code.
+
+
+Tuesday December 8th, 2015
 =========================
 
     Implement packet header object and pass it in to the 002_* example source code.
@@ -14,6 +42,41 @@ Monday December 8th, 2015
 
     Insert total fragments into fragment packet
 
+    Sketched out "ProcessPacket" function
+
+    Hooked up so it gets called. Verified that it correctly distinguishes between fragment and non-fragmented packets.
+
+    Added code to receive packets from packet buffer, vs. reading them directly off the packet write buffer.
+    
+    Parse the rest of the packet fragment header. Print out the results as procesing each packet, eg. x/y of packet n
+
+    Parse the sequence number out of the regular packet too and print that.
+
+    Pass to the process packet inside the packet buffer.
+
+    Sequence number is not parsing correctly for non-fragmented packets. Is it getting written correctly?!
+
+    I think there is a difference with what is written through the serialize vs. what is written if I read/write
+    manually.
+
+    It seems that I have to go through serialization always.
+
+    Explore this.
+
+    Write some code that determines what the byte order is for writing bytes at a time and shorts.
+
+    eg. 0x10,0x11,0x12,0x13 for bytes
+
+    or: 0x1111 and 0x2222 for shorts
+
+    My guess is that I may have some code that switches the bit order of what I write.
+
+    Confirmed. Serializing 0x11, 0x22, 0x33, 0x44 results in reading 0x33, 0x44 in the high word.
+
+    So this means that writing one dword at a time is switching around the shorts.
+
+    I'm pretty sure this means I need to go through the serializer all the time.
+    
 
 Sunday December 6th, 2015
 =========================
