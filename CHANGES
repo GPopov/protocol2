@@ -42,6 +42,12 @@ Thursday December 24th, 2015
     so I can get the sequence # and crc32 out of the pre-parsed fragment packet for regular packets, 
     because I need to know which sequence number to store those packets as.
 
+    Verify packet crc32 at the early stage before adding to the packet fragment buffer.
+
+    Fixed a bunch of silly stuff where read packet was clearing the first 4 bytes of the packet (crc32)
+    to zero in order to get the checksum to pass correctly. Applied the same fix to fragment data, which is
+    to split the crc32 calculation into three separate parts, avoiding modifying a read-only packet buffer.
+
 
 Wednesday December 23rd, 2015
 =============================

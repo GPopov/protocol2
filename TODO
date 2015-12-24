@@ -2,10 +2,6 @@ DONE
 
 TODO
 
-    Verify packet crc32 at the early stage before adding to the packet fragment buffer.
-
-    --------
-
     Clean up the "Packet" struct remaining (dumb) and convert to separate arrays of packet size, and packet data.
 
     --------

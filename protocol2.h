@@ -1252,11 +1252,11 @@ namespace protocol2
         uint32_t read_crc32 = 0;
         stream.SerializeBits( read_crc32, 32 );
 
-        *((uint32_t*)buffer) = 0;
-
         protocolId = host_to_network( protocolId );
         uint32_t crc32 = calculate_crc32( (const uint8_t*) &protocolId, 4 );
-        crc32 = calculate_crc32( buffer, bufferSize, crc32 );
+        uint32_t zero = 0;
+        crc32 = calculate_crc32( (const uint8_t*) &zero, 4, crc32 );
+        crc32 = calculate_crc32( buffer + 4, bufferSize - 4, crc32 );
 
         if ( crc32 != read_crc32 )
         {

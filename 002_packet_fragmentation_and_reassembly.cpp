@@ -273,9 +273,20 @@ struct PacketBuffer
 
         FragmentPacket fragmentPacket;
         
-        fragmentPacket.SerializeRead( stream );
+        if ( !fragmentPacket.SerializeRead( stream ) )
+            return false;
 
-        // todo: verify checksum for this packet. if it doesn't pass, discard the packet!
+        uint32_t protocolId = protocol2::host_to_network( ProtocolId );
+        uint32_t crc32 = protocol2::calculate_crc32( (const uint8_t*) &protocolId, 4 );
+        uint32_t zero = 0;
+        crc32 = protocol2::calculate_crc32( (const uint8_t*) &zero, 4, crc32 );
+        crc32 = protocol2::calculate_crc32( data + 4, size - 4, crc32 );
+
+        if ( crc32 != fragmentPacket.crc32 )
+        {
+            printf( "crc32 mismatch: expected %x, got %x\n", crc32, fragmentPacket.crc32 );
+            return false;
+        }
 
         if ( fragmentPacket.packetType == 0 )
         {
@@ -312,11 +323,10 @@ struct PacketBuffer
     }
 };
 
-bool SplitPacketIntoFragments( uint32_t protocolId, uint16_t sequence, const uint8_t *packetData, int packetSize, int & numFragments, PacketData fragmentPackets[] )
+bool SplitPacketIntoFragments( uint16_t sequence, const uint8_t *packetData, int packetSize, int & numFragments, PacketData fragmentPackets[] )
 {
     numFragments = 0;
 
-    assert( protocolId != 0 );
     assert( packetData );
     assert( packetSize > 0 );
     assert( packetSize < MaxPacketSize );
@@ -360,7 +370,7 @@ bool SplitPacketIntoFragments( uint32_t protocolId, uint16_t sequence, const uin
 
         stream.Flush();
 
-        protocolId = protocol2::host_to_network( protocolId );
+        uint32_t protocolId = protocol2::host_to_network( ProtocolId );
         uint32_t crc32 = protocol2::calculate_crc32( (uint8_t*) &protocolId, 4 );
         crc32 = protocol2::calculate_crc32( fragmentPackets[i].data, stream.GetBytesProcessed(), crc32 );
 
@@ -618,7 +628,7 @@ int main()
         {
             int numFragments;
             PacketData fragmentPackets[MaxFragmentsPerPacket];
-            SplitPacketIntoFragments( ProtocolId, sequence, buffer, bytesWritten, numFragments, fragmentPackets );
+            SplitPacketIntoFragments( sequence, buffer, bytesWritten, numFragments, fragmentPackets );
 
             printf( "split packet %d into %d fragments\n", sequence, numFragments );
 
