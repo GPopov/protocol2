@@ -11,6 +11,8 @@ Thursday December 24th, 2015
 
     Converted code that writes packet fragment to use serialize write functions on stream.
 
+    Removed "Fragment" struct and replaced with two arrays.
+
 
 Wednesday December 23rd, 2015
 =============================

@@ -2,8 +2,6 @@ CHANGES
 
 TODO
 
-    Remove "Fragment" struct and replace with two arrays.
-
     Convert code that reads packet fragment to serialize read functions.
 
     --------

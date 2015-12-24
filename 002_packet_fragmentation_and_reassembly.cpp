@@ -89,20 +89,13 @@ struct FragmentPacket : public protocol2::Object
     }
 };
 
-// todo: maybe remove this and just have two arrays fragmentSize[MaxFragmentsPrePacket], fragmentData[MaxFragmentsPerPacket]
-// better cache behavior anyway.
-struct Fragment
-{
-    int size;                                           // fragment size in bytes (zero if fragment not received)
-    uint8_t *data;                                      // pointer to fragment data for this fragment (dynamically allocated, NULL if not allocated)
-};
-
 struct PacketBufferEntry
 {
     uint32_t sequence : 16;                             // packet sequence number
     uint32_t numFragments : 8;                          // number of fragments for this packet
     uint32_t receivedFragments : 8;                     // number of received fragments so far
-    Fragment fragments[MaxFragmentsPerPacket];          // fragment data for this packet
+    int fragmentSize[MaxFragmentsPerPacket];            // size of fragment n in bytes
+    uint8_t *fragmentData[MaxFragmentsPerPacket];       // pointer to data for fragment n 
 };
 
 struct PacketData
@@ -142,9 +135,9 @@ struct PacketBuffer
                 {
                     for ( int j = 0; j < entries[i].numFragments; ++j )
                     {
-                        if ( entries[i].fragments[j].data )
+                        if ( entries[i].fragmentData[j] )
                         {
-                            delete [] entries[i].fragments[j].data;
+                            delete [] entries[i].fragmentData[j];
                             assert( numFragments > 0 );
                             numFragments--;
                         }
@@ -243,7 +236,7 @@ struct PacketBuffer
         assert( fragmentId < MaxFragmentsPerPacket );
         assert( numFragments <= MaxFragmentsPerPacket );
 
-        if ( entries[index].fragments[fragmentId].size )
+        if ( entries[index].fragmentSize[fragmentId] )
             return false;
 
         // add the fragment to the packet buffer
@@ -251,9 +244,9 @@ struct PacketBuffer
         assert( fragmentSize > 0 );
         assert( fragmentSize <= MaxFragmentSize );
 
-        entries[index].fragments[fragmentId].size = fragmentSize;
-        entries[index].fragments[fragmentId].data = new uint8_t[fragmentSize];
-        memcpy( entries[index].fragments[fragmentId].data, fragmentData, fragmentSize );
+        entries[index].fragmentSize[fragmentId] = fragmentSize;
+        entries[index].fragmentData[fragmentId] = new uint8_t[fragmentSize];
+        memcpy( entries[index].fragmentData[fragmentId], fragmentData, fragmentSize );
         entries[index].receivedFragments++;
 
         assert( entries[index].receivedFragments <= entries[index].numFragments );
