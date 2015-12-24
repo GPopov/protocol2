@@ -367,11 +367,12 @@ namespace protocol2
     {
     public:
 
-        BitReader( const void* data, int bytes ) : m_data( (const uint32_t*)data ), m_numWords( bytes / 4 )
+        BitReader( const void* data, int bytes ) : m_data( (const uint32_t*)data ), m_numBytes( bytes ), m_numWords( ( bytes % 4 ) ? ( bytes / 4 + 1 ) : bytes / 4 )
         {
+            // IMPORTANT: Although we support non-multiples of four bytes passed in, the actual buffer
+            // underneath the bit reader must align up to 4 bytes because we read one dword at a time.
             assert( data );
-            assert( ( bytes % 4 ) == 0 );           // buffer size must be a multiple of four
-            m_numBits = m_numWords * 32;
+            m_numBits = m_numBytes * 8;
             m_bitsRead = 0;
             m_bitIndex = 0;
             m_wordIndex = 0;
@@ -521,6 +522,7 @@ namespace protocol2
         const uint32_t* m_data;
         uint64_t m_scratch;
         int m_numBits;
+        int m_numBytes;
         int m_numWords;
         int m_bitsRead;
         int m_bitIndex;
@@ -1212,7 +1214,7 @@ namespace protocol2
 
         if ( numPacketTypes > 1 )
         {
-            stream.SerializeInteger( packetType, 0, numPacketTypes );
+            stream.SerializeInteger( packetType, 0, numPacketTypes - 1 );
         }
 
         packet->SerializeWrite( stream );
@@ -1243,13 +1245,9 @@ namespace protocol2
         assert( bufferSize > 0 );
         assert( protocolId != 0 );
 
-        const int paddedSize = 4 * ( bufferSize / 4 ) + ( ( bufferSize % 4 ) ? 4 : 0 );
-
-        assert( paddedSize >= bufferSize );
-
         typedef protocol2::ReadStream Stream;
 
-        Stream stream( buffer, paddedSize );
+        Stream stream( buffer, bufferSize );
 
         uint32_t read_crc32 = 0;
         stream.SerializeBits( read_crc32, 32 );
@@ -1285,7 +1283,7 @@ namespace protocol2
 
         if ( numPacketTypes > 1 )
         {
-            if ( !stream.SerializeInteger( packetType, 0, numPacketTypes ) )
+            if ( !stream.SerializeInteger( packetType, 0, numPacketTypes - 1 ) )
             {
                 if ( errorCode )
                     *errorCode = PROTOCOL2_ERROR_INVALID_PACKET_TYPE;

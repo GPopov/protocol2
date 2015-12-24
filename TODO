@@ -1,20 +1,16 @@
-CHANGES
+DONE
 
 TODO
 
-    Convert code that reads packet fragment to serialize read functions.
+    Verify packet crc32 at the early stage before adding to the packet fragment buffer.
 
     --------
 
-    Pass in the single frame packet as a special one fragment packet to packet buffer.
+    Clean up the "Packet" struct remaining (dumb) and convert to separate arrays of packet size, and packet data.
 
     --------
 
-    Verify checksum for fragment packet
-
-    --------
-
-    Finish implementing the function to re-assemble and receive packets from the packet buffer.
+    Implementing the function to re-assemble and receive packets from the packet buffer.
 
     --------
 

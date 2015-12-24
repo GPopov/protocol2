@@ -13,6 +13,35 @@ Thursday December 24th, 2015
 
     Removed "Fragment" struct and replaced with two arrays.
 
+    Convert code that reads packet fragment to serialize read functions.
+
+    I'm concerned that serialize read may not correctly work non 
+
+    Yes it freaks out because of padding, and also if we pass in the padded amount as size, we cannot correctly
+    infer the correct fragment size, because it has padded up to nearest dword and will be wrong.
+
+    It seems the only correct way to handle this is to extend the read stream so that it can handle
+    non-multiple of 4 bytes in the buffer, but it is safe to say that they actual underlying buffer
+    should be a multiple of 4 bytes so the last dword does not read out of bounds memory.
+
+    Convert read stream to support non-multiple of 4 buffer sizes.
+
+    Clean up remaining protocol2.h to work with this.
+
+    eg. remove hacks in read_packet that pad out to 4 bytes.
+
+    Verify still works with 001 reading and writing packets example.
+
+    Now 002 example is not passing because of something to do with read align. 
+
+    What is going on?!
+
+    Was a desync in the packet header. Fixed.
+
+    Fixed how fragment header is parsed, and it now saves off the packet type in a struct var,
+    so I can get the sequence # and crc32 out of the pre-parsed fragment packet for regular packets, 
+    because I need to know which sequence number to store those packets as.
+
 
 Wednesday December 23rd, 2015
 =============================

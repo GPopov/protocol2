@@ -45,12 +45,13 @@ struct FragmentPacket : public protocol2::Object
 {
     // input/output
 
-    int fragmentSize;                       // fragment size is input on serialize write. it is output on serialize read (inferred from size of packet)
+    int fragmentSize;                   // set as input on serialize write. output on serialize read (inferred from size of packet)
 
     // serialized data
 
     uint32_t crc32;
     uint16_t sequence;
+    int packetType;
     uint8_t fragmentId;
     uint8_t numFragments;
     uint8_t fragmentData[MaxFragmentSize];
@@ -60,16 +61,25 @@ struct FragmentPacket : public protocol2::Object
         serialize_bits( stream, crc32, 32 );
         serialize_bits( stream, sequence, 16 );
 
-        int packetType = 0;
+        packetType = 0;
         serialize_int( stream, packetType, 0, TEST_PACKET_NUM_TYPES - 1 );
         if ( packetType != 0 )
-            return false;           // not a fragment packet
+            return true;
 
         serialize_bits( stream, fragmentId, 8 );
         serialize_bits( stream, numFragments, 8 );
 
+        if ( Stream::IsReading )
+        {
+            printf( "read fragment packet\n" );
+        }
+
+        printf( "fragmentId = %d\n", fragmentId );
+        printf( "numFragments = %d\n", numFragments );
+
         serialize_align( stream );
 
+        /*
         if ( Stream::IsReading )
         {
             assert( ( stream.GetBitsRemaining() % 8 ) == 0 );
@@ -84,6 +94,7 @@ struct FragmentPacket : public protocol2::Object
         assert( fragmentSize <= MaxFragmentSize );
 
         serialize_bytes( stream, fragmentData, fragmentSize );
+        */
 
         return true;
     }
@@ -258,42 +269,26 @@ struct PacketBuffer
 
     bool ProcessPacket( const uint8_t *data, int size )
     {
-        /*
-        const uint8_t packetType = *( data + 4 + 2 );
+        protocol2::ReadStream stream( data, size );
 
-        const uint16_t sequence = protocol2::network_to_host( *((uint16_t*)(data+4)) );
+        FragmentPacket fragmentPacket;
+        
+        fragmentPacket.SerializeRead( stream );
 
-        printf( "sequence = %x\n", sequence );
-        */
+        // todo: verify checksum for this packet. if it doesn't pass, discard the packet!
 
-        /*
-        if ( packetType == 0 )
+        if ( fragmentPacket.packetType == 0 )
         {
-            // this is a packet fragment
+            printf( "process fragment %d/%d of packet %d\n", fragmentPacket.fragmentId, fragmentPacket.numFragments, fragmentPacket.sequence );
 
-            if ( size < PacketFragmentHeaderBytes )
-                return false;
-
-            const uint8_t fragmentId = data[7];
-            const uint8_t numFragments = data[8];
-
-            printf( "process fragment %d/%d of packet %d\n", fragmentId, numFragments, sequence );
-
-            // todo: verify checksum for this packet
-
-            const int fragmentSize = size - PacketFragmentHeaderBytes;
-
-            return ProcessFragment( data + PacketFragmentHeaderBytes, fragmentSize, sequence, fragmentId, numFragments );
+            return ProcessFragment( data + PacketFragmentHeaderBytes, fragmentPacket.fragmentSize, fragmentPacket.sequence, fragmentPacket.fragmentId, fragmentPacket.numFragments );
         }
         else
         {
-            // this is a regular, non-fragmented packet
+            printf( "process regular packet %d\n", fragmentPacket.sequence );
 
-            printf( "process packet %d\n", sequence );
-
-            return ProcessFragment( data, size, sequence, 0, 1 );
+            return ProcessFragment( data, size, fragmentPacket.sequence, 0, 1 );
         }
-        */
 
         return true;
     }
@@ -337,6 +332,7 @@ bool SplitPacketIntoFragments( uint32_t protocolId, uint16_t sequence, const uin
     {
         const int fragmentSize = ( i == numFragments - 1 ) ? ( packetData + packetSize - src ) : MaxFragmentSize;
 
+        // todo: maybe consolidate this into two arrays of size and data (much nicer)
         fragmentPackets[i].size = MaxFragmentSize + PacketFragmentHeaderBytes;
         fragmentPackets[i].data = new uint8_t[fragmentPackets[i].size];
 
@@ -344,6 +340,12 @@ bool SplitPacketIntoFragments( uint32_t protocolId, uint16_t sequence, const uin
 
         FragmentPacket fragmentPacket;
         fragmentPacket.fragmentSize = fragmentSize;
+        fragmentPacket.crc32 = 0;
+        fragmentPacket.sequence = sequence;
+        fragmentPacket.fragmentId = i;
+        fragmentPacket.numFragments = numFragments;
+        memcpy( fragmentPacket.fragmentData, src, fragmentSize );
+
         if ( !fragmentPacket.SerializeWrite( stream ) )
         {
             numFragments = 0;
@@ -356,21 +358,13 @@ bool SplitPacketIntoFragments( uint32_t protocolId, uint16_t sequence, const uin
             return false;
         }
 
-        /*
-        memset( fragmentPackets[i].data, 0, PacketFragmentHeaderBytes );
-
-        *((uint16_t*)(fragmentPackets[i].data+4)) = protocol2::host_to_network( sequence );
-        fragmentPackets[i].data[7] = i;
-        fragmentPackets[i].data[8] = numFragments;
-
-        memcpy( fragmentPackets[i].data + PacketFragmentHeaderBytes, src, fragmentSize );
+        stream.Flush();
 
         protocolId = protocol2::host_to_network( protocolId );
         uint32_t crc32 = protocol2::calculate_crc32( (uint8_t*) &protocolId, 4 );
-        crc32 = protocol2::calculate_crc32( fragmentPackets[i].data, fragmentPackets[i].size, crc32 );
+        crc32 = protocol2::calculate_crc32( fragmentPackets[i].data, stream.GetBytesProcessed(), crc32 );
 
         *((uint32_t*)fragmentPackets[i].data) = protocol2::host_to_network( crc32 );
-        */
 
         src += fragmentSize;
     }
@@ -544,16 +538,7 @@ struct TestPacketHeader : public protocol2::Object
 
     PROTOCOL2_SERIALIZE_OBJECT( stream )
     {
-        uint8_t a,b,c,d;
-        a = 0x11;
-        b = 0x22;
-        c = 0x33;
-        d = 0x44;
-        serialize_bits( stream, a, 8 );
-        serialize_bits( stream, b, 8 );
-        serialize_bits( stream, c, 8 );
-        serialize_bits( stream, d, 8 );
-        //serialize_bits( stream, sequence, 16 );
+        serialize_bits( stream, sequence, 16 );
         return true;
     }
 };
