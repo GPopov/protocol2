@@ -1,4 +1,17 @@
 
+Thursday December 24th, 2015
+============================
+
+    Mostly fleshed out new FragmentPacket structure with serialize function
+
+    Finish implementation of fragment packet serialize, especially bit where fragmentSize is inferred.
+
+    On read, make sure fragment size is clamped and checked to be in range, and if outside range we just
+    abort the serialize vs. feeding into serialize_bytes.
+
+    Converted code that writes packet fragment to use serialize write functions on stream.
+
+
 Wednesday December 23rd, 2015
 =============================
 

@@ -26,10 +26,71 @@ const uint32_t ProtocolId = 0x55667788;
 
 const int PacketFragmentHeaderBytes = 16;
 
+enum TestPacketTypes
+{
+    PACKET_FRAGMENT = 0,                    // IMPORTANT: packet type 0 indicates a packet fragment
+
+    TEST_PACKET_A,
+    TEST_PACKET_B,
+    TEST_PACKET_C,
+
+    TEST_PACKET_NUM_TYPES
+};
+
 // fragment packet on-the-wire format:
 // [crc32] (32 bits) | [sequence] (16 bits) | [packet type 0] (# of bits depends on number of packet types) 
 // [fragment id] (8 bits) | [num fragments] (8 bits) | (pad zero bits to nearest byte) | <fragment data>
 
+struct FragmentPacket : public protocol2::Object
+{
+    // input/output
+
+    int fragmentSize;                       // fragment size is input on serialize write. it is output on serialize read (inferred from size of packet)
+
+    // serialized data
+
+    uint32_t crc32;
+    uint16_t sequence;
+    uint8_t fragmentId;
+    uint8_t numFragments;
+    uint8_t fragmentData[MaxFragmentSize];
+
+    PROTOCOL2_SERIALIZE_OBJECT( stream )
+    {
+        serialize_bits( stream, crc32, 32 );
+        serialize_bits( stream, sequence, 16 );
+
+        int packetType = 0;
+        serialize_int( stream, packetType, 0, TEST_PACKET_NUM_TYPES - 1 );
+        if ( packetType != 0 )
+            return false;           // not a fragment packet
+
+        serialize_bits( stream, fragmentId, 8 );
+        serialize_bits( stream, numFragments, 8 );
+
+        serialize_align( stream );
+
+        if ( Stream::IsReading )
+        {
+            assert( ( stream.GetBitsRemaining() % 8 ) == 0 );
+
+            fragmentSize = stream.GetBitsRemaining() / 8;
+
+            if ( fragmentSize <= 0 || fragmentSize > MaxFragmentSize )
+                return false;
+        }
+
+        assert( fragmentSize > 0 );
+        assert( fragmentSize <= MaxFragmentSize );
+
+        serialize_bytes( stream, fragmentData, fragmentSize );
+
+        return true;
+    }
+};
+
+// todo: maybe remove this and just have two arrays fragmentSize[MaxFragmentsPrePacket], fragmentData[MaxFragmentsPerPacket]
+// better cache behavior anyway.
 struct Fragment
 {
     int size;                                           // fragment size in bytes (zero if fragment not received)
@@ -202,10 +263,8 @@ struct PacketBuffer
         return true;
     }
 
-    bool ProcessPacket( const uint8_t *data, int size, int numPacketTypes )
+    bool ProcessPacket( const uint8_t *data, int size )
     {
-        assert( numPacketTypes > 0 );
-
         /*
         const uint8_t packetType = *( data + 4 + 2 );
 
@@ -265,50 +324,6 @@ struct PacketBuffer
     }
 };
 
-struct FragmentPacket : public protocol2::Object
-{
-    // input/output
-
-    int fragmentSize;                       // fragment size is input on serialize read. on output is inferred in the serialize function.
-    int numPacketTypes;                     // set this to the number of packet types before serialize read/write is called
-
-    // serialized data
-
-    uint32_t crc32;
-    uint16_t sequence;
-    uint8_t fragmentId;
-    uint8_t numFragments;
-    uint8_t fragmentData[MaxFragmentSize];
-
-    PROTOCOL2_SERIALIZE_OBJECT( stream )
-    {
-        serialize_bits( stream, crc32, 32 );
-        serialize_bits( stream, sequence, 16 );
-
-        int packetType;
-        serialize_int( stream, packetType, 0, numPacketTypes );
-        if ( packetType != 0 )
-            return false;           // not a fragment packet
-
-        serialize_bits( stream, fragmentId, 8 );
-        serialize_bits( stream, numFragments, 8 );
-
-        if ( Stream::IsReading )
-        {
-            // todo: determine length of packet stream in bytes
-
-            // todo: determine current byte index, rounded up from nearest bit (eg. round up to nearest 8, and then div 8 and that is byte offset)
-
-            // todo: infer the fragment length from the packet size - current byte offset
-        }
-
-        assert( fragmentSize > 0 );
-        assert( fragmentSize <= MaxFragmentSize );
-
-        serialize_bytes( stream, fragmentData, fragmentSize );
-    }
-};
-
 bool SplitPacketIntoFragments( uint32_t protocolId, uint16_t sequence, const uint8_t *packetData, int packetSize, int & numFragments, PacketData fragmentPackets[] )
 {
     numFragments = 0;
@@ -329,12 +344,13 @@ bool SplitPacketIntoFragments( uint32_t protocolId, uint16_t sequence, const uin
     {
         const int fragmentSize = ( i == numFragments - 1 ) ? ( packetData + packetSize - src ) : MaxFragmentSize;
 
-        fragmentPackets[i].size = fragmentSize + PacketFragmentHeaderBytes;
+        fragmentPackets[i].size = MaxFragmentSize + PacketFragmentHeaderBytes;
         fragmentPackets[i].data = new uint8_t[fragmentPackets[i].size];
 
         protocol2::WriteStream stream( fragmentPackets[i].data, fragmentPackets[i].size );
 
         FragmentPacket fragmentPacket;
+        fragmentPacket.fragmentSize = fragmentSize;
         if ( !fragmentPacket.SerializeWrite( stream ) )
         {
             numFragments = 0;
@@ -372,17 +388,6 @@ bool SplitPacketIntoFragments( uint32_t protocolId, uint16_t sequence, const uin
 }
 
 static PacketBuffer packetBuffer;
-
-enum TestPacketTypes
-{
-    PACKET_FRAGMENT = 0,                    // IMPORTANT: packet type 0 indicates a packet fragment
-
-    TEST_PACKET_A,
-    TEST_PACKET_B,
-    TEST_PACKET_C,
-
-    TEST_PACKET_NUM_TYPES
-};
 
 struct Vector
 {

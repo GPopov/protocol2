@@ -2,7 +2,7 @@ CHANGES
 
 TODO
 
-    Convert code that writes packet fragment to use serialize write functions on stream.
+    Remove "Fragment" struct and replace with two arrays.
 
     Convert code that reads packet fragment to serialize read functions.
 

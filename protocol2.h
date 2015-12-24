@@ -501,6 +501,11 @@ namespace protocol2
             return m_numBits - m_bitsRead;
         }
 
+        int GetBytesRemaining() const
+        {
+            return GetBitsRemaining() / 8;
+        }
+
         int GetTotalBits() const 
         {
             return m_numBits;
@@ -736,6 +741,11 @@ namespace protocol2
             return m_bitsRead;
         }
 
+        int GetBitsRemaining() const
+        {
+            return m_reader.GetBitsRemaining();
+        }
+
         int GetBytesProcessed() const
         {
             return m_bitsRead / 8 + ( m_bitsRead % 8 ? 1 : 0 );
@@ -827,6 +837,11 @@ namespace protocol2
         int GetBitsProcessed() const
         {
             return m_bitsWritten;
+        }
+
+        int GetBitsRemaining() const
+        {
+            return m_totalBytes * 8 - GetBitsProcessed();
         }
 
         int GetBytesProcessed() const
