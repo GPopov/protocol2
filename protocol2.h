@@ -370,7 +370,7 @@ namespace protocol2
         BitReader( const void* data, int bytes ) : m_data( (const uint32_t*)data ), m_numBytes( bytes ), m_numWords( ( bytes % 4 ) ? ( bytes / 4 + 1 ) : bytes / 4 )
         {
             // IMPORTANT: Although we support non-multiples of four bytes passed in, the actual buffer
-            // underneath the bit reader must align up to 4 bytes because we read one dword at a time.
+            // underneath the bit reader must round up to at least 4 bytes because we read one dword at a time.
             assert( data );
             m_numBits = m_numBytes * 8;
             m_bitsRead = 0;

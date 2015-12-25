@@ -2,12 +2,6 @@ DONE
 
 TODO
 
-    Clean up the "Packet" struct remaining (dumb) and convert to separate arrays of packet size, and packet data.
-
-    --------
-
-    Implementing the function to re-assemble and receive packets from the packet buffer.
-
     --------
 
     Pass over and clean up the code
