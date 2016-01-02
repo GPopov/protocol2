@@ -1,13 +1,25 @@
 DONE
 
+    Sketched out required packets for chunk slice sender/receiver
+
 TODO
+    
+    Sketch out sender struct
 
-    --------
+    Sketch out receiver struct
 
-    Pass over and clean up the code
+    Setup packet send and receive loop
 
-    --------
+    Work out what logs I want for the example (eg. sending chunk n, send slice x/y of chunk n, receive slice x/y of chunk n, received chunk n, chunk n was acked )
 
-    Ready to write the second article
+    Add timer to send packets n per-second for sender if a chunk is being sent
 
-    --------
+    Add code to mark dirty if a valid slice of the current chunk is recieved
+
+    If dirty, need to send acks for *all* slices of current chunk being received (so need a state, receiving or not receiving current chunk)
+
+    Consider integrating network simulator into the protocol2.h (generally useful?)
+
+    Integrate network simulator into example, because without handling packet loss, out of order, dup etc. this code is not guaranteed to be working
+
+    ...

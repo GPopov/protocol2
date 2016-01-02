@@ -4,6 +4,38 @@
 		"selected_items":
 		[
 			[
+				"Packet",
+				"PacketBufferEntry"
+			],
+			[
+				"Max",
+				"MaxFragmentSize"
+			],
+			[
+				"SERIALIZE_",
+				"PROTOCOL2_SERIALIZE_OBJECT"
+			],
+			[
+				"rec",
+				"receivedFragments"
+			],
+			[
+				"MaxFrag",
+				"MaxFragmentsPerPacket"
+			],
+			[
+				"total",
+				"total_fragments"
+			],
+			[
+				"sequence",
+				"sequence_difference"
+			],
+			[
+				"MAX",
+				"MaxFragmentSize"
+			],
+			[
 				"PROTOCOL2_ERR",
 				"PROTOCOL2_STREAM_ERROR_NONE"
 			],
@@ -106,10 +138,6 @@
 			[
 				"STATE",
 				"STATEFUL_MODE_INPUT_AND_STATE"
-			],
-			[
-				"Max",
-				"MaxCubesPerPacket"
 			],
 			[
 				"Priority",
@@ -486,57 +514,13 @@
 			[
 				"resend",
 				"resendRate"
-			],
-			[
-				"fragment",
-				"blockFragmentSize"
-			],
-			[
-				"frag",
-				"largeBlockFragmentSize"
-			],
-			[
-				"m_receiv",
-				"m_receiveMessageId"
-			],
-			[
-				"Pro",
-				"ProcessPacketFailures"
-			],
-			[
-				"disca",
-				"PacketsDiscarded"
-			],
-			[
-				"ack_bits",
-				"test_generate_ack_bits"
-			],
-			[
-				"m_rec",
-				"m_receive_queue"
 			]
 		]
 	},
 	"buffers":
 	[
-		{
-			"file": "/Users/gaffer/Documents/PREP",
-			"settings":
-			{
-				"buffer_size": 918,
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "/Users/gaffer/Documents/AUSTRALIA",
-			"settings":
-			{
-				"buffer_size": 2497,
-				"line_ending": "Unix"
-			}
-		}
 	],
-	"build_system": "",
+	"build_system": "Packages/C++/C++ Single File.sublime-build",
 	"build_system_choices":
 	[
 		[
@@ -698,16 +682,25 @@
 	],
 	"file_history":
 	[
-		"/Users/gaffer/Documents/PREP",
-		"/Users/gaffer/Documents/PLANNING",
-		"/Users/gaffer/git/protocol2/TODO",
-		"/Users/gaffer/git/protocol2/test.cpp",
-		"/Users/gaffer/git/protocol2/001_serializing_packets.cpp",
+		"/Users/gaffer/git/protocol2/001_reading_and_writing_packets.cpp",
+		"/Users/gaffer/git/protocol2/002_packet_fragmentation_and_reassembly.cpp",
 		"/Users/gaffer/git/protocol2/protocol2.h",
-		"/Users/gaffer/Documents/OPPORTUNITIES",
+		"/Users/gaffer/git/protocol2/TODO",
 		"/Users/gaffer/git/protocol2/CHANGES",
-		"/Users/gaffer/git/protocol/src/Core/Core.cpp",
+		"/Users/gaffer/Documents/AUSTRALIA",
+		"/Users/gaffer/Documents/FINANCES",
+		"/Users/gaffer/Documents/OUTBACK",
+		"/Users/gaffer/Documents/STOCKS",
+		"/Users/gaffer/Documents/PLANNING",
+		"/Users/gaffer/git/protocol2/backup.txt",
+		"/Users/gaffer/git/protocol2/premake4.lua",
+		"/Users/gaffer/git/protocol2/002_packet_fragmentation_and_reassembly",
+		"/Users/gaffer/git/protocol2/test.cpp",
 		"/Users/gaffer/git/protocol/src/Core/Core.h",
+		"/Users/gaffer/git/protocol/src/Core/Core.cpp",
+		"/Users/gaffer/Documents/PREP",
+		"/Users/gaffer/git/protocol2/001_serializing_packets.cpp",
+		"/Users/gaffer/Documents/OPPORTUNITIES",
 		"/Users/gaffer/git/protocol2/serializing_packets.cpp",
 		"/Users/gaffer/git/protocol/tests/Protocol/TestPackets.h",
 		"/Users/gaffer/git/protocol/src/Protocol/PacketFactory.h",
@@ -719,8 +712,6 @@
 		"/Users/gaffer/git/cubes/core.h",
 		"/Users/gaffer/Documents/MONEY",
 		"/Users/gaffer/Documents/STUFF",
-		"/Users/gaffer/Documents/AUSTRALIA",
-		"/Users/gaffer/Documents/STOCKS",
 		"/Users/gaffer/git/protocol/tests/ClientServer/SoakClientServer.cpp",
 		"/Users/gaffer/git/protocol/src/ClientServer/Client.cpp",
 		"/Users/gaffer/git/protocol/src/Network/Simulator.cpp",
@@ -730,7 +721,6 @@
 		"/Users/gaffer/Documents/gafferongames.com",
 		"/Users/gaffer/git/protocol/TODO",
 		"/Users/gaffer/Documents/SECURITY",
-		"/Users/gaffer/Documents/FINANCES",
 		"/Users/gaffer/git/protocol/src/Game/Snapshot.h",
 		"/Users/gaffer/git/protocol/src/Game/SyncDemo.h",
 		"/Users/gaffer/git/protocol/src/Game/SyncDemo.cpp",
@@ -819,17 +809,11 @@
 		"/Users/gaffer/git/protocol/external/ode/ode/src/plane.cpp",
 		"/Users/gaffer/git/protocol/external/ode/ode/src/.deps/cylinder.Plo",
 		"/Users/gaffer/git/protocol/external/ode/ode/src/.deps/collision_cylinder_trimesh.Plo",
-		"/Users/gaffer/git/protocol/src/Game/SnapshotDemo.cpp",
-		"/Users/gaffer/git/protocol/src/Game/CubesDemo.cpp",
-		"/Users/gaffer/git/protocol/src/Game/CompressionDemo.h",
-		"/Users/gaffer/git/protocol/SLIDES",
-		"/Users/gaffer/git/protocol/scripts/axis_angle_values.txt",
-		"/Users/gaffer/git/protocol/data/stones/Black-30.mesh",
-		"/Users/gaffer/git/protocol/src/ClientServer/ClientServerPackets.h"
+		"/Users/gaffer/git/protocol/src/Game/SnapshotDemo.cpp"
 	],
 	"find":
 	{
-		"height": 25.0
+		"height": 35.0
 	},
 	"find_in_files":
 	{
@@ -876,6 +860,79 @@
 		"case_sensitive": true,
 		"find_history":
 		[
+			".Serialize",
+			"fragmentSize",
+			"GetBytesProcessed",
+			"write_packet",
+			"SerializeBytes",
+			"FragmentPacket",
+			"ProcessPacket",
+			"Advance",
+			"PacketData",
+			"crc32",
+			"FragmentPacket",
+			"fragmentPacket",
+			"FragmentPacket",
+			"Header",
+			"write_packet",
+			"BitReader",
+			"read_packet",
+			"BitReader",
+			"read_packet",
+			"% 8",
+			"ProcessPacket",
+			"MaxFragmentSize",
+			"fragmentSize = ",
+			"packetType",
+			"Fragment",
+			"FragmentPacket",
+			"BitReader",
+			"GetBitsRemaining",
+			"BitReader",
+			"numPacketTyps",
+			"PacketFragmentHeaderBytes",
+			"PacketFragmentHeader",
+			"PacketHeader",
+			"Header",
+			"totalFragments",
+			"ProcessPacket",
+			"total",
+			"CreatePacket",
+			"PROTOCOL2_ERROR_CREATE_PACKET_FAILED",
+			"create packet failed",
+			"serialize_unint",
+			"SERIALIZE_HEADER",
+			"write_packet",
+			"crc32",
+			"bytesWritten",
+			"1024",
+			"error_string",
+			"list",
+			"DEBUG",
+			"// todo",
+			"// tede",
+			"==",
+			"SerializeAlign",
+			"Align",
+			"// todo",
+			"GetAlignBits",
+			"todo",
+			"read_packet",
+			"Abort",
+			"STREAM_INVALID",
+			"INVALID",
+			"gcc",
+			"ERROR_",
+			"error_string",
+			"ERROR_NONE",
+			"DestroyPacket",
+			"todo",
+			"CHECK_",
+			"PROTOCOL2_SERIALIZE_CHECK_FAILED",
+			"ERROR_",
+			"enum",
+			"calculate_crc32",
+			"write_packet",
 			"read_packet",
 			"GetNumTypes",
 			"// todo",
@@ -930,80 +987,7 @@
 			"jitter_buffer",
 			"StateUpdate",
 			"disable_packets",
-			"printf",
-			"_SMOOTHING",
-			"==",
-			"AtRest",
-			"// todo:",
-			"// todo",
-			"AtRest",
-			"StateUpdateUncompressed",
-			"struct CubeState",
-			"// todo",
-			"IsRunning",
-			"ApplyStateUpdate",
-			"state_update_un",
-			"jitter_buffer",
-			"// todo",
-			"serialize_cube",
-			"serialize_cube_state",
-			"serialize_cube_state_update",
-			"serialize_float",
-			"serialize_cube_state_update",
-			"serialize_float",
-			"serialize_cube_state_update",
-			"serialize_cube_state_update_compressed",
-			"SYNC_MODE_SMOOTHING",
-			"GetQuantizedSnap",
-			"    // todo: should quantize on left side?\n    /*\nGetQuantizedSnapshot",
-			"GetQuant",
-			"GetQuantized",
-			"ClampSnapshot",
-			"CompressedStateUpd",
-			"StateUpdate",
-			"QuantizedCubeState",
-			"stateful",
-			"MaximumCorrectingVelocity",
-			"send_packets",
-			"cube_position = ",
-			"active",
-			"client.cpp",
-			"active = ",
-			"send_packets",
-			"dropped input",
-			"input_",
-			"num_inputs",
-			"active = ",
-			"client_post_frame",
-			"active = ",
-			"cube_orientation = ",
-			"client_appyl",
-			"synchronizing",
-			".offset",
-			"client_sync_data[client_slot].offset",
-			"sync_offset",
-			"bracketed",
-			"reconnect",
-			"bracketing",
-			"client side prediction = ",
-			"apply_time",
-			"client_add_input",
-			"ClientFramesPerSecond",
-			"server_tick",
-			"ready_to_apply_ad",
-			"ready_to_apply",
-			"most_recent_input",
-			"add_input",
-			"client adjustment",
-			"adjustment",
-			"started bc",
-			"receive_packets",
-			"read_packets",
-			"SnapshotPacket",
-			"adjustment",
-			"clamp(",
-			"clamp",
-			"get_client"
+			"printf"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -1050,67 +1034,8 @@
 	"groups":
 	[
 		{
-			"selected": 0,
 			"sheets":
 			[
-				{
-					"buffer": 0,
-					"file": "/Users/gaffer/Documents/PREP",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 918,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								136,
-								136
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Text/Plain text.tmLanguage",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 0,
-					"type": "text"
-				},
-				{
-					"buffer": 1,
-					"file": "/Users/gaffer/Documents/AUSTRALIA",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 2497,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								2497,
-								2497
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Text/Plain text.tmLanguage"
-						},
-						"translation.x": 0.0,
-						"translation.y": 668.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 1,
-					"type": "text"
-				}
 			]
 		}
 	],
@@ -1147,7 +1072,7 @@
 	"menu_visible": true,
 	"output.exec":
 	{
-		"height": 341.0
+		"height": 600.0
 	},
 	"output.find_results":
 	{
@@ -1171,23 +1096,43 @@
 				"TODO"
 			],
 			[
-				"test.cpp",
-				"test.cpp"
+				"changes",
+				"CHANGES"
 			],
 			[
 				"protocol2.h",
 				"protocol2.h"
 			],
 			[
+				"010",
+				"001_reading_and_writing_packets.cpp"
+			],
+			[
 				"protocol2h",
 				"protocol2.h"
 			],
 			[
-				"001",
-				"001_serializing_packets.cpp"
+				"002.",
+				"002_packet_fragmentation_and_reassembly.cpp"
 			],
 			[
-				"protocol",
+				"001",
+				"001_reading_and_writing_packets.cpp"
+			],
+			[
+				"002",
+				"002_packet_fragmentation_and_reassembly.cpp"
+			],
+			[
+				"002_",
+				"002_packet_fragmentation_and_reassembly.cpp"
+			],
+			[
+				"premake4.lua",
+				"premake4.lua"
+			],
+			[
+				"protocol2h.",
 				"protocol2.h"
 			],
 			[
@@ -1195,7 +1140,23 @@
 				"protocol2.h"
 			],
 			[
+				"test.cpp",
+				"test.cpp"
+			],
+			[
+				"pe",
+				"premake4.lua"
+			],
+			[
+				"read",
+				"001_reading_and_writing_packets.cpp"
+			],
+			[
 				"",
+				"001_reading_and_writing_packets.cpp"
+			],
+			[
+				"protocol",
 				"protocol2.h"
 			],
 			[
@@ -1217,10 +1178,6 @@
 			[
 				"syncdemo.h",
 				"src/Game/SyncDemo.h"
-			],
-			[
-				"changes",
-				"CHANGES"
 			],
 			[
 				"sync",
@@ -1313,10 +1270,6 @@
 			[
 				"quat",
 				"vectorial/quat4f.h"
-			],
-			[
-				"premake4.lua",
-				"premake4.lua"
 			],
 			[
 				"physics.h",
@@ -1649,34 +1602,6 @@
 			[
 				"compress",
 				"src/Game/CompressionDemo.cpp"
-			],
-			[
-				"state",
-				"src/Game/StatefulDemo.cpp"
-			],
-			[
-				"comm",
-				"src/Game/CommandLine.cpp"
-			],
-			[
-				"statefuldemo.h",
-				"src/Game/StatefulDemo.h"
-			],
-			[
-				"compre",
-				"src/Game/CompressionDemo.cpp"
-			],
-			[
-				"deltademo.cp",
-				"src/Game/DeltaDemo.cpp"
-			],
-			[
-				"delta",
-				"src/Game/DeltaDemo.h"
-			],
-			[
-				"deltademo.h",
-				"src/Game/DeltaDemo.h"
 			]
 		],
 		"width": 0.0

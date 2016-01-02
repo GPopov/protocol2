@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <time.h>
 
-const int NumIterations = 32;
+const int NumIterations = 16;
 
 const uint32_t MaxPacketSize = 1024;
 

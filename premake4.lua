@@ -87,11 +87,27 @@ if not os.is "windows" then
         end
     }
 
+    newaction
+    {
+        trigger     = "003",
+        description = "Build example source for sending large blocks of data quickly and reliably",
+        valid_kinds = premake.action.get("gmake").valid_kinds,
+        valid_languages = premake.action.get("gmake").valid_languages,
+        valid_tools = premake.action.get("gmake").valid_tools,
+     
+        execute = function ()
+            if os.execute "make -j4 003_sending_large_blocks_of_data_quickly_and_reliably" == 0 then
+                os.execute "./003_sending_large_blocks_of_data_quickly_and_reliably"
+            end
+        end
+    }
+
     if _ACTION == "clean" then
         os.rmdir "obj"
         if not os.is "windows" then
             os.execute "rm -f 001_reading_and_writing_packets"
             os.execute "rm -f 002_packet_fragmentation_and_reassembly"
+            os.execute "rm -f 003_sending_large_blocks_of_data_quickly_and_reliably"
             os.execute "rm -f protocol2"
             os.execute "rm -f protocol2.zip"
             os.execute "find . -name *.DS_Store -type f -exec rm {} \\;"

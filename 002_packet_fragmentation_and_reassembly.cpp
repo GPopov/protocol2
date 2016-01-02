@@ -28,7 +28,7 @@ const int PacketFragmentHeaderBytes = 16;
 
 enum TestPacketTypes
 {
-    PACKET_FRAGMENT = 0,                    // IMPORTANT: packet type 0 indicates a packet fragment
+    PACKET_FRAGMENT = 0,                                // IMPORTANT: packet type 0 indicates a packet fragment
 
     TEST_PACKET_A,
     TEST_PACKET_B,
@@ -71,21 +71,15 @@ struct FragmentPacket : public protocol2::Object
 
         serialize_align( stream );
 
-        printf( "bytes processed: %d\n", stream.GetBytesProcessed() );
-
         if ( Stream::IsReading )
         {
             assert( ( stream.GetBitsRemaining() % 8 ) == 0 );
             fragmentSize = stream.GetBitsRemaining() / 8;
             if ( fragmentSize <= 0 || fragmentSize > MaxFragmentSize )
             {
-                printf( "fragment size is out of bounds (%d)\n", fragmentSize );
+                printf( "packet fragment size is out of bounds (%d)\n", fragmentSize );
                 return false;
             }
-        }
-        else
-        {
-            printf( "fragmentSize = %d\n", fragmentSize );
         }
 
         assert( fragmentSize > 0 );
@@ -126,15 +120,13 @@ struct PacketBuffer
 
     /*
         Advance the current sequence for the packet buffer forward.
-        This function removes old packet entries older and frees their packets.
+        This function removes old packet entries and frees their fragments.
     */
 
     void Advance( uint16_t sequence )
     {
         if ( !protocol2::sequence_greater_than( sequence, currentSequence ) )
             return;
-
-        printf( "advance %d\n", sequence );
 
         const uint16_t oldestSequence = sequence - PacketBufferSize + 1;
 
@@ -184,68 +176,44 @@ struct PacketBuffer
         // too many buffered fragments? discard the fragment
 
         if ( numFragments >= MaxBufferedFragments )
-        {
-            printf( "error 1\n" );
             return false;
-        }
 
         // fragment size is <= zero? discard the fragment.
 
         if ( fragmentSize <= 0 )
-        {
-            printf( "error 2\n" );
             return false;
-        }
 
         // fragment size exceeds max fragment size? discard the fragment.
 
         if ( fragmentSize > MaxFragmentSize )
-        {
-            printf( "error 3\n" );
             return false;
-        }
 
         // num fragments outside of range? discard the fragment
 
         if ( numFragments <= 0 || numFragments > MaxFragmentsPerPacket )
-        {
-            printf( "error 4\n" );
             return false;
-        }
 
         // fragment index out of range? discard the fragment
 
         if ( fragmentId < 0 || fragmentId >= numFragments )
-        {
-            printf( "error 5\n" );
             return false;
-        }
 
         // if this is not the last fragment in the packet and fragment size is not equal to MaxFragmentSize, discard the fragment
 
         if ( fragmentId != numFragments - 1 && fragmentSize != MaxFragmentSize )
-        {
-            printf( "error 6\n" );
             return false;
-        }
 
         // packet sequence number wildly out of range from the current sequence? discard the fragment
 
         if ( protocol2::sequence_difference( packetSequence, currentSequence ) > 10 * 1024 )
-        {
-            printf( "error 7\n" );
             return false;
-        }
 
         // if the entry exists, but has a different sequence number, discard the fragment
 
         const int index = packetSequence % PacketBufferSize;
 
         if ( valid[index] && entries[index].sequence != packetSequence )
-        {
-            printf( "error 8\n" );
             return false;
-        }
 
         // if the entry does not exist, add an entry for this sequence # and set total fragments
 
@@ -266,10 +234,7 @@ struct PacketBuffer
         // if the total number fragments is different for this packet vs. the entry, discard the fragment
 
         if ( numFragments != entries[index].numFragments )
-        {
-            printf( "error 9\n" );
             return false;
-        }
 
         // if this fragment has already been received, ignore it because it must have come from a duplicate packet
 
@@ -278,14 +243,11 @@ struct PacketBuffer
         assert( numFragments <= MaxFragmentsPerPacket );
 
         if ( entries[index].fragmentSize[fragmentId] )
-        {
-            printf( "error 10\n" );
             return false;
-        }
 
         // add the fragment to the packet buffer
 
-        printf( "added fragment %d/%d of packet %d to buffer\n", fragmentId, numFragments, packetSequence );
+        printf( "added fragment %d of packet %d to buffer\n", fragmentId, packetSequence );
 
         assert( fragmentSize > 0 );
         assert( fragmentSize <= MaxFragmentSize );
@@ -310,7 +272,7 @@ struct PacketBuffer
         
         if ( !fragmentPacket.SerializeRead( stream ) )
         {
-            printf( "fragment packet failed to serialize\n" );
+            printf( "error: fragment packet failed to serialize\n" );
             return false;
         }
 
@@ -322,20 +284,16 @@ struct PacketBuffer
 
         if ( crc32 != fragmentPacket.crc32 )
         {
-            printf( "crc32 mismatch: expected %x, got %x\n", crc32, fragmentPacket.crc32 );
+            printf( "error: crc32 mismatch. expected %x, got %x\n", crc32, fragmentPacket.crc32 );
             return false;
         }
 
         if ( fragmentPacket.packetType == 0 )
         {
-            printf( "process fragment %d/%d of packet %d\n", fragmentPacket.fragmentId, fragmentPacket.numFragments, fragmentPacket.sequence );
-
             return ProcessFragment( data + PacketFragmentHeaderBytes, fragmentPacket.fragmentSize, fragmentPacket.sequence, fragmentPacket.fragmentId, fragmentPacket.numFragments );
         }
         else
         {
-            printf( "process regular packet %d\n", fragmentPacket.sequence );
-
             return ProcessFragment( data, size, fragmentPacket.sequence, 0, 1 );
         }
 
@@ -359,12 +317,9 @@ struct PacketBuffer
                 // have all fragments arrived for this packet?
 
                 if ( entries[index].receivedFragments != entries[index].numFragments )
-                {
-                    printf( "not all packets have arrived for %d [%d/%d]\n", sequence, entries[index].receivedFragments, entries[index].numFragments );
                     continue;
-                }
 
-                printf( "received all fragments for packet %d [%d/%d]\n", sequence, entries[index].receivedFragments, entries[index].numFragments );
+                printf( "received all fragments for packet %d [%d]\n", sequence, entries[index].numFragments );
 
                 // what's the total size of this packet?
 
@@ -385,6 +340,8 @@ struct PacketBuffer
                 packet.data = new uint8_t[packetSize];
 
                 // reconstruct the packet from the fragments
+
+                printf( "reassembling packet %d from fragments (%d bytes)\n", sequence, packetSize );
 
                 uint8_t *dst = packet.data;
                 for ( int j = 0; j < entries[index].numFragments; ++j )
@@ -426,6 +383,8 @@ bool SplitPacketIntoFragments( uint16_t sequence, const uint8_t *packetData, int
 
     const uint8_t *src = packetData;
 
+    printf( "splitting packet into %d fragments\n", numFragments );
+
     for ( int i = 0; i < numFragments; ++i )
     {
         const int fragmentSize = ( i == numFragments - 1 ) ? ( packetData + packetSize - src ) : MaxFragmentSize;
@@ -464,7 +423,7 @@ bool SplitPacketIntoFragments( uint16_t sequence, const uint8_t *packetData, int
 
         *((uint32_t*)fragmentPackets[i].data) = protocol2::host_to_network( crc32 );
 
-        printf( "wrote fragment packet: %d bytes\n", stream.GetBytesProcessed() );
+        printf( "fragment packet %d: %d bytes\n", i, stream.GetBytesProcessed() );
 
         fragmentPackets[i].size = stream.GetBytesProcessed();
 
@@ -529,7 +488,7 @@ struct TestPacketA : public protocol2::Packet
     }
 };
 
-static const int MaxItems = 4096;
+static const int MaxItems = 4096 * 4;
 
 struct TestPacketB : public protocol2::Packet
 {
@@ -643,6 +602,16 @@ struct TestPacketHeader : public protocol2::Object
         serialize_bits( stream, sequence, 16 );
         return true;
     }
+
+    bool operator == ( const TestPacketHeader & other )
+    {
+        return sequence == other.sequence;
+    }
+
+    bool operator != ( const TestPacketHeader & other )
+    {
+        return !(*this == other );
+    }
 };
 
 struct TestPacketFactory : public protocol2::PacketFactory
@@ -661,10 +630,13 @@ struct TestPacketFactory : public protocol2::PacketFactory
     }
 };
 
-bool CheckPacketsAreIdentical( protocol2::Packet *p1, protocol2::Packet *p2 )
+bool CheckPacketsAreIdentical( protocol2::Packet *p1, protocol2::Packet *p2, TestPacketHeader & h1, TestPacketHeader & h2 )
 {
     assert( p1 );
     assert( p2 );
+
+    if ( h1 != h2 )
+        return false;
 
     if ( p1->GetType() != p2->GetType() )
         return false;
@@ -705,6 +677,10 @@ int main()
 
         const int bytesWritten = protocol2::write_packet( writePacket, packetFactory, buffer, MaxPacketSize, ProtocolId, &writePacketHeader );
 
+        printf( "===================================================\n" );
+
+        printf( "writing packet %d\n", sequence );
+
         if ( bytesWritten > 0 )
         {
             printf( "wrote packet type %d (%d bytes)\n", writePacket->GetType(), bytesWritten );
@@ -722,14 +698,8 @@ int main()
             PacketData fragmentPackets[MaxFragmentsPerPacket];
             SplitPacketIntoFragments( sequence, buffer, bytesWritten, numFragments, fragmentPackets );
 
-            printf( "split packet %d into %d fragments\n", sequence, numFragments );
-
             for ( int i = 0; i < numFragments; ++i )
-            {
-                printf( "process fragment packet: %d bytes\n", fragmentPackets[i].size );
-
                 packetBuffer.ProcessPacket( fragmentPackets[i].data, fragmentPackets[i].size );
-            }
         }
         else
         {
@@ -752,10 +722,14 @@ int main()
             {
                 printf( "read packet type %d (%d bytes)\n", readPacket->GetType(), bytesWritten );
 
-                if ( !CheckPacketsAreIdentical( readPacket, writePacket ) )
+                if ( !CheckPacketsAreIdentical( readPacket, writePacket, readPacketHeader, writePacketHeader ) )
                 {
-                    printf( "read packet is not the same as written packet. something wrong with serialize function?\n" );
+                    printf( "failure: read packet is not the same as written packet. something wrong with serialize function?\n" );
                     error = true;
+                }
+                else
+                {
+                    printf( "success: read packet %d matches written packet %d\n", readPacketHeader.sequence, writePacketHeader.sequence );
                 }
             }
             else
@@ -769,6 +743,8 @@ int main()
 
             if ( error )
                 break;
+    
+            printf( "===================================================\n" );
         }
 
         packetFactory.DestroyPacket( writePacket );
@@ -777,6 +753,8 @@ int main()
             return 1;
 
         sequence++;
+
+        printf( "\n" );
     }
 
     return 0;
