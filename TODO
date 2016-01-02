@@ -1,12 +1,16 @@
 DONE
 
-    Sketched out required packets for chunk slice sender/receiver
-
 TODO
     
-    Sketch out sender struct
+    Implement send slice packet
 
-    Sketch out receiver struct
+    Implement process slice packet
+
+    Implement send ack packet (going to need a time for last ack sent, eg. once every 1/10th of a second)
+
+    Implement process ack packet
+
+    ================    
 
     Setup packet send and receive loop
 
