@@ -1,6 +1,30 @@
 
-Saturday Janary 2nd, 2016
-=========================
+Sunday January 3rd, 2016
+========================
+
+    Implement send chunk method
+
+    Implement send slice packet
+
+    Implement process slice packet
+
+    Implemented read packet and added concept of "ready to read" which blocks receiving slices of next chunk until caller reads the received chunk.
+
+    Sketch out send ack packet (going to need a time for last ack sent, eg. once every 1/10th of a second)
+
+    Implement process ack packet
+
+    Cache the number of slices in the previous chunk on chunk receive.
+
+    If a slice comes in from previous chunk, and the num slices for that chunk are not zero, force an ack for that chunk.
+
+    Implement code that sends the forced ack for previous chunk.
+
+    Implement code that sends ack for current received chunk.
+
+    
+Saturday January 2nd, 2016
+==========================
 
     Sketched out required packets for chunk slice sender/receiver
 

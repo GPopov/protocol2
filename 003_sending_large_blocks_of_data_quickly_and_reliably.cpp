@@ -68,14 +68,12 @@ struct SlicePacket : public protocol2::Packet
 struct AckPacket : public protocol2::Packet
 {
     uint16_t chunkId;
-    int sliceId;
     int numSlices;
     bool acked[MaxSlicesPerChunk];
 
     AckPacket() : Packet( ACK_PACKET )
     {
         chunkId = 0;
-        sliceId = 0;
         numSlices = 0;
         memset( acked, 0, sizeof( acked ) );
     }
@@ -83,7 +81,6 @@ struct AckPacket : public protocol2::Packet
     PROTOCOL2_SERIALIZE_FUNCTION( stream )
     {
         serialize_bits( stream, chunkId, 16 );
-        serialize_int( stream, sliceId, 0, MaxSlicesPerChunk - 1 );
         serialize_int( stream, numSlices, 1, MaxSlicesPerChunk );
         for ( int i = 0; i < numSlices; ++i )
             serialize_bool( stream, acked[i] );
@@ -223,6 +220,7 @@ class ChunkReceiver
     bool receiving;                                             // true if we are currently receiving a chunk.
     bool readyToRead;                                           // true if a chunk has been received and is ready for the caller to read.
     bool forceAckPreviousChunk;                                 // if this flag is set then we need to send a complete ack for the previous chunk id (sender has not yet received an ack with all slices received)
+    int previousChunkNumSlices;                                 // number of slices in the previous chunk received. used for force ack of previous chunk.
     uint16_t chunkId;                                           // id of the chunk that is currently being received, or
     int chunkSize;                                              // the size of the chunk that has been received. only known once the last slice has been received!
     int numSlices;                                              // the number of slices in the current chunk being sent
@@ -246,10 +244,9 @@ public:
         if ( readyToRead )
             return false;
 
-        if ( !receiving && packet->chunkId == chunkId - 1 )
+        if ( !receiving && packet->chunkId == chunkId - 1 && previousChunkNumSlices != 0 )
         {
-            // this happens because the sender has not yet seen an ack for all slices (packet loss) even though the sender has received them all.
-            // if we don't force an ack, the sender will be stuck with unacked slices from the previous chunk and won't ever complete the send.
+            // otherwise the sender gets stuck if the last ack packet is dropped due to packet loss
             forceAckPreviousChunk = true;
         }
 
@@ -298,6 +295,7 @@ public:
             {
                 receiving = false;
                 readyToRead = true;
+                previousChunkNumSlices = numSlices;
                 chunkId++;
             }
         }
@@ -310,22 +308,33 @@ public:
         if ( timeLastAckSent + MinimumTimeBetweenAcks < t )
             return NULL;
 
-        if ( forceAckPreviousChunk )
+        if ( forceAckPreviousChunk && previousChunkNumSlices != 0 )
         {
-            // todo: send a complete ack for the previous chunk
-
-            // todo: in order to do this, we need to know the number of slices in the previous chunk!
-
-            // ...
-
             timeLastAckSent = t;
+            forceAckPreviousChunk = false;
+
+            AckPacket *packet = (AckPacket*) packetFactory.CreatePacket( ACK_PACKET );
+            packet->chunkId = chunkId - 1;
+            packet->numSlices = previousChunkNumSlices;
+            assert( previousChunkNumSlices > 0 );
+            assert( previousChunkNumSlices <= MaxSlicesPerChunk );
+            for ( int i = 0; i < previousChunkNumSlices; ++i )
+                packet->acked[i] = true;
+
+            return packet;
         }
 
         if ( receiving )
         {
-            // todo: send an ack for the chunk currently being received
-
             timeLastAckSent = t;
+
+            AckPacket *packet = (AckPacket*) packetFactory.CreatePacket( ACK_PACKET );
+            packet->chunkId = chunkId;
+            packet->numSlices = numSlices;
+            for ( int i = 0; i < numSlices; ++i )
+                packet->acked[i] = received[i];
+
+            return packet;
         }
 
         return NULL;
