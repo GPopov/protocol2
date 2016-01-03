@@ -22,6 +22,24 @@ Sunday January 3rd, 2016
 
     Implement code that sends ack for current received chunk.
 
+    Setup packet send and receive loop
+
+    Randomize the length of chunks and the data inside each chunk
+
+    Make sure the send slices and acks work
+
+    Add soak mode (-1) that loops forever.
+
+    Track down random assert that is breaking the soak.
+
+    Soak seems to break once chunk id hits 65535. Strange. Why?    
+
+    Some random uint16_t -> int promotion weirdness on wrap.
+
+    Add code to verify chunk size and chunk data contents recieved matches what was sent.
+
+    Fixed a bunch of bugs in calculating the size of the last slice
+
     
 Saturday January 2nd, 2016
 ==========================

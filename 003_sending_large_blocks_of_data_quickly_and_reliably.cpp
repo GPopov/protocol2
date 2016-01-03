@@ -14,12 +14,20 @@
 #include <time.h>
 
 const int MaxPacketSize = 1200;
-const int ChunkSliceSize = 1024;
-const int MaxSlicesPerChunk = 256;
-const int MaxChunkSize = ChunkSliceSize * MaxSlicesPerChunk;
+const int SliceSize = 1024;
+const int MaxSlicesPerChunk = 32;
+const int MaxChunkSize = SliceSize * MaxSlicesPerChunk;
 
 const float SliceMinimumResendTime = 0.1f;
 const float MinimumTimeBetweenAcks = 0.1f;
+
+//#define SOAK_TEST 1                // uncomment this to loop forever and soak. it's the only way to be really sure it's working
+
+#if SOAK_TEST
+const int NumChunksToSend = -1;
+#else // #if SOAK_TEST
+const int NumChunksToSend = 32;
+#endif // #if SOAK_TEST
 
 const uint32_t ProtocolId = 0x11223344;
 
@@ -36,7 +44,7 @@ struct SlicePacket : public protocol2::Packet
     int sliceId;
     int numSlices;
     int sliceBytes;
-    uint8_t data[ChunkSliceSize];
+    uint8_t data[SliceSize];
 
     SlicePacket() : Packet( SLICE_PACKET )
     {
@@ -54,11 +62,11 @@ struct SlicePacket : public protocol2::Packet
         serialize_int( stream, numSlices, 1, MaxSlicesPerChunk );
         if ( sliceId == numSlices - 1 )
         {
-            serialize_int( stream, sliceBytes, 1, ChunkSliceSize );
+            serialize_int( stream, sliceBytes, 1, SliceSize );
         }
         else if ( Stream::IsReading )
         {
-            sliceBytes = ChunkSliceSize;
+            sliceBytes = SliceSize;
         }
         serialize_bytes( stream, data, sliceBytes );
         return true;
@@ -129,23 +137,30 @@ public:
         assert( data );
         assert( size > 0 );
         assert( size <= MaxChunkSize );
-        assert( SendCompleted() );
+        assert( !IsSending() );
+
         sending = true;
         chunkSize = size;
         currentSliceId = 0;
         numAckedSlices = 0;
-        numSlices = ( size + ChunkSliceSize - 1 ) / ChunkSliceSize;
+
+        numSlices = ( size + SliceSize - 1 ) / SliceSize;
+
         assert( numSlices > 0 );
-        assert( numSlices < MaxSlicesPerChunk );
+        assert( numSlices <= MaxSlicesPerChunk );
+        assert( ( numSlices - 1 ) * SliceSize < chunkSize );
+        assert( numSlices * SliceSize >= chunkSize );
+
         memset( acked, 0, sizeof( acked ) );
         memset( timeLastSent, 0, sizeof( timeLastSent ) );
         memcpy( chunkData, data, size );
-        printf( "sending chunk %d of size %d bytes in %d slices\n", chunkId, chunkSize, numSlices );
+
+        printf( "sending chunk %d in %d slices (%d bytes)\n", chunkId, numSlices, chunkSize );
     }
 
-    bool SendCompleted()
+    bool IsSending()
     {
-        return !sending;
+        return sending;
     }
 
     SlicePacket* SendSlicePacket( double t )
@@ -163,15 +178,15 @@ public:
                 continue;
             }
 
-            if ( timeLastSent[sliceId] + SliceMinimumResendTime >= t )
+            if ( timeLastSent[sliceId] + SliceMinimumResendTime < t )
             {
                 currentSliceId = ( sliceId + 1 ) % numSlices;
                 SlicePacket *packet = (SlicePacket*) packetFactory.CreatePacket( SLICE_PACKET );
                 packet->chunkId = chunkId;
                 packet->sliceId = sliceId;
                 packet->numSlices = numSlices;
-                packet->sliceBytes = ( sliceId == numSlices - 1 ) ? ( chunkSize % ChunkSliceSize ) : ChunkSliceSize;
-                memcpy( packet->data, chunkData + sliceId * ChunkSliceSize, packet->sliceBytes );
+                packet->sliceBytes = ( sliceId == numSlices - 1 ) ? ( SliceSize - ( SliceSize * numSlices - chunkSize ) ) : SliceSize;
+                memcpy( packet->data, chunkData + sliceId * SliceSize, packet->sliceBytes );
                 printf( "sent slice %d of chunk %d (%d bytes)\n", sliceId, chunkId, packet->sliceBytes );
                 return packet;
             }
@@ -185,13 +200,22 @@ public:
         assert( packet );
 
         if ( !sending )
+        {
+            printf( "can't process ack: not sending chunk" );
             return false;
+        }
 
         if ( packet->chunkId != chunkId )
+        {
+            printf( "can't process ack: chunk id mismatch" );
             return false;
+        }
 
         if ( packet->numSlices != numSlices )
+        {
+            printf( "can't process ack: num slices mismatch" );
             return false;
+        }
 
         for ( int i = 0; i < numSlices; ++i )
         {
@@ -244,7 +268,7 @@ public:
         if ( readyToRead )
             return false;
 
-        if ( !receiving && packet->chunkId == chunkId - 1 && previousChunkNumSlices != 0 )
+        if ( !receiving && packet->chunkId == uint16_t( chunkId - 1 ) && previousChunkNumSlices != 0 )
         {
             // otherwise the sender gets stuck if the last ack packet is dropped due to packet loss
             forceAckPreviousChunk = true;
@@ -283,16 +307,25 @@ public:
 
             received[packet->sliceId] = true;
 
+            assert( packet->sliceBytes > 0 );
+            assert( packet->sliceBytes <= SliceSize );
+
+            memcpy( chunkData + packet->sliceId * SliceSize, packet->data, packet->sliceBytes );
+
             numReceivedSlices++;
 
             assert( numReceivedSlices > 0 );
             assert( numReceivedSlices <= numSlices );
 
             if ( packet->sliceId == numSlices - 1 )
-                chunkSize = ( numSlices - 1 ) * packet->sliceBytes;
+            {
+                chunkSize = ( numSlices - 1 ) * SliceSize + packet->sliceBytes;
+                printf( "received chunk size is %d\n", chunkSize );
+            }
 
             if ( numReceivedSlices == numSlices )
             {
+                printf( "received all slices for chunk %d\n", chunkId );
                 receiving = false;
                 readyToRead = true;
                 previousChunkNumSlices = numSlices;
@@ -305,7 +338,7 @@ public:
 
     AckPacket* SendAckPacket( double t )
     {
-        if ( timeLastAckSent + MinimumTimeBetweenAcks < t )
+        if ( timeLastAckSent + MinimumTimeBetweenAcks > t )
             return NULL;
 
         if ( forceAckPreviousChunk && previousChunkNumSlices != 0 )
@@ -314,7 +347,7 @@ public:
             forceAckPreviousChunk = false;
 
             AckPacket *packet = (AckPacket*) packetFactory.CreatePacket( ACK_PACKET );
-            packet->chunkId = chunkId - 1;
+            packet->chunkId = uint16_t( chunkId - 1 );
             packet->numSlices = previousChunkNumSlices;
             assert( previousChunkNumSlices > 0 );
             assert( previousChunkNumSlices <= MaxSlicesPerChunk );
@@ -340,21 +373,24 @@ public:
         return NULL;
     }
 
-    const uint8_t* ReadChunk( uint16_t & chunkId, int & chunkSize )
+    const uint8_t* ReadChunk( int & chunkSize )
     {
         if ( !readyToRead )
             return NULL;
-
         readyToRead = false;
-
-        chunkId = this->chunkId - 1;        // because we already advanced it once all slices were received
         chunkSize = this->chunkSize;
-
         return chunkData;
     }
 };
 
-// todo: going to need a network simulator for this example (out of order, packet loss, latency...)
+inline int random_int( int min, int max )
+{
+    assert( max > min );
+    int result = min + rand() % ( max - min + 1 );
+    assert( result >= min );
+    assert( result <= max );
+    return result;
+}
 
 int main()
 {
@@ -363,7 +399,66 @@ int main()
     ChunkSender sender;
     ChunkReceiver receiver;
 
-    // ...
+    int numChunksSent = 0;
+
+    double t = 0.0;
+    double dt = 1.0 / 60.0;
+
+    int sendChunkSize = 0;
+    uint8_t sendChunkData[MaxChunkSize];
+
+    int sendingChunk = false;
+
+    printf( "\n" );
+
+    while ( numChunksSent < NumChunksToSend || NumChunksToSend < 0 )        // -1 chunks to send => iterate forever (soak test)
+    {
+        if ( !sendingChunk )
+        {
+            printf( "=======================================================\n" );
+            sendChunkSize = random_int( 1, MaxChunkSize );
+            for ( int i = 0; i < sendChunkSize; ++i )
+                sendChunkData[i] = rand() % 256;
+            sender.SendChunk( sendChunkData, sendChunkSize );
+            sendingChunk = true;
+        }
+
+        SlicePacket *slicePacket = sender.SendSlicePacket( t );
+        if ( slicePacket )
+        {
+            receiver.ProcessSlicePacket( slicePacket );
+            packetFactory.DestroyPacket( slicePacket );
+        }
+
+        AckPacket *ackPacket = receiver.SendAckPacket( t );
+        if ( ackPacket )
+        {
+            sender.ProcessAckPacket( ackPacket );
+            packetFactory.DestroyPacket( ackPacket );
+        }
+
+        int chunkSize;
+        const uint8_t *chunkData = receiver.ReadChunk( chunkSize );
+        if ( chunkData )
+        {
+            if ( chunkSize != sendChunkSize )
+            {
+                printf( "chunk size mismatch: expected %d, got %d\n", sendChunkSize, chunkSize );
+            }
+            assert( chunkSize == sendChunkSize );
+            assert( memcmp( chunkData, sendChunkData, chunkSize ) == 0 );
+            printf( "chunk size and data match what was sent\n" );
+        }
+
+        if ( sendingChunk && !sender.IsSending() )
+        {
+            printf( "=======================================================\n\n" );
+            sendingChunk = false;
+            numChunksSent++;
+        }
+
+        t += dt;
+    }
 
     return 0;
 }

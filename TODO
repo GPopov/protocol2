@@ -1,15 +1,7 @@
 DONE
 
 TODO
-    
-    Setup packet send and receive loop
-
-    Randomize the length of chunks and the data inside each chunk
-
-    Get n chunks being sent and received, making sure the received data matches the sent data (and the # of bytes matches)
-
-    Consider integrating network simulator into the protocol2.h (generally useful?)
-
+        
     ==================
 
     Integrate network simulator into example, because without handling packet loss, out of order, dup etc. this code is not guaranteed to be working
