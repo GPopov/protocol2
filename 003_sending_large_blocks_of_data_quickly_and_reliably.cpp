@@ -393,6 +393,8 @@ int main()
 {
     srand( time( NULL ) );
 
+    protocol2::NetworkSimulator simulator( packetFactory );
+
     ChunkSender sender;
     ChunkReceiver receiver;
 

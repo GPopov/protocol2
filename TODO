@@ -8,22 +8,18 @@ DONE
 
     Added interface for packet loss, duplicates, jitter and latency.
 
-TODO
+    Sketched out the new network simulator interface.
 
     Implement a really basic network simulator that works without any packet loss, delay, dupes, etc.
-            
-    ==================
 
-    Integrate network simulator into example, because without handling packet loss, out of order, dup etc. this code is not guaranteed to be working
+    Cut duplicate packet support.
 
-    Perhaps network simulator belongs in protocol2.h
+TODO
 
-    I would say yes. Lots of different examples are going to need this functionality.
+    Hook up the simulator with the 003 example.
 
-    ==================
-
-    Implementing functionality to duplicate packets could be difficult.
-
+    Implement packet loss, latency and out of order packets (jitter)
+                
     ==================
 
     Verify the soak mode runs indefinitely with simulated out of order, packet loss, latency etc.
