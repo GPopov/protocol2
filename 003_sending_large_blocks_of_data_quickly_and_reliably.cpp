@@ -314,6 +314,8 @@ public:
         {
             // todo: send a complete ack for the previous chunk
 
+            // todo: in order to do this, we need to know the number of slices in the previous chunk!
+
             // ...
 
             timeLastAckSent = t;
