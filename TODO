@@ -1,8 +1,10 @@
 DONE
 
-TODO
-    
+    Implement send chunk method
+
     Implement send slice packet
+
+TODO
 
     Implement process slice packet
 

@@ -16,8 +16,9 @@
 const int MaxPacketSize = 1200;
 const int ChunkSliceSize = 1024;
 const int MaxSlicesPerChunk = 256;
+const int MaxChunkSize = ChunkSliceSize * MaxSlicesPerChunk;
 
-const int NumIterations = 32;
+const float SliceMinimumResendTime = 0.1f;
 
 const uint32_t ProtocolId = 0x11223344;
 
@@ -45,7 +46,7 @@ struct SlicePacket : public protocol2::Packet
         memset( data, 0, sizeof( data ) );
     }
 
-    PROTOCOL2_SERIALIZE_OBJECT( stream )
+    PROTOCOL2_SERIALIZE_FUNCTION( stream )
     {
         serialize_bits( stream, chunkId, 16 );
         serialize_int( stream, sliceId, 0, MaxSlicesPerChunk - 1 );
@@ -80,7 +81,7 @@ struct AckPacket : public protocol2::Packet
         memset( acked, 0, sizeof( acked ) );
     }
 
-    PROTOCOL2_SERIALIZE_OBJECT( stream )
+    PROTOCOL2_SERIALIZE_FUNCTION( stream )
     {
         serialize_bits( stream, chunkId, 16 );
         serialize_int( stream, sliceId, 0, MaxSlicesPerChunk - 1 );
@@ -113,22 +114,34 @@ class ChunkSender
     bool sending;                                               // true if we are currently sending a chunk. can only send one chunk at a time
     uint16_t chunkId;                                           // the chunk id. starts at 0 and increases as each chunk is successfully sent and acked.
     int chunkSize;                                              // the size of the chunk that is being sent in bytes
-    int sliceId;                                                // the slice of the chunk that is to be sent next. iteration is from left -> right wrapping past the last slice back to 0.
     int numSlices;                                              // the number of slices in the current chunk being sent
+    int currentSliceId;                                         // the current slice id to be considered next time we send a slice packet. iteration starts here.
     bool acked[MaxSlicesPerChunk];                              // acked flag for each slice of the chunk. chunk send completes when all slices are acked. acked slices are skipped when iterating for next slice to send.
     double timeLastSent[MaxSlicesPerChunk];                     // time the slice of the chunk was last sent. avoids redundant behavior
-    uint8_t chunkData[MaxSlicesPerChunk*ChunkSliceSize];        // chunk data in 
+    uint8_t chunkData[MaxChunkSize];                            // chunk data being sent.
+
+public:
 
     ChunkSender()
     {
         memset( this, 0, sizeof( ChunkSender ) );
     }
 
-    void SendChunk()
+    void SendChunk( const uint8_t *data, int size )
     {
+        assert( data );
+        assert( size > 0 );
+        assert( size <= MaxChunkSize );
         assert( SendCompleted() );
-
-        // ...
+        sending = true;
+        chunkSize = size;
+        currentSliceId = 0;
+        numSlices = ( size + ChunkSliceSize - 1 ) / ChunkSliceSize;
+        assert( numSlices > 0 );
+        assert( numSlices < MaxSlicesPerChunk );
+        memset( acked, 0, sizeof( acked ) );
+        memset( timeLastSent, 0, sizeof( timeLastSent ) );
+        memcpy( chunkData, data, size );
     }
 
     bool SendCompleted()
@@ -136,27 +149,56 @@ class ChunkSender
         return !sending;
     }
 
-    // todo: make sure the algorithm iterates from left -> right always in passes
-    // vs. continuously iterating across the same slices left -> right always
-
     SlicePacket* SendSlicePacket( double t )
     {
-        // todo: might not be time to send another slice yet, in which case return NULL?
+        if ( !sending ) 
+            return NULL;
 
-        // ...
+        for ( int i = 0; i < numSlices; ++i )
+        {
+            const int sliceId = ( currentSliceId + i ) % numSlices;
+
+            if ( acked[sliceId] )
+            {
+                currentSliceId = ( sliceId + 1 ) % numSlices;
+                continue;
+            }
+
+            if ( timeLastSent[sliceId] + SliceMinimumResendTime >= t )
+            {
+                currentSliceId = ( sliceId + 1 ) % numSlices;
+                SlicePacket *packet = (SlicePacket*) packetFactory.CreatePacket( SLICE_PACKET );
+                packet->chunkId = chunkId;
+                packet->sliceId = sliceId;
+                packet->numSlices = numSlices;
+                packet->sliceBytes = ( sliceId == numSlices - 1 ) ? ( chunkSize % ChunkSliceSize ) : ChunkSliceSize;
+                memcpy( packet->data, chunkData + sliceId * ChunkSliceSize, packet->sliceBytes );
+                printf( "sent slice %d of chunk %d (%d bytes)\n", sliceId, chunkId, packet->sliceBytes );
+                return packet;
+            }
+        }
 
         return NULL;
     }
 
-    void ProcessAckPacket( AckPacket *packet )
+    bool ProcessAckPacket( AckPacket *packet )
     {
-        // ...
+        assert( packet );
+
+        if ( packet->chunkId != chunkId )
+            return false;
+
+
+
+        return true;
     }
 };
 
 class ChunkReceiver
 {
     uint16_t chunkId;
+
+public:
 
     AckPacket* SendAckPacket()
     {
@@ -179,10 +221,10 @@ int main()
 {
     srand( time( NULL ) );
 
-    for ( int i = 0; i < NumIterations; ++i )
-    {
-        // ...
-    }
+    ChunkSender sender;
+    ChunkReceiver receiver;
+
+    // ...
 
     return 0;
 }

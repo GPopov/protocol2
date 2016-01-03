@@ -59,7 +59,7 @@ struct TestPacketA : public protocol2::Packet
         c = random_int( -30, +30 );
     }
 
-    PROTOCOL2_SERIALIZE_OBJECT( stream )
+    PROTOCOL2_SERIALIZE_FUNCTION( stream )
     {
         serialize_int( stream, a, -10, 10 );
         serialize_int( stream, b, -20, 20 );
@@ -92,7 +92,7 @@ struct TestPacketB : public protocol2::Packet
             items[i] = random_int( -100, +100 );
     }
 
-    PROTOCOL2_SERIALIZE_OBJECT( stream )
+    PROTOCOL2_SERIALIZE_FUNCTION( stream )
     {
         serialize_int( stream, numItems, 0, MaxItems );
         for ( int i = 0; i < numItems; ++i )
@@ -143,7 +143,7 @@ struct TestPacketC : public protocol2::Packet
         }
     }
 
-    PROTOCOL2_SERIALIZE_OBJECT( stream )
+    PROTOCOL2_SERIALIZE_FUNCTION( stream )
     {
         serialize_float( stream, position.x );
         serialize_float( stream, position.y );

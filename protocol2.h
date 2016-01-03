@@ -1076,7 +1076,7 @@ namespace protocol2
         virtual bool SerializeMeasure( class MeasureStream & stream ) = 0;
     };
 
-    #define PROTOCOL2_SERIALIZE_OBJECT( stream )                                                              \
+    #define PROTOCOL2_SERIALIZE_FUNCTION( stream )                                                            \
         bool SerializeRead( class protocol2::ReadStream & stream ) { return Serialize( stream ); };           \
         bool SerializeWrite( class protocol2::WriteStream & stream ) { return Serialize( stream ); };         \
         bool SerializeMeasure( class protocol2::MeasureStream & stream ) { return Serialize( stream ); };     \

@@ -141,7 +141,7 @@ struct TestObject : public protocol2::Object
         data.uint64_value = 0x1234567898765432L;
     }
 
-    PROTOCOL2_SERIALIZE_OBJECT( stream )
+    PROTOCOL2_SERIALIZE_FUNCTION( stream )
     {
         const TestContext & context = *(const TestContext*) stream.GetContext();
 
@@ -236,7 +236,7 @@ struct TestPacketA : public protocol2::Packet
         c = 3;        
     }
 
-    PROTOCOL2_SERIALIZE_OBJECT( stream )
+    PROTOCOL2_SERIALIZE_FUNCTION( stream )
     {
         serialize_int( stream, a, -10, 10 );
         serialize_int( stream, b, -20, 20 );
@@ -255,7 +255,7 @@ struct TestPacketB : public protocol2::Packet
         y = 1;
     }
 
-    PROTOCOL2_SERIALIZE_OBJECT( stream )
+    PROTOCOL2_SERIALIZE_FUNCTION( stream )
     {
         serialize_int( stream, x, -5, +5 );
         serialize_int( stream, y, -5, +5 );
@@ -273,7 +273,7 @@ struct TestPacketC : public protocol2::Packet
             data[i] = i;
     }
 
-    PROTOCOL2_SERIALIZE_OBJECT( stream )
+    PROTOCOL2_SERIALIZE_FUNCTION( stream )
     {
         for ( int i = 0; i < sizeof( data ); ++i )
             serialize_int( stream, data[i], 0, 255 );
