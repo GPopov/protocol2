@@ -1,8 +1,5 @@
 /*
     Example source code for "Sending Large Blocks of Data Quickly and Reliably"
-
-    http://gafferongames.com/building-a-game-network-protocol/sending-large-blocks-of-data-quickly-and-reliably
-
     This software is in the public domain. Where that dedication is not recognized, 
     you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
 */
@@ -21,7 +18,7 @@ const int MaxChunkSize = SliceSize * MaxSlicesPerChunk;
 const float SliceMinimumResendTime = 0.1f;
 const float MinimumTimeBetweenAcks = 0.1f;
 
-//#define SOAK_TEST 1                // uncomment this to loop forever and soak. it's the only way to be really sure it's working
+//#define SOAK_TEST 1                // uncomment this line to loop forever and soak. it's the only way to be really sure it's working!
 
 #if SOAK_TEST
 const int NumChunksToSend = -1;
@@ -411,7 +408,7 @@ int main()
 
     printf( "\n" );
 
-    while ( numChunksSent < NumChunksToSend || NumChunksToSend < 0 )        // -1 chunks to send => iterate forever (soak test)
+    while ( numChunksSent < NumChunksToSend || NumChunksToSend < 0 )
     {
         if ( !sendingChunk )
         {

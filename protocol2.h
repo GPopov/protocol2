@@ -1,6 +1,5 @@
 /*
     Protocol2 by Glenn Fiedler <glenn.fiedler@gmail.com>
-
     This software is in the public domain. Where that dedication is not recognized, 
     you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
 */
@@ -14,6 +13,7 @@
 #include <string.h>
 
 #define PROTOCOL2_SERIALIZE_CHECKS 1
+#define PROTOCOL2_NETWORK_SIMULATOR 1
 #define PROTOCOL2_DEBUG_PACKET_LEAKS 0
 
 #if PROTOCOL2_DEBUG_PACKET_LEAKS
@@ -1134,6 +1134,45 @@ namespace protocol2
     int write_packet( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL );
 
     Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL, int *errorCode = NULL );
+
+#if PROTOCOL2_NETWORK_SIMULATOR
+
+    class NetworkSimulator
+    {
+        float latency;                                  // latency in milliseconds
+        float jitter;                                   // jitter in milliseconds +/-
+        float packetLoss;                               // packet loss percentage
+        float duplicates;                               // duplicate packet percentage
+
+        PacketFactory *packetFactory;                   // packet factory (required to destroy dropped packets)
+
+        int numEntries;                                 // number of elements in the packet entry array.
+        int currentIndex;                               // current index in the packet entry array. new packets are inserted here.
+
+        struct Entry
+        {
+            Packet *packet;
+            double deliveryTime;
+        };
+
+        Entry *entries;                                 // pointer to dynamically allocated packet entries. this is where buffered packets are stored.
+
+    public:
+
+        NetworkSimulator( PacketFactory & packetFactory, int numPackets = 1024 );
+        ~NetworkSimulator();
+
+        void SetLatency( float milliseconds );
+        void SetJitter( float milliseconds );
+        void SetPacketLoss( float percent );
+        void SetDuplicates( float percent );
+
+        void SendPacket( Packet *packet );
+
+        Packet* ReceivePacket( double t );
+    };
+
+#endif // #if PROTOCOL2_NETWORK_SIMULATOR
 }
 
 #endif // #ifndef PROTOCOL2_H
@@ -1407,6 +1446,75 @@ namespace protocol2
     {
         return m_numTypes;
     }
+
+#if PROTOCOL2_NETWORK_SIMULATOR
+
+    NetworkSimulator::NetworkSimulator( PacketFactory & packetFactory, int numPackets )
+    {
+        assert( numPackets > 0 );
+        this->packetFactory = &packetFactory;
+        latency = 0.0f;
+        jitter = 0.0f;
+        packetLoss = 0.0f;
+        duplicates = 0.0f;
+        currentIndex = 0;
+        numEntries = numPackets;
+        entries = new Entry[numPackets];
+    }
+
+    NetworkSimulator::~NetworkSimulator()
+    {
+        assert( packetFactory );
+        assert( numEntries > 0 );
+        for ( int i = 0; i < numEntries; ++i )
+        {
+            if ( entries[i].packet )
+            {
+                packetFactory->DestroyPacket( entries[i].packet );
+            }
+        }
+        delete [] entries;
+        numEntries = 0;
+    }
+
+    void NetworkSimulator::SetLatency( float milliseconds )
+    {
+        latency = milliseconds;
+    }
+
+    void NetworkSimulator::SetJitter( float milliseconds )
+    {
+        jitter = milliseconds;
+    }
+
+    void NetworkSimulator::SetPacketLoss( float percent )
+    {
+        packetLoss = percent;
+    }
+
+    void NetworkSimulator::SetDuplicates( float percent )
+    {
+        duplicates = percent;
+    }
+
+    void NetworkSimulator::SendPacket( Packet *packet )
+    {
+        assert( packet );
+        assert( packetFactory );
+
+        // todo: add packet to sliding window
+
+        packetFactory->DestroyPacket( packet );
+    }
+
+    Packet* NetworkSimulator::ReceivePacket( double t )
+    { 
+        // ...
+
+        return NULL;
+    }
+
+#endif // #if PROTOCOL2_NETWORK_SIMULATOR
 }
 
 #endif // #ifdef PROTOCOL2_IMPLEMENTATION

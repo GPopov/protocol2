@@ -1,8 +1,5 @@
 /*
     Example source code for "Packet Fragmentation and Reassembly"
-
-    http://gafferongames.com/building-a-game-network-protocol/packet-fragmentation-and-reassembly
-
     This software is in the public domain. Where that dedication is not recognized, 
     you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
 */

@@ -1,7 +1,17 @@
 DONE
 
+    Example code must have a soak mode, eg. set num iterations to -1
+
+    Verify soak runs for a significant time with perfect network conditions.
+
+    Sketched out new interface for network simulator. Previous GDC 2015 network simulator too complicated for what I want to do.
+
+    Added interface for packet loss, duplicates, jitter and latency.
+
 TODO
-        
+
+    Implement a really basic network simulator that works without any packet loss, delay, dupes, etc.
+            
     ==================
 
     Integrate network simulator into example, because without handling packet loss, out of order, dup etc. this code is not guaranteed to be working
@@ -12,11 +22,11 @@ TODO
 
     ==================
 
-    Once example source has good logs, handles packet loss and latency, out of order, etc (soak) then it is ready to publish.
+    Implementing functionality to duplicate packets could be difficult.
 
-    Example code must have a soak mode, eg. set num iterations to -1
+    ==================
 
-    Verify the soak mode runs indefinitely
+    Verify the soak mode runs indefinitely with simulated out of order, packet loss, latency etc.
 
     Ready to upload to supporters! :D
 
