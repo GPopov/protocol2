@@ -16,12 +16,29 @@ project "001_reading_and_writing_packets"
     kind "ConsoleApp"
     files { "001_reading_and_writing_packets.cpp" }
 
+project "002_packet_fragmentation_and_reassembly"
+    language "C++"
+    kind "ConsoleApp"
+    files { "002_packet_fragmentation_and_reassembly.cpp" }
+
+project "003_sending_large_blocks_of_data_quickly_and_reliably"
+    language "C++"
+    kind "ConsoleApp"
+    files { "003_sending_large_blocks_of_data_quickly_and_reliably.cpp" }
+
 if _ACTION == "clean" then
+    os.rmdir "obj"
     if not os.is "windows" then
-        os.execute "rm -f protocol2.zip"
+        os.execute "rm -f 001_reading_and_writing_packets"
+        os.execute "rm -f 002_packet_fragmentation_and_reassembly"
+        os.execute "rm -f 003_sending_large_blocks_of_data_quickly_and_reliably"
+        os.execute "rm -f protocol2"
+        os.execute "rm -f network2"
+        os.execute "rm -f *.zip"
+        os.execute "find . -name *.DS_Store -type f -exec rm {} \\;"
     else
         os.rmdir "ipch"
-        os.execute "del /F /Q protocol2.zip"
+        os.execute "del /F /Q *.zip"
     end
 end
 
@@ -38,7 +55,7 @@ if not os.is "windows" then
         execute = function ()
             _ACTION = "clean"
             premake.action.call( "clean" )
-            os.execute "zip -9r protocol2.zip *.cpp *.h premake4.lua"
+            os.execute "zip -9r \"Building a Game Network Protocol.zip\" *.cpp *.h premake4.lua"
         end
     }
 
@@ -101,20 +118,5 @@ if not os.is "windows" then
             end
         end
     }
-
-    if _ACTION == "clean" then
-        os.rmdir "obj"
-        if not os.is "windows" then
-            os.execute "rm -f 001_reading_and_writing_packets"
-            os.execute "rm -f 002_packet_fragmentation_and_reassembly"
-            os.execute "rm -f 003_sending_large_blocks_of_data_quickly_and_reliably"
-            os.execute "rm -f protocol2"
-            os.execute "rm -f protocol2.zip"
-            os.execute "find . -name *.DS_Store -type f -exec rm {} \\;"
-        else
-            os.rmdir "ipch"
-            os.execute "del /F /Q protocol2.zip"
-        end
-    end
 
 end
