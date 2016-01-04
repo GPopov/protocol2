@@ -40,6 +40,20 @@ Sunday January 3rd, 2016
 
     Fixed a bunch of bugs in calculating the size of the last slice
 
+    Example code must have a soak mode, eg. set num iterations to -1
+
+    Verify soak runs for a significant time with perfect network conditions.
+
+    Sketched out new interface for network simulator. Previous GDC 2015 network simulator too complicated for what I want to do.
+
+    Added interface for packet loss, duplicates, jitter and latency.
+
+    Sketched out the new network simulator interface.
+
+    Implement a really basic network simulator that works without any packet loss, delay, dupes, etc.
+
+    Cut duplicate packet support.
+
     
 Saturday January 2nd, 2016
 ==========================

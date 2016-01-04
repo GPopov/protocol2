@@ -412,6 +412,8 @@ int main()
 
     while ( numChunksSent < NumChunksToSend || NumChunksToSend < 0 )
     {
+        printf( "iteration\n" );
+
         if ( !sendingChunk )
         {
             printf( "=======================================================\n" );
@@ -424,17 +426,39 @@ int main()
 
         SlicePacket *slicePacket = sender.SendSlicePacket( t );
         if ( slicePacket )
-        {
-            receiver.ProcessSlicePacket( slicePacket );
-            packetFactory.DestroyPacket( slicePacket );
-        }
+            simulator.SendPacket( slicePacket );
 
         AckPacket *ackPacket = receiver.SendAckPacket( t );
         if ( ackPacket )
+            simulator.SendPacket( ackPacket );
+
+        while ( true )
         {
-            sender.ProcessAckPacket( ackPacket );
-            packetFactory.DestroyPacket( ackPacket );
+            protocol2::Packet *packet = simulator.ReceivePacket();
+            if ( !packet )
+                continue;
+
+            switch ( packet->GetType() )
+            {
+                case SLICE_PACKET:
+                {
+                    SlicePacket *p = (SlicePacket*) packet;
+                    receiver.ProcessSlicePacket( p );
+                }
+                break;
+
+                case ACK_PACKET:
+                {
+                    AckPacket *p = (AckPacket*) packet;
+                    sender.ProcessAckPacket( p );
+                }
+                break;
+            }
+
+            packetFactory.DestroyPacket( packet );
         }
+
+        simulator.Update( t );
 
         int chunkSize;
         const uint8_t *chunkData = receiver.ReadChunk( chunkSize );

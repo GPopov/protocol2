@@ -1,25 +1,21 @@
 DONE
 
-    Example code must have a soak mode, eg. set num iterations to -1
-
-    Verify soak runs for a significant time with perfect network conditions.
-
-    Sketched out new interface for network simulator. Previous GDC 2015 network simulator too complicated for what I want to do.
-
-    Added interface for packet loss, duplicates, jitter and latency.
-
-    Sketched out the new network simulator interface.
-
-    Implement a really basic network simulator that works without any packet loss, delay, dupes, etc.
-
-    Cut duplicate packet support.
 
 TODO
 
-    Hook up the simulator with the 003 example.
+    Create network2.h
 
-    Implement packet loss, latency and out of order packets (jitter)
-                
+    Also low-level sockets, and IPv6 address from GDC 2015 source code.
+
+    Do not allow any dependencies between protocol2.h and network2.h
+
+    Add the simulator to the network library, but don't have it store the packet pointer.
+
+    It must store the actual packet data (dynamically allocated), serialization belongs in protocol2.h
+
+    This way I now have two generally useful one file libraries and protocol2.h doesn't end up with a shitty
+    simulator that has no concept of network address.
+
     ==================
 
     Verify the soak mode runs indefinitely with simulated out of order, packet loss, latency etc.

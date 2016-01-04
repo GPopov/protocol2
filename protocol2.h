@@ -16,6 +16,9 @@
 #define PROTOCOL2_NETWORK_SIMULATOR 1
 #define PROTOCOL2_DEBUG_PACKET_LEAKS 0
 
+// hack
+#include <stdio.h>
+
 #if PROTOCOL2_DEBUG_PACKET_LEAKS
 #include <stdio.h>
 #include <map>
@@ -1533,6 +1536,8 @@ namespace protocol2
 
         if ( oldestEntryIndex == -1 )
             return NULL;
+
+        printf( "oldest entry index = %d\n", oldestEntryIndex );
 
         Packet *packet = entries[oldestEntryIndex].packet;
 
