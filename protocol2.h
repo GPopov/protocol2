@@ -13,11 +13,7 @@
 #include <string.h>
 
 #define PROTOCOL2_SERIALIZE_CHECKS 1
-#define PROTOCOL2_NETWORK_SIMULATOR 1
 #define PROTOCOL2_DEBUG_PACKET_LEAKS 0
-
-// hack
-#include <stdio.h>
 
 #if PROTOCOL2_DEBUG_PACKET_LEAKS
 #include <stdio.h>
@@ -1137,47 +1133,6 @@ namespace protocol2
     int write_packet( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL );
 
     Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL, int *errorCode = NULL );
-
-#if PROTOCOL2_NETWORK_SIMULATOR
-
-    class NetworkSimulator
-    {
-        float latency;                                  // latency in milliseconds
-        float jitter;                                   // jitter in milliseconds +/-
-        float packetLoss;                               // packet loss percentage
-
-        PacketFactory *packetFactory;                   // packet factory (required to destroy dropped packets)
-
-        int numEntries;                                 // number of elements in the packet entry array.
-        int currentIndex;                               // current index in the packet entry array. new packets are inserted here.
-
-        struct Entry
-        {
-            Packet *packet;
-            double deliveryTime;
-        };
-
-        Entry *entries;                                 // pointer to dynamically allocated packet entries. this is where buffered packets are stored.
-
-        double currentTime;                             // current time from last call to update. initially 0.0
-
-    public:
-
-        NetworkSimulator( PacketFactory & packetFactory, int numPackets = 1024 );
-        ~NetworkSimulator();
-
-        void SetLatency( float milliseconds );
-        void SetJitter( float milliseconds );
-        void SetPacketLoss( float percent );
-        
-        void SendPacket( Packet *packet );
-
-        Packet* ReceivePacket();
-
-        void Update( double t );
-    };
-
-#endif // #if PROTOCOL2_NETWORK_SIMULATOR
 }
 
 #endif // #ifndef PROTOCOL2_H
@@ -1451,107 +1406,6 @@ namespace protocol2
     {
         return m_numTypes;
     }
-
-#if PROTOCOL2_NETWORK_SIMULATOR
-
-    NetworkSimulator::NetworkSimulator( PacketFactory & packetFactory, int numPackets )
-    {
-        assert( numPackets > 0 );
-        this->packetFactory = &packetFactory;
-        currentTime = 0.0;
-        latency = 0.0f;
-        jitter = 0.0f;
-        packetLoss = 0.0f;
-        currentIndex = 0;
-        numEntries = numPackets;
-        entries = new Entry[numPackets];
-        memset( entries, 0, sizeof( Entry ) * numPackets );
-    }
-
-    NetworkSimulator::~NetworkSimulator()
-    {
-        assert( packetFactory );
-        assert( numEntries > 0 );
-        for ( int i = 0; i < numEntries; ++i )
-        {
-            if ( entries[i].packet )
-            {
-                packetFactory->DestroyPacket( entries[i].packet );
-            }
-        }
-        delete [] entries;
-        numEntries = 0;
-    }
-
-    void NetworkSimulator::SetLatency( float milliseconds )
-    {
-        latency = milliseconds;
-    }
-
-    void NetworkSimulator::SetJitter( float milliseconds )
-    {
-        jitter = milliseconds;
-    }
-
-    void NetworkSimulator::SetPacketLoss( float percent )
-    {
-        packetLoss = percent;
-    }
-
-    void NetworkSimulator::SendPacket( Packet *packet )
-    {
-        assert( packet );
-        assert( packetFactory );
-
-        if ( entries[currentIndex].packet )
-        {
-            packetFactory->DestroyPacket( entries[currentIndex].packet );
-            memset( &entries[currentIndex], 0, sizeof( Entry ) );
-        }
-
-        // todo: packet loss
-
-        double delay = latency;
-
-        entries[currentIndex].packet = packet;
-        entries[currentIndex].deliveryTime = currentTime + delay;
-
-        currentIndex = ( currentIndex + 1 ) % numEntries;
-    }
-
-    Packet* NetworkSimulator::ReceivePacket()
-    { 
-        int oldestEntryIndex = -1;
-        double oldestEntryTime = 0;
-        for ( int i = 0; i < numEntries; ++i )
-        {
-            if ( !entries[i].packet )
-                continue;
-            if ( oldestEntryIndex == -1 || entries[i].deliveryTime < oldestEntryTime )
-            {
-                oldestEntryIndex = i;
-                oldestEntryTime = entries[i].deliveryTime;
-            }
-        }
-
-        if ( oldestEntryIndex == -1 )
-            return NULL;
-
-        printf( "oldest entry index = %d\n", oldestEntryIndex );
-
-        Packet *packet = entries[oldestEntryIndex].packet;
-
-        memset( &entries[oldestEntryIndex], 0, sizeof( Entry ) );
-
-        return packet;
-    }
-
-    void NetworkSimulator::Update( double t )
-    {
-        currentTime = t;
-    }
-
-#endif // #if PROTOCOL2_NETWORK_SIMULATOR
 }
 
 #endif // #ifdef PROTOCOL2_IMPLEMENTATION

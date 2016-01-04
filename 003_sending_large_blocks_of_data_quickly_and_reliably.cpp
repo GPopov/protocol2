@@ -4,8 +4,10 @@
     you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
 */
 
+#define NETWORK2_IMPLEMENTATION
 #define PROTOCOL2_IMPLEMENTATION
 
+#include "network2.h"
 #include "protocol2.h"
 #include <stdio.h>
 #include <time.h>
@@ -380,6 +382,10 @@ public:
     }
 };
 
+static network2::Simulator simulator;
+
+// todo: functions for sending and receiving packets over the simulator (including serialization)
+
 inline int random_int( int min, int max )
 {
     assert( max > min );
@@ -393,27 +399,22 @@ int main()
 {
     srand( time( NULL ) );
 
-    protocol2::NetworkSimulator simulator( packetFactory );
+    printf( "\n" );
 
     ChunkSender sender;
     ChunkReceiver receiver;
 
     int numChunksSent = 0;
+    bool sendingChunk = false;
+    int sendChunkSize = 0;
+    uint8_t sendChunkData[MaxChunkSize];
 
     double t = 0.0;
     double dt = 1.0 / 60.0;
 
-    int sendChunkSize = 0;
-    uint8_t sendChunkData[MaxChunkSize];
-
-    int sendingChunk = false;
-
-    printf( "\n" );
-
-    while ( numChunksSent < NumChunksToSend || NumChunksToSend < 0 )
+    //while ( numChunksSent < NumChunksToSend || NumChunksToSend < 0 )
+    for ( int iterations = 0; iterations < 100; ++iterations )
     {
-        printf( "iteration\n" );
-
         if ( !sendingChunk )
         {
             printf( "=======================================================\n" );
@@ -424,6 +425,13 @@ int main()
             sendingChunk = true;
         }
 
+        // todo: don't like function "SendSlicePacket" that's not what it does. it generates a slice packet
+
+        // todo: need a nice function to queue packets on the simulator (two places it is done)
+
+        // todo: dequeue packets from simulator, then read the packet, then process the packet (add a function to process the packet)
+
+        /*
         SlicePacket *slicePacket = sender.SendSlicePacket( t );
         if ( slicePacket )
             simulator.SendPacket( slicePacket );
@@ -479,6 +487,7 @@ int main()
             sendingChunk = false;
             numChunksSent++;
         }
+        */
 
         t += dt;
     }
