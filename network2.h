@@ -123,6 +123,13 @@ namespace network2
 
         struct Entry
         {
+            Entry()
+            {
+                deliveryTime = 0.0;
+                packetData = NULL;
+                packetSize = 0;
+            }
+
             Address from;                               // address this packet is from
             Address to;                                 // address this packet is sent to
             double deliveryTime;                        // delivery time for this packet
@@ -513,18 +520,15 @@ namespace network2
 
     Simulator::~Simulator()
     {
+        assert( m_entries );
         assert( m_numEntries > 0 );
-        // todo: delete packet data
-        /*
-        for ( int i = 0; i < numEntries; ++i )
+        for ( int i = 0; i < m_numEntries; ++i )
         {
-            if ( entries[i].packet )
-            {
-                packetFactory->DestroyPacket( entries[i].packet );
-            }
+            if ( m_entries[i].packetData )
+                delete [] m_entries[i].packetData;
         }
-        */
         delete [] m_entries;
+        m_entries = NULL;
         m_numEntries = 0;
     }
 
@@ -550,59 +554,74 @@ namespace network2
 
     void Simulator::SendPacket( const Address & from, const Address & to, uint8_t *packetData, int packetSize )
     {
-        // todo
+        assert( from.IsValid() );
+        assert( to.IsValid() );
 
-        /*
-        assert( packet );
-        assert( packetFactory );
-
-        if ( entries[currentIndex].packet )
-        {
-            packetFactory->DestroyPacket( entries[currentIndex].packet );
-            memset( &entries[currentIndex], 0, sizeof( Entry ) );
-        }
+        assert( packetData );
+        assert( packetSize > 0 );
 
         // todo: packet loss
 
-        double delay = latency;
+        Entry & entry = m_entries[m_currentIndex];
 
-        entries[currentIndex].packet = packet;
-        entries[currentIndex].deliveryTime = currentTime + delay;
+        if ( entry.packetData )
+        {
+            delete [] entry.packetData;
+            entry = Entry();
+        }
 
-        currentIndex = ( currentIndex + 1 ) % numEntries;
-        */
+        double delay = m_latency;
+
+        // todo: jitter
+
+        // todo: duplicate
+
+        entry.from = from;
+        entry.to = to;
+        entry.packetData = packetData;
+        entry.packetSize = packetSize;
+        entry.deliveryTime = m_currentTime + delay;
+
+        m_currentIndex = ( m_currentIndex + 1 ) % m_numEntries;
     }
 
     uint8_t* Simulator::ReceivePacket( Address & from, Address & to, int & packetSize )
     { 
-        packetSize = 0;
-        return NULL;
-
-        /*
         int oldestEntryIndex = -1;
         double oldestEntryTime = 0;
-        for ( int i = 0; i < numEntries; ++i )
+
+        for ( int i = 0; i < m_numEntries; ++i )
         {
-            if ( !entries[i].packet )
+            const Entry & entry = m_entries[i];
+
+            if ( !entry.packetData )
                 continue;
-            if ( oldestEntryIndex == -1 || entries[i].deliveryTime < oldestEntryTime )
+
+            if ( oldestEntryIndex == -1 || m_entries[i].deliveryTime < oldestEntryTime )
             {
                 oldestEntryIndex = i;
-                oldestEntryTime = entries[i].deliveryTime;
+                oldestEntryTime = entry.deliveryTime;
             }
         }
 
-        if ( oldestEntryIndex == -1 )
+        Entry & entry = m_entries[oldestEntryIndex];
+
+        if ( oldestEntryIndex == -1 || entry.deliveryTime < m_currentTime )
             return NULL;
 
-        printf( "oldest entry index = %d\n", oldestEntryIndex );
+        assert( entry.packetData );
 
-        Packet *packet = entries[oldestEntryIndex].packet;
+        uint8_t *packetData = entry.packetData;
 
-        memset( &entries[oldestEntryIndex], 0, sizeof( Entry ) );
+        to = entry.to;
+        from = entry.from;
+        packetSize = entry.packetSize;
 
-        return packet;
-        */
+        delete [] entry.packetData;
+
+        entry = Entry();
+
+        return packetData;
     }
 
     void Simulator::Update( double t )

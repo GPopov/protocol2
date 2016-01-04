@@ -413,7 +413,7 @@ int main()
     double dt = 1.0 / 60.0;
 
     //while ( numChunksSent < NumChunksToSend || NumChunksToSend < 0 )
-    for ( int iterations = 0; iterations < 100; ++iterations )
+    for ( int iterations = 0; iterations < 1000; ++iterations )
     {
         if ( !sendingChunk )
         {
