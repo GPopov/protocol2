@@ -1,4 +1,20 @@
 
+Monday January 4th, 2015
+========================
+
+    Create network2.h
+
+    Roughly port across network simulator to network2.h
+
+    Port over network initialize and shutdown, as well as platform detection for socket headers etc.
+
+    Add network address header
+
+    Add network address implementation
+
+    Bring across unit tests for network address
+
+
 Sunday January 3rd, 2016
 ========================
 

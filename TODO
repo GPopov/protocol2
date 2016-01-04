@@ -1,12 +1,16 @@
 DONE
 
-    Create network2.h
+    Extend simulator to take address with packet send and receive.
 
-    Roughly port across network simulator to network2.h
+    Need both to and from addresses per-packet queued in simulator. Added.
 
 TODO
 
+    ===================
+
     Convert over the network simulator to work from raw packet data and size vs. packet structure
+
+    Update 003 example to have an address for sender and receiver (::1 with different port numbers)
 
     Implement function to send packet, eg. write it to data and then send it via simulator
 
@@ -25,14 +29,6 @@ TODO
     Implement jitter.
 
     Implement duplicates.
-
-    ==================
-
-    Add low-level sockets and IPv6 address from GDC 2015 example source code.
-
-    Extend simulator to take address with packet send and receive.
-
-    Update 003 example to have an address for sender and receiver (::1 with different port numbers)
 
     ==================
 
