@@ -1,34 +1,10 @@
 DONE
 
-    Serialize check is still failing for the ack and slice packet read/write. WTF
-
-    Was incorrectly deleting packet data pointer before returning to caller.
-
-    Implement latency.
-
-    Implement packet loss.
-
-    Make sure the 003 example runs correctly with simulator now (latency only)
-
-    Of course now that packet loss is enabled, it is broken. Obviously some logic problem in the acks.
-
 TODO
 
-    Get 003 example running under packet loss.
-
-    Soak it. Make sure it soaks forever with packet loss.
-
     ==================
 
-    Implement jitter.
-
-    Implement duplicates.
-
-    ==================
-
-    Verify the soak mode runs indefinitely with simulated out of order, packet loss, latency etc.
-
-    Ready to upload to supporters! :D
+    Need to update reading and writing packets with a good reason why big endian is used for network order,
 
     ==================
 

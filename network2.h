@@ -590,9 +590,7 @@ namespace network2
 
         double delay = m_latency / 1000.0;
 
-        // todo: jitter
-
-        // todo: duplicate
+        delay += random_float( -m_jitter, +m_jitter ) / 1000.0;
 
         entry.from = from;
         entry.to = to;
@@ -601,6 +599,23 @@ namespace network2
         entry.deliveryTime = m_currentTime + delay;
 
         m_currentIndex = ( m_currentIndex + 1 ) % m_numEntries;
+
+        if ( random_float( 0.0f, 100.0f ) <= m_duplicates )
+        {
+            uint8_t *duplicatePacketData = new uint8_t[packetSize];
+
+            memcpy( duplicatePacketData, packetData, packetSize );
+
+            Entry & entry = m_entries[m_currentIndex];
+
+            entry.from = from;
+            entry.to = to;
+            entry.packetData = duplicatePacketData;
+            entry.packetSize = packetSize;
+            entry.deliveryTime = m_currentTime + delay + random_float( -1.0, +1.0 );
+
+            m_currentIndex = ( m_currentIndex + 1 ) % m_numEntries;
+        }
     }
 
     uint8_t* Simulator::ReceivePacket( Address & from, Address & to, int & packetSize )

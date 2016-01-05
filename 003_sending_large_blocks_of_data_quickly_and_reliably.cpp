@@ -7,11 +7,9 @@
 #define NETWORK2_IMPLEMENTATION
 #define PROTOCOL2_IMPLEMENTATION
 
-// tmp
-#include <stdio.h>
-
 #include "network2.h"
 #include "protocol2.h"
+#include <stdio.h>
 #include <time.h>
 
 const int MaxPacketSize = 1200;
@@ -169,31 +167,31 @@ public:
         if ( !sending ) 
             return NULL;
 
+        SlicePacket *packet = NULL;
+
         for ( int i = 0; i < numSlices; ++i )
         {
             const int sliceId = ( currentSliceId + i ) % numSlices;
 
             if ( acked[sliceId] )
-            {
-                currentSliceId = ( sliceId + 1 ) % numSlices;
                 continue;
-            }
 
             if ( timeLastSent[sliceId] + SliceMinimumResendTime < t )
             {
-                currentSliceId = ( sliceId + 1 ) % numSlices;
-                SlicePacket *packet = (SlicePacket*) packetFactory.CreatePacket( SLICE_PACKET );
+                packet = (SlicePacket*) packetFactory.CreatePacket( SLICE_PACKET );
                 packet->chunkId = chunkId;
                 packet->sliceId = sliceId;
                 packet->numSlices = numSlices;
                 packet->sliceBytes = ( sliceId == numSlices - 1 ) ? ( SliceSize - ( SliceSize * numSlices - chunkSize ) ) : SliceSize;
                 memcpy( packet->data, chunkData + sliceId * SliceSize, packet->sliceBytes );
                 printf( "sent slice %d of chunk %d (%d bytes)\n", sliceId, chunkId, packet->sliceBytes );
-                return packet;
+                break;
             }
         }
 
-        return NULL;
+        currentSliceId = ( currentSliceId + 1 ) % numSlices;
+
+        return packet;
     }
 
     bool ProcessAckPacket( AckPacket *packet )
@@ -202,19 +200,19 @@ public:
 
         if ( !sending )
         {
-            printf( "can't process ack: not sending chunk" );
+//            printf( "can't process ack: not sending chunk\n" );
             return false;
         }
 
         if ( packet->chunkId != chunkId )
         {
-            printf( "can't process ack: chunk id mismatch" );
+//            printf( "can't process ack: chunk id mismatch\n" );
             return false;
         }
 
         if ( packet->numSlices != numSlices )
         {
-            printf( "can't process ack: num slices mismatch" );
+//            printf( "can't process ack: num slices mismatch\n" );
             return false;
         }
 
@@ -222,11 +220,11 @@ public:
         {
             if ( acked[i] == false && packet->acked[i] )
             {
-                printf( "acked slice %d of chunk %d\n", i, chunkId );
                 acked[i] = true;
                 numAckedSlices++;
                 assert( numAckedSlices >= 0 );
                 assert( numAckedSlices <= numSlices );
+                printf( "acked slice %d of chunk %d [%d/%d]\n", i, chunkId, numAckedSlices, numSlices );
                 if ( numAckedSlices == numSlices )
                 {
                     printf( "all slices of chunk %d acked, send completed\n", chunkId );
@@ -304,8 +302,6 @@ public:
 
         if ( !received[packet->sliceId] )
         {
-            printf( "received slice %d of chunk %d\n", packet->sliceId, chunkId );
-
             received[packet->sliceId] = true;
 
             assert( packet->sliceBytes > 0 );
@@ -317,6 +313,8 @@ public:
 
             assert( numReceivedSlices > 0 );
             assert( numReceivedSlices <= numSlices );
+
+            printf( "received slice %d of chunk %d [%d/%d]\n", packet->sliceId, chunkId, numReceivedSlices, numSlices );
 
             if ( packet->sliceId == numSlices - 1 )
             {

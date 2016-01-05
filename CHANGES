@@ -84,6 +84,20 @@ Tuesday January 5th, 2016
 
     Of course now that packet loss is enabled, it is broken. Obviously some logic problem in the acks.
 
+    Get 003 example running under packet loss.
+
+    Fixed by unfucking stupid incorrect advance of currentSliceId
+
+    Soak with packet loss works fine.
+
+    Implement jitter.
+
+    Implement duplicates.
+
+    Verify the soak mode runs indefinitely with simulated out of order, packet loss, latency etc.
+
+    Ready to upload to supporters! :D
+
 
 Monday January 4th, 2016
 ========================
