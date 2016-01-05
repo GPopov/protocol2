@@ -21,6 +21,57 @@ Tuesday January 5th, 2016
     and work out from packet type how it should be processed, eg. slice packet -> receiver,
     ack packet -> sender.
 
+    Seems to be some error in the simulator (eg. after 1024 entries).
+
+    It's not wrapping around properly. Seems to stop receiving packets after it wraps around?
+
+    Was a bug on the delivery time for packets on entries. Fixed.
+
+    Also, there is something weird happening on packet read, it's triggering a read error "???"
+    This means an error condition not handled. WTF is going on?!
+
+    I think it's an uninitialized value, eg. a codepath in read packet that is not clearing to zero or setting the error code,
+    but is passing it through, uninitialized value.
+
+    Yes. Fixed.
+
+    There is a bug that looks like truncated packets on read. The last serialize check is failing.
+
+    This is the first time that I've actually passed in the bytes written on read? I think?
+
+    If so this could be the source of the error. I'm not doing anything crazy.
+
+    Yes. I was able to simulate this error in the 001 case by actually copying the packet data (memcpy)
+    across and clearing the data and copying across just bytes written.
+
+    So what is the error? Why didn't it initially trigger on 001 example but does now?
+
+    I'll bet it's the byte order for the last uint32_t flushed, eg. it is storing the last byte as:
+
+    [0][0][0][x]
+
+    But only sending up to:
+
+    [0]
+
+    Fix is probably to switch around network byte order when writing to the buffer.
+
+    ^---------- DO THIS
+
+    Convert network order back to big endian.
+
+    Didn't fix it. What's going on?!
+
+    Seems to just be a byte order around the wrong way when reading 32 bits for check.
+
+    Not sure why it would be wrong in this case, but pass unit tests for all other cases (?!)
+
+    Yes. There was a bug where the protocol id was getting incorrectly bswapped, and then this
+    bswapped protocol id was being compared vs. the packet one that was correct.
+
+    This was benign when big endian was used as the network byte order, because the bswap
+    became a noop.
+
 
 Monday January 4th, 2016
 ========================

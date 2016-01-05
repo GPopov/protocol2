@@ -1,31 +1,8 @@
 DONE
 
-    Seems to be some error in the simulator (eg. after 1024 entries).
-
-    It's not wrapping around properly. Seems to stop receiving packets after it wraps around?
-
-    Was a bug on the delivery time for packets on entries. Fixed.
-
-    Also, there is something weird happening on packet read, it's triggering a read error "???"
-    This means an error condition not handled. WTF is going on?!
-
-    I think it's an uninitialized value, eg. a codepath in read packet that is not clearing to zero or setting the error code,
-    but is passing it through, uninitialized value.
-
-    Yes. Fixed.
-
-    There is a bug that looks like truncated packets on read. The last serialize check is failing.
-
-    This is the first time that I've actually passed in the bytes written on read? I think?
-
-    If so this could be the source of the error. I'm not doing anything crazy.
-
-    Yes. I was able to simulate this error in the 001 case by actually copying the packet data (memcpy)
-    across and clearing the data and copying across just bytes written.
-
 TODO
 
-    So what is the error? Why didn't it initially trigger on 001 example but does now?
+    Serialize check is still failing for the ack and slice packet read/write. WTF
 
     ==================
 
@@ -42,5 +19,11 @@ TODO
     Verify the soak mode runs indefinitely with simulated out of order, packet loss, latency etc.
 
     Ready to upload to supporters! :D
+
+    ==================
+
+    Need to go back over both 001 and 002 examples and add soak modes.
+
+    Soaking is essential to guarantee correct behavior.
 
     ==================

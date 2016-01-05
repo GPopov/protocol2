@@ -68,10 +68,16 @@ void test_bitpacker()
     check( writer.GetBitsWritten() == bitsWritten );
     check( writer.GetBitsAvailable() == BufferSize * 8 - bitsWritten );
 
-    protocol2::BitReader reader( buffer, BufferSize );
+    const int bytesWritten = writer.GetBytesWritten();
+
+    assert( bytesWritten == 10 );
+
+    memset( buffer + bytesWritten, 0, BufferSize - bytesWritten );
+
+    protocol2::BitReader reader( buffer, bytesWritten );
 
     check( reader.GetBitsRead() == 0 );
-    check( reader.GetBitsRemaining() == BufferSize * 8 );
+    check( reader.GetBitsRemaining() == bytesWritten * 8 );
 
     uint32_t a = reader.ReadBits( 1 );
     uint32_t b = reader.ReadBits( 1 );
@@ -90,7 +96,7 @@ void test_bitpacker()
     check( g == 9999999 );
 
     check( reader.GetBitsRead() == bitsWritten );
-    check( reader.GetBitsRemaining() == BufferSize * 8 - bitsWritten );
+    check( reader.GetBitsRemaining() == bytesWritten * 8 - bitsWritten );
 }
 
 const int MaxItems = 16;
@@ -200,21 +206,22 @@ void test_stream()
     context.min = -10;
     context.max = +10;
 
+    protocol2::WriteStream writeStream( buffer, BufferSize );
+
     TestObject writeObject;
     writeObject.Init();
-    {
-        protocol2::WriteStream writeStream( buffer, BufferSize );
-        writeStream.SetContext( &context );
-        writeObject.SerializeWrite( writeStream );
-        writeStream.Flush();
-    }
+    writeStream.SetContext( &context );
+    writeObject.SerializeWrite( writeStream );
+    writeStream.Flush();
+
+    const int bytesWritten = writeStream.GetBytesProcessed();
+
+    memset( buffer + bytesWritten, 0, BufferSize - bytesWritten );
 
     TestObject readObject;
-    {
-        protocol2::ReadStream readStream( buffer, BufferSize );
-        readStream.SetContext( &context );
-        readObject.SerializeRead( readStream );
-    }
+    protocol2::ReadStream readStream( buffer, bytesWritten );
+    readStream.SetContext( &context );
+    readObject.SerializeRead( readStream );
 
     check( readObject == writeObject );
 }

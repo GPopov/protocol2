@@ -144,14 +144,24 @@ namespace protocol2
 
 #endif // #ifdef __GNUC__
 
+    inline uint32_t bswap( uint32_t value )
+    {
+#ifdef __GNUC__
+        return __builtin_bswap32( value );
+#else // #ifdef __GNUC__
+        return ( value & 0x000000ff ) << 24 | ( value & 0x0000ff00 ) << 8 | ( value & 0x00ff0000 ) >> 8 | ( value & 0xff000000 ) >> 24;
+#endif // #ifdef __GNUC__
+    }
+
+    inline uint16_t bswap( uint16_t value )
+    {
+        return ( value & 0x00ff ) << 8 | ( value & 0xff00 ) >> 8;
+    }
+
     inline uint32_t host_to_network( uint32_t value )
     {
-#if PROTOCOL2_BIG_ENDIAN
-    #ifdef __GNUC__
-        return __builtin_bswap32( value );
-    #else // #ifdef __GNUC__
-        return ( value & 0x000000ff ) << 24 | ( value & 0x0000ff00 ) << 8 | ( value & 0x00ff0000 ) >> 8 | ( value & 0xff000000 ) >> 24;
-    #endif // #ifdef __GNUC__
+#if PROTOCOL2_LITTLE_ENDIAN
+        return bswap( value );
 #else // #if PROTOCOL2_BIG_ENDIAN
         return value;
 #endif // #if PROTOCOL2_BIG_ENDIAN
@@ -159,33 +169,29 @@ namespace protocol2
 
     inline uint32_t network_to_host( uint32_t value )
     {
-#if PROTOCOL2_BIG_ENDIAN
-    #ifdef __GNUC__
-        return __builtin_bswap32( value );
-    #else // #ifdef __GNUC__
-        return ( value & 0x000000ff ) << 24 | ( value & 0x0000ff00 ) << 8 | ( value & 0x00ff0000 ) >> 8 | ( value & 0xff000000 ) >> 24;
-    #endif // #ifdef __GNUC__
-#else // #if PROTOCOL2_BIG_ENDIAN
+#if PROTOCOL2_LITTLE_ENDIAN
+        return bswap( value );
+#else // #if PROTOCOL2_LITTLE_ENDIAN
         return value;
-#endif // #if PROTOCOL2_BIG_ENDIAN
+#endif // #if PROTOCOL2_LITTLE_ENDIAN
     }
 
     inline uint16_t host_to_network( uint16_t value )
     {
-#if PROTOCOL2_BIG_ENDIAN
-        return ( value & 0x00ff ) << 8 | ( value & 0xff00 ) >> 8;
-#else // #if PROTOCOL2_BIG_ENDIAN
+#if PROTOCOL2_LITTLE_ENDIAN
+        return bswap( value );
+#else // #if PROTOCOL2_LITTLE_ENDIAN
         return value;
-#endif // #if PROTOCOL2_BIG_ENDIAN
+#endif // #if PROTOCOL2_LITTLE_ENDIAN
     }
 
     inline uint16_t network_to_host( uint16_t value )
     {
-#if PROTOCOL2_BIG_ENDIAN
-        return ( value & 0x00ff ) << 8 | ( value & 0xff00 ) >> 8;
-#else // #if PROTOCOL2_BIG_ENDIAN
+#if PROTOCOL2_LITTLE_ENDIAN
+        return bswap( value );
+#else // #if PROTOCOL2_LITTLE_ENDIAN
         return value;
-#endif // #if PROTOCOL2_BIG_ENDIAN
+#endif // #if PROTOCOL2_LITTLE_ENDIAN
     }
 
     inline bool sequence_greater_than( uint16_t s1, uint16_t s2 )
@@ -368,7 +374,7 @@ namespace protocol2
     {
     public:
 
-        BitReader( const void* data, int bytes ) : m_data( (const uint32_t*)data ), m_numBytes( bytes ), m_numWords( ( bytes % 4 ) ? ( bytes / 4 + 1 ) : bytes / 4 )
+        BitReader( const void* data, int bytes ) : m_data( (const uint32_t*)data ), m_numBytes( bytes ), m_numWords( ( bytes + 3 ) / 4)
         {
             // IMPORTANT: Although we support non-multiples of four bytes passed in, the actual buffer
             // underneath the bit reader must round up to at least 4 bytes because we read one dword at a time.
@@ -1229,8 +1235,6 @@ namespace protocol2
 
         *((uint32_t*)buffer) = host_to_network( crc32 );
 
-        assert( !stream.GetError() );
-
         if ( stream.GetError() )
             return 0;
 
@@ -1253,8 +1257,8 @@ namespace protocol2
         uint32_t read_crc32 = 0;
         stream.SerializeBits( read_crc32, 32 );
 
-        protocolId = host_to_network( protocolId );
-        uint32_t crc32 = calculate_crc32( (const uint8_t*) &protocolId, 4 );
+        uint32_t network_protocolId = host_to_network( protocolId );
+        uint32_t crc32 = calculate_crc32( (const uint8_t*) &network_protocolId, 4 );
         uint32_t zero = 0;
         crc32 = calculate_crc32( (const uint8_t*) &zero, 4, crc32 );
         crc32 = calculate_crc32( buffer + 4, bufferSize - 4, crc32 );
