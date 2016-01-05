@@ -1243,6 +1243,9 @@ namespace protocol2
         assert( bufferSize > 0 );
         assert( protocolId != 0 );
 
+        if ( errorCode )
+            *errorCode = PROTOCOL2_ERROR_NONE;
+
         typedef protocol2::ReadStream Stream;
 
         Stream stream( buffer, bufferSize );

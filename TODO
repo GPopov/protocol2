@@ -1,31 +1,31 @@
 DONE
 
-    Extend simulator to take address with packet send and receive.
+    Seems to be some error in the simulator (eg. after 1024 entries).
 
-    Need both to and from addresses per-packet queued in simulator. Added.
+    It's not wrapping around properly. Seems to stop receiving packets after it wraps around?
 
-    Convert over the network simulator to work from raw packet data and size vs. packet structure
+    Was a bug on the delivery time for packets on entries. Fixed.
 
-    Fix bugs in the network simulator causing it to loop forever when receiving packets.
-    (was not clearing the entry on receive)
+    Also, there is something weird happening on packet read, it's triggering a read error "???"
+    This means an error condition not handled. WTF is going on?!
 
-    Put random_int, random_float inside network2.h header. Needed for simulator.
+    I think it's an uninitialized value, eg. a codepath in read packet that is not clearing to zero or setting the error code,
+    but is passing it through, uninitialized value.
 
-    Update 003 example to have an address for sender and receiver (::1 with different port numbers)
-
-    Implement function to send packet, eg. write it to data and then send it via simulator
-
-    Loop to read packets from simulator. If packet is received, read it and then take the packet
-    and work out from packet type how it should be processed, eg. slice packet -> receiver,
-    ack packet -> sender.
-
-TODO
+    Yes. Fixed.
 
     There is a bug that looks like truncated packets on read. The last serialize check is failing.
 
     This is the first time that I've actually passed in the bytes written on read? I think?
 
     If so this could be the source of the error. I'm not doing anything crazy.
+
+    Yes. I was able to simulate this error in the 001 case by actually copying the packet data (memcpy)
+    across and clearing the data and copying across just bytes written.
+
+TODO
+
+    So what is the error? Why didn't it initially trigger on 001 example but does now?
 
     ==================
 

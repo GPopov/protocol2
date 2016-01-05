@@ -104,7 +104,7 @@ namespace network2
 
         const uint16_t * GetAddress6() const;
 
-        void SetPort( uint64_t port );
+        void SetPort( uint16_t port );
 
         uint16_t GetPort() const;
 
@@ -442,7 +442,7 @@ namespace network2
         return m_address_ipv6;
     }
 
-    void Address::SetPort( uint64_t port )
+    void Address::SetPort( uint16_t port )
     {
         m_port = port;
     }
@@ -620,7 +620,7 @@ namespace network2
 
         Entry & entry = m_entries[oldestEntryIndex];
 
-        if ( oldestEntryIndex == -1 || entry.deliveryTime < m_currentTime )
+        if ( oldestEntryIndex == -1 || entry.deliveryTime > m_currentTime )
             return NULL;
 
         assert( entry.packetData );

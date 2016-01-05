@@ -1,5 +1,28 @@
 
-Monday January 4th, 2015
+Tuesday January 5th, 2016
+=========================
+
+    Extend simulator to take address with packet send and receive.
+
+    Need both to and from addresses per-packet queued in simulator. Added.
+
+    Convert over the network simulator to work from raw packet data and size vs. packet structure
+
+    Fix bugs in the network simulator causing it to loop forever when receiving packets.
+    (was not clearing the entry on receive)
+
+    Put random_int, random_float inside network2.h header. Needed for simulator.
+
+    Update 003 example to have an address for sender and receiver (::1 with different port numbers)
+
+    Implement function to send packet, eg. write it to data and then send it via simulator
+
+    Loop to read packets from simulator. If packet is received, read it and then take the packet
+    and work out from packet type how it should be processed, eg. slice packet -> receiver,
+    ack packet -> sender.
+
+
+Monday January 4th, 2016
 ========================
 
     Create network2.h

@@ -411,7 +411,7 @@ protocol2::Packet* ReceivePacket( network2::Address & from, network2::Address & 
     if ( !packetData )
         return NULL;
 
-    int error;
+    int error = 0;
     protocol2::Packet *packet = protocol2::ReadPacket( packetFactory, packetData, packetSize, ProtocolId, NULL, &error );
     if ( error != PROTOCOL2_ERROR_NONE )
         printf( "read packet error: %s\n", protocol2::GetErrorString( error ) );

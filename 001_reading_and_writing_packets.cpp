@@ -229,11 +229,12 @@ int main()
         assert( writePacket );
         assert( writePacket->GetType() == packetType );
 
-        uint8_t buffer[MaxPacketSize];
+        uint8_t readBuffer[MaxPacketSize];
+        uint8_t writeBuffer[MaxPacketSize];
 
         bool error = false;
 
-        const int bytesWritten = protocol2::WritePacket( writePacket, packetFactory, buffer, MaxPacketSize, ProtocolId );
+        const int bytesWritten = protocol2::WritePacket( writePacket, packetFactory, writeBuffer, MaxPacketSize, ProtocolId );
 
         if ( bytesWritten > 0 )
         {
@@ -246,9 +247,12 @@ int main()
             error = true;
         }
 
+        memset( readBuffer, 0, sizeof( readBuffer ) );
+        memcpy( readBuffer, writeBuffer, bytesWritten );
+
         int readError;
 
-        protocol2::Packet *readPacket = protocol2::ReadPacket( packetFactory, buffer, bytesWritten, ProtocolId, NULL, &readError );
+        protocol2::Packet *readPacket = protocol2::ReadPacket( packetFactory, readBuffer, bytesWritten, ProtocolId, NULL, &readError );
         
         if ( readPacket )
         {
