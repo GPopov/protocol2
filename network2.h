@@ -46,6 +46,22 @@ namespace network2
         ADDRESS_IPV6
     };
 
+    inline int random_int( int min, int max )
+    {
+        assert( max > min );
+        int result = min + rand() % ( max - min + 1 );
+        assert( result >= min );
+        assert( result <= max );
+        return result;
+    }
+
+    inline float random_float( float min, float max )
+    {
+        const int res = 10000000;
+        double scale = ( rand() % res ) / double( res - 1 );
+        return (float) ( min + (double) ( max - min ) * scale );
+    }
+
     class Address
     {
         AddressType m_type;
@@ -106,8 +122,6 @@ namespace network2
 
         void Parse( const char * address );
     };
-
-    // todo: socket class
 
 #if NETWORK2_SIMULATOR
 

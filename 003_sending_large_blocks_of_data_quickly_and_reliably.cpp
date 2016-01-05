@@ -162,7 +162,7 @@ public:
         return sending;
     }
 
-    SlicePacket* SendSlicePacket( double t )
+    SlicePacket* GenerateSlicePacket( double t )
     {
         if ( !sending ) 
             return NULL;
@@ -335,7 +335,7 @@ public:
         return true;
     }
 
-    AckPacket* SendAckPacket( double t )
+    AckPacket* GenerateAckPacket( double t )
     {
         if ( timeLastAckSent + MinimumTimeBetweenAcks > t )
             return NULL;
@@ -384,15 +384,39 @@ public:
 
 static network2::Simulator simulator;
 
-// todo: functions for sending and receiving packets over the simulator (including serialization)
-
-inline int random_int( int min, int max )
+void SendPacket( const network2::Address & from, const network2::Address & to, protocol2::Packet *packet )
 {
-    assert( max > min );
-    int result = min + rand() % ( max - min + 1 );
-    assert( result >= min );
-    assert( result <= max );
-    return result;
+    assert( packet );
+
+    uint8_t *packetData = new uint8_t[MaxPacketSize];
+
+    const int packetSize = protocol2::WritePacket( packet, packetFactory, packetData, MaxPacketSize, ProtocolId );
+
+    if ( packetSize > 0 )
+    {
+        simulator.SendPacket( from, to, packetData, packetSize );
+    }
+    else
+    {
+        delete [] packetData;
+    }
+
+    packetFactory.DestroyPacket( packet );
+}
+
+protocol2::Packet* ReceivePacket( network2::Address & from, network2::Address & to )
+{
+    int packetSize;
+    uint8_t* packetData = simulator.ReceivePacket( from, to, packetSize );
+    if ( !packetData )
+        return NULL;
+
+    int error;
+    protocol2::Packet *packet = protocol2::ReadPacket( packetFactory, packetData, packetSize, ProtocolId, NULL, &error );
+    if ( error != PROTOCOL2_ERROR_NONE )
+        printf( "read packet error: %s\n", protocol2::GetErrorString( error ) );
+
+    return packet;
 }
 
 int main()
@@ -403,6 +427,9 @@ int main()
 
     ChunkSender sender;
     ChunkReceiver receiver;
+
+    network2::Address senderAddress( "::1", 20000 );
+    network2::Address receiverAddress( "::1", 20001 );
 
     int numChunksSent = 0;
     bool sendingChunk = false;
@@ -418,47 +445,47 @@ int main()
         if ( !sendingChunk )
         {
             printf( "=======================================================\n" );
-            sendChunkSize = random_int( 1, MaxChunkSize );
+            sendChunkSize = network2::random_int( 1, MaxChunkSize );
             for ( int i = 0; i < sendChunkSize; ++i )
-                sendChunkData[i] = rand() % 256;
+                sendChunkData[i] = (uint8_t) network2::random_int( 0, 255 );
             sender.SendChunk( sendChunkData, sendChunkSize );
             sendingChunk = true;
         }
 
-        // todo: don't like function "SendSlicePacket" that's not what it does. it generates a slice packet
-
-        // todo: need a nice function to queue packets on the simulator (two places it is done)
-
-        // todo: dequeue packets from simulator, then read the packet, then process the packet (add a function to process the packet)
-
-        /*
-        SlicePacket *slicePacket = sender.SendSlicePacket( t );
+        SlicePacket *slicePacket = sender.GenerateSlicePacket( t );
         if ( slicePacket )
-            simulator.SendPacket( slicePacket );
+            SendPacket( senderAddress, receiverAddress, slicePacket );
 
-        AckPacket *ackPacket = receiver.SendAckPacket( t );
+        AckPacket *ackPacket = receiver.GenerateAckPacket( t );
         if ( ackPacket )
-            simulator.SendPacket( ackPacket );
+            SendPacket( receiverAddress, senderAddress, ackPacket );
 
         while ( true )
         {
-            protocol2::Packet *packet = simulator.ReceivePacket();
+            network2::Address from, to;
+            protocol2::Packet *packet = ReceivePacket( from, to );
             if ( !packet )
-                continue;
+                break;
 
             switch ( packet->GetType() )
             {
                 case SLICE_PACKET:
                 {
-                    SlicePacket *p = (SlicePacket*) packet;
-                    receiver.ProcessSlicePacket( p );
+                    if ( to == receiverAddress )
+                    {
+                        SlicePacket *p = (SlicePacket*) packet;
+                        receiver.ProcessSlicePacket( p );
+                    }
                 }
                 break;
 
                 case ACK_PACKET:
                 {
-                    AckPacket *p = (AckPacket*) packet;
-                    sender.ProcessAckPacket( p );
+                    if ( to == senderAddress )
+                    {
+                        AckPacket *p = (AckPacket*) packet;
+                        sender.ProcessAckPacket( p );
+                    }
                 }
                 break;
             }
@@ -487,8 +514,7 @@ int main()
             sendingChunk = false;
             numChunksSent++;
         }
-        */
-
+        
         t += dt;
     }
 

@@ -223,6 +223,8 @@ namespace protocol2
         return ( n >> 1 ) ^ ( -( n & 1 ) );
     }
 
+    uint32_t calculate_crc32( const uint8_t *buffer, size_t length, uint32_t crc32 = 0 );
+
     class BitWriter
     {
     public:
@@ -538,8 +540,6 @@ namespace protocol2
     #define PROTOCOL2_ERROR_STREAM_OVERFLOW             7
     #define PROTOCOL2_ERROR_STREAM_ABORTED              8
 
-    const char* error_string( int error );
-
     class WriteStream
     {
     public:
@@ -730,7 +730,6 @@ namespace protocol2
             SerializeAlign();
             uint32_t value = 0;
             SerializeBits( value, 32 );
-            assert( value == magic );
             return value == magic;
 #else // #if PROTOCOL2_SERIALIZE_CHECKS
             return true;
@@ -1128,11 +1127,11 @@ namespace protocol2
         virtual Packet* CreateInternal( int type ) = 0;
     };
 
-    uint32_t calculate_crc32( const uint8_t *buffer, size_t length, uint32_t crc32 = 0 );
+    int WritePacket( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL );
 
-    int write_packet( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL );
+    Packet* ReadPacket( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL, int *errorCode = NULL );
 
-    Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL, int *errorCode = NULL );
+    const char* GetErrorString( int error );
 }
 
 #endif // #ifndef PROTOCOL2_H
@@ -1185,7 +1184,7 @@ namespace protocol2
         return crc32 ^ 0xFFFFFFFF;
     }
 
-    inline int write_packet( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header )
+    inline int WritePacket( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header )
     {
         assert( packet );
         assert( buffer );
@@ -1238,7 +1237,7 @@ namespace protocol2
         return stream.GetBytesProcessed();
     }
 
-    inline Packet* read_packet( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header, int *errorCode )
+    inline Packet* ReadPacket( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header, int *errorCode )
     {
         assert( buffer );
         assert( bufferSize > 0 );
@@ -1321,22 +1320,6 @@ namespace protocol2
         return NULL;
     }
 
-    const char* error_string( int error )
-    {
-        switch ( error )
-        {
-            case PROTOCOL2_ERROR_NONE:                          return "no error";
-            case PROTOCOL2_ERROR_CRC32_MISMATCH:                return "crc32 mismatch";
-            case PROTOCOL2_ERROR_INVALID_PACKET_TYPE:           return "invalid packet type";
-            case PROTOCOL2_ERROR_CREATE_PACKET_FAILED:          return "create packet failed";
-            case PROTOCOL2_ERROR_SERIALIZE_HEADER_FAILED:       return "serialize header failed";
-            case PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED:       return "serialize packet failed";
-            case PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED:        return "serialize check failed";
-            case PROTOCOL2_ERROR_STREAM_OVERFLOW:               return "stream overflow";
-            default:
-                return "???";
-        }
-    }
 
     PacketFactory::PacketFactory( int numTypes )
     {
@@ -1405,6 +1388,25 @@ namespace protocol2
     int PacketFactory::GetNumTypes() const
     {
         return m_numTypes;
+    }
+
+    const char* GetErrorString( int error )
+    {
+        switch ( error )
+        {
+            case PROTOCOL2_ERROR_NONE:                          return "no error";
+            case PROTOCOL2_ERROR_CRC32_MISMATCH:                return "crc32 mismatch";
+            case PROTOCOL2_ERROR_INVALID_PACKET_TYPE:           return "invalid packet type";
+            case PROTOCOL2_ERROR_CREATE_PACKET_FAILED:          return "create packet failed";
+            case PROTOCOL2_ERROR_SERIALIZE_HEADER_FAILED:       return "serialize header failed";
+            case PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED:       return "serialize packet failed";
+            case PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED:        return "serialize check failed";
+            case PROTOCOL2_ERROR_STREAM_OVERFLOW:               return "stream overflow";
+            case PROTOCOL2_ERROR_STREAM_ABORTED:                return "stream aborted";
+
+            default:
+                return "???";
+        }
     }
 }
 

@@ -233,7 +233,7 @@ int main()
 
         bool error = false;
 
-        const int bytesWritten = protocol2::write_packet( writePacket, packetFactory, buffer, MaxPacketSize, ProtocolId );
+        const int bytesWritten = protocol2::WritePacket( writePacket, packetFactory, buffer, MaxPacketSize, ProtocolId );
 
         if ( bytesWritten > 0 )
         {
@@ -248,7 +248,7 @@ int main()
 
         int readError;
 
-        protocol2::Packet *readPacket = protocol2::read_packet( packetFactory, buffer, bytesWritten, ProtocolId, NULL, &readError );
+        protocol2::Packet *readPacket = protocol2::ReadPacket( packetFactory, buffer, bytesWritten, ProtocolId, NULL, &readError );
         
         if ( readPacket )
         {
@@ -263,7 +263,7 @@ int main()
         }
         else
         {
-            printf( "read packet error: %s\n", protocol2::error_string( readError ) );
+            printf( "read packet error: %s\n", protocol2::GetErrorString( readError ) );
 
             error = true;
         }

@@ -9,9 +9,7 @@ DONE
     Fix bugs in the network simulator causing it to loop forever when receiving packets.
     (was not clearing the entry on receive)
 
-TODO
-
-    ===================
+    Put random_int, random_float inside network2.h header. Needed for simulator.
 
     Update 003 example to have an address for sender and receiver (::1 with different port numbers)
 
@@ -21,9 +19,15 @@ TODO
     and work out from packet type how it should be processed, eg. slice packet -> receiver,
     ack packet -> sender.
 
-    ==================
+TODO
 
-    Put random_int, random_float inside network2.h header. Needed for simulator.
+    There is a bug that looks like truncated packets on read. The last serialize check is failing.
+
+    This is the first time that I've actually passed in the bytes written on read? I think?
+
+    If so this could be the source of the error. I'm not doing anything crazy.
+
+    ==================
 
     Implement packet loss.
 
@@ -40,4 +44,3 @@ TODO
     Ready to upload to supporters! :D
 
     ==================
-    

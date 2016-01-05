@@ -672,7 +672,7 @@ int main()
         TestPacketHeader writePacketHeader;
         writePacketHeader.sequence = sequence;
 
-        const int bytesWritten = protocol2::write_packet( writePacket, packetFactory, buffer, MaxPacketSize, ProtocolId, &writePacketHeader );
+        const int bytesWritten = protocol2::WritePacket( writePacket, packetFactory, buffer, MaxPacketSize, ProtocolId, &writePacketHeader );
 
         printf( "===================================================\n" );
 
@@ -713,7 +713,7 @@ int main()
         {
             int readError;
             TestPacketHeader readPacketHeader;
-            protocol2::Packet *readPacket = protocol2::read_packet( packetFactory, buffer, bytesWritten, ProtocolId, &readPacketHeader, &readError );
+            protocol2::Packet *readPacket = protocol2::ReadPacket( packetFactory, buffer, bytesWritten, ProtocolId, &readPacketHeader, &readError );
 
             if ( readPacket )
             {
@@ -731,7 +731,7 @@ int main()
             }
             else
             {
-                printf( "read packet error: %s\n", protocol2::error_string( readError ) );
+                printf( "read packet error: %s\n", protocol2::GetErrorString( readError ) );
 
                 error = true;
             }
