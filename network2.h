@@ -574,7 +574,11 @@ namespace network2
         assert( packetData );
         assert( packetSize > 0 );
 
-        // todo: packet loss
+        if ( random_float( 0.0f, 100.0f ) <= m_packetLoss )
+        {
+            delete [] packetData;
+            return;
+        }
 
         Entry & entry = m_entries[m_currentIndex];
 
@@ -584,7 +588,7 @@ namespace network2
             entry = Entry();
         }
 
-        double delay = m_latency;
+        double delay = m_latency / 1000.0;
 
         // todo: jitter
 
@@ -630,8 +634,6 @@ namespace network2
         to = entry.to;
         from = entry.from;
         packetSize = entry.packetSize;
-
-        delete [] entry.packetData;
 
         entry = Entry();
 

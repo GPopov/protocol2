@@ -9,22 +9,22 @@ solution "protocol2"
 project "test"
     language "C++"
     kind "ConsoleApp"
-    files { "test.cpp" }
+    files { "test.cpp", "protocol2.h", "network2.h" }
 
 project "001_reading_and_writing_packets"
     language "C++"
     kind "ConsoleApp"
-    files { "001_reading_and_writing_packets.cpp" }
+    files { "001_reading_and_writing_packets.cpp", "protocol2.h", "network2.h" }
 
 project "002_packet_fragmentation_and_reassembly"
     language "C++"
     kind "ConsoleApp"
-    files { "002_packet_fragmentation_and_reassembly.cpp" }
+    files { "002_packet_fragmentation_and_reassembly.cpp", "protocol2.h", "network2.h" }
 
 project "003_sending_large_blocks_of_data_quickly_and_reliably"
     language "C++"
     kind "ConsoleApp"
-    files { "003_sending_large_blocks_of_data_quickly_and_reliably.cpp" }
+    files { "003_sending_large_blocks_of_data_quickly_and_reliably.cpp", "protocol2.h", "network2.h" }
 
 if _ACTION == "clean" then
     os.rmdir "obj"

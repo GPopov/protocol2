@@ -7,9 +7,11 @@
 #define NETWORK2_IMPLEMENTATION
 #define PROTOCOL2_IMPLEMENTATION
 
+// tmp
+#include <stdio.h>
+
 #include "network2.h"
 #include "protocol2.h"
-#include <stdio.h>
 #include <time.h>
 
 const int MaxPacketSize = 1200;
@@ -439,8 +441,12 @@ int main()
     double t = 0.0;
     double dt = 1.0 / 60.0;
 
-    //while ( numChunksSent < NumChunksToSend || NumChunksToSend < 0 )
-    for ( int iterations = 0; iterations < 1000; ++iterations )
+    simulator.SetJitter( 100 );
+    simulator.SetLatency( 250 );
+    simulator.SetPacketLoss( 50 );
+    simulator.SetDuplicates( 20 );
+
+    while ( numChunksSent < NumChunksToSend || NumChunksToSend < 0 )
     {
         if ( !sendingChunk )
         {

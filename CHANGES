@@ -72,6 +72,18 @@ Tuesday January 5th, 2016
     This was benign when big endian was used as the network byte order, because the bswap
     became a noop.
 
+    Serialize check is still failing for the ack and slice packet read/write. WTF
+
+    Was incorrectly deleting packet data pointer before returning to caller.
+
+    Implement latency.
+
+    Implement packet loss.
+
+    Make sure the 003 example runs correctly with simulator now (latency only)
+
+    Of course now that packet loss is enabled, it is broken. Obviously some logic problem in the acks.
+
 
 Monday January 4th, 2016
 ========================
