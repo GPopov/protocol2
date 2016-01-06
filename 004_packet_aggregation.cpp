@@ -12,9 +12,11 @@
 
 const int NumIterations = 16;
 
+const int MaxPacketsPerIteration = 8;
+
 const uint32_t MaxPacketSize = 1024;
 
-const uint32_t ProtocolId = 0x12345678;
+const uint32_t ProtocolId = 0x22446688;
 
 enum TestPacketTypes
 {
@@ -44,6 +46,8 @@ inline float random_float( float min, float max )
     double scale = ( rand() % res ) / double( res - 1 );
     return (float) ( min + (double) ( max - min ) * scale );
 }
+
+// todo: packet header with uint16_t sequence
 
 struct TestPacketA : public protocol2::Packet
 {
@@ -220,14 +224,73 @@ int main()
 
     TestPacketFactory packetFactory;
 
-    // todo: same exact loop but instead of sending one packet at a time, use new functions "SendPackets", "ReceivePackets"
-
-    /*
     for ( int i = 0; i < NumIterations; ++i )
     {
-        const int packetType = rand() % TEST_PACKET_NUM_TYPES;
+        printf( "iteration %d\n", i );
 
-        protocol2::Packet *writePacket = packetFactory.CreatePacket( packetType );
+        // create an array of different packets (may be zero length)
+
+        const int numWritePackets = random_int( 0, MaxPacketsPerIteration );
+
+        protocol2::Packet *writePackets[MaxPacketsPerIteration];
+
+        for ( int j = 0; j < numWritePackets; ++j )
+        {
+            const int packetType = rand() % TEST_PACKET_NUM_TYPES;
+
+            printf( "%d: created packet type %d\n", j, packetType );
+
+            writePackets[j] = packetFactory.CreatePacket( packetType );
+
+            assert( writePackets[j] );
+        }
+
+        // combine packets together into one aggregate on-the-wire packet
+
+        uint8_t writeBuffer[MaxPacketSize];
+
+        int numPacketsActuallyWritten = 0;
+
+        const int bytesWritten = protocol2::WriteAggregatePacket( numWritePackets,
+                                                                  writePackets, 
+                                                                  packetFactory.GetNumTypes(), 
+                                                                  writeBuffer, 
+                                                                  MaxPacketSize, 
+                                                                  ProtocolId, 
+                                                                  numPacketsActuallyWritten );
+
+        bool error = false;
+
+        if ( bytesWritten > 0 )
+        {
+            printf( "wrote aggregate packet (%d bytes)\n", bytesWritten );
+        }
+        else
+        {
+            printf( "write aggregate packet failed\n" );
+            
+            error = true;
+        }
+
+        // todo: read aggregate packets
+
+        // ...
+
+        // todo: compare written packets to aggregate packets
+
+        // clean up packets for this iteration
+
+        for ( int j = 0; j < numWritePackets; ++j )
+        {
+            packetFactory.DestroyPacket( writePackets[j] );
+        }
+
+        // has there been an error? stop.
+
+        if ( error )
+            break;
+
+        /*
 
         assert( writePacket );
         assert( writePacket->GetType() == packetType );
@@ -280,8 +343,8 @@ int main()
 
         if ( error )
             return 1;
+            */
     }
-    */
 
     return 0;
 }

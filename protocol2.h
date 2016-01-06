@@ -14,6 +14,7 @@
 
 #define PROTOCOL2_SERIALIZE_CHECKS 1
 #define PROTOCOL2_DEBUG_PACKET_LEAKS 0
+#define PROTOCOL2_PACKET_AGGREGATION 1
 
 #if PROTOCOL2_DEBUG_PACKET_LEAKS
 #include <stdio.h>
@@ -1139,9 +1140,9 @@ namespace protocol2
 
 #if PROTOCOL2_PACKET_AGGREGATION
 
-    int WriteAggregatePacket( int numPackets, Packet *packets[], int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, int & numPacketsWritten, Object *headers[] = NULL );
+    int WriteAggregatePacket( int numPackets, Packet **packets, int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, int & numPacketsWritten, Object *headers = NULL );
 
-    int ReadAggregatePacket( int maxPacketsToRead, Packet **packets[], PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object **headers[] = NULL, int *errorCode = NULL );
+    int ReadAggregatePacket( int maxPacketsToRead, Packet **packets, PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *headers = NULL, int *errorCode = NULL );
 
 #endif // #if PROTOCOL2_PACKET_AGGREGATION
 
@@ -1333,19 +1334,25 @@ namespace protocol2
         return NULL;
     }
 
-    int WriteAggregatePacket( int numPackets, Packet *packets[], int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, int & numPacketsWritten, Object *headers[] )
+#if PROTOCOL2_PACKET_AGGREGATION
+
+    int WriteAggregatePacket( int numPackets, Packet **packets, int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, int & numPacketsWritten, Object *headers )
+    {
+        numPacketsWritten = 0;
+
+        // todo: implement
+
+        return 0;
+    }
+
+    int ReadAggregatePacket( int maxPacketsToRead, Packet **packets, PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *headers, int *errorCode )
     {
         // todo: implement
 
         return 0;
     }
 
-    int ReadAggregatePacket( int maxPacketsToRead, Packet **packets[], PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object **headers[], int *errorCode )
-    {
-        // todo: implement
-
-        return 0;
-    }
+#endif // #if PROTOCOL2_PACKET_AGGREGATION
 
     PacketFactory::PacketFactory( int numTypes )
     {

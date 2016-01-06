@@ -672,7 +672,7 @@ int main()
         TestPacketHeader writePacketHeader;
         writePacketHeader.sequence = sequence;
 
-        const int bytesWritten = protocol2::WritePacket( writePacket, packetFactory, buffer, MaxPacketSize, ProtocolId, &writePacketHeader );
+        const int bytesWritten = protocol2::WritePacket( writePacket, packetFactory.GetNumTypes(), buffer, MaxPacketSize, ProtocolId, &writePacketHeader );
 
         printf( "===================================================\n" );
 

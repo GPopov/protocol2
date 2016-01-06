@@ -390,7 +390,7 @@ void SendPacket( const network2::Address & from, const network2::Address & to, p
 
     uint8_t *packetData = new uint8_t[MaxPacketSize];
 
-    const int packetSize = protocol2::WritePacket( packet, packetFactory, packetData, MaxPacketSize, ProtocolId );
+    const int packetSize = protocol2::WritePacket( packet, packetFactory.GetNumTypes(), packetData, MaxPacketSize, ProtocolId );
 
     if ( packetSize > 0 )
     {
