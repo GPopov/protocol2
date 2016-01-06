@@ -1338,11 +1338,49 @@ namespace protocol2
 
     int WriteAggregatePacket( int numPackets, Packet **packets, int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, int & numPacketsWritten, Object *headers )
     {
+        assert( numPackets >= 0 );
+        assert( packets );
+        assert( numPacketTypes > 0 );
+        assert( buffer );
+        assert( bufferSize > 0 );
+        assert( protocolId != 0 );
+
         numPacketsWritten = 0;
 
-        // todo: implement
+        int aggregatePacketBytes = 0;
 
-        return 0;
+        // todo: write header for aggregate packet, eg. <prefix header>, crc32
+
+        for ( int i = 0; i < numPackets; ++i )
+        {
+            char scratch[bufferSize];
+
+            Packet *packet = packets[i];
+
+            // serialize packet type + 1
+
+            // serialize header for this packet
+
+            // serialize check protocol id
+
+            // align byte
+
+            // how large is the packet?
+
+            // does the packet fit into the aggregate packet?
+
+            // if not, break
+
+            // otherwise, copy the packet in, add bytes to 
+
+            numPacketsWritten++;
+        }
+
+        // todo: determine how many bits required for packet type + 1
+
+        // todo: write zero bits padded up to the next highest byte
+
+        return aggregatePacketBytes;
     }
 
     int ReadAggregatePacket( int maxPacketsToRead, Packet **packets, PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *headers, int *errorCode )

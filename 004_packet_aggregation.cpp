@@ -264,6 +264,8 @@ int main()
         if ( bytesWritten > 0 )
         {
             printf( "wrote aggregate packet (%d bytes)\n", bytesWritten );
+
+            assert( numPacketsActuallyWritten == numWritePackets );
         }
         else
         {
@@ -277,6 +279,15 @@ int main()
         // ...
 
         // todo: compare written packets to aggregate packets
+
+        /*
+            if ( !CheckPacketsAreIdentical( readPacket, writePacket ) )
+            {
+                printf( "read packet is not the same as written packet. something wrong with serialize function?\n" );
+
+                error = true;
+            }
+        */
 
         // clean up packets for this iteration
 

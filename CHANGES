@@ -93,6 +93,25 @@ Wednesday January 6th, 2105 (on plane back to LA)
 
     Otherwise I'm going to need a factory for packet headers, which will suck.
 
+    It is really smart to design the system so that zero packets can be written
+
+    That way the empty header acts as a keep-alive, and without thinking you can pump out
+    an aggregate packet, even if you don't have any real packets to send.
+
+    Note that this is a property of the NOP design for packet aggregation.
+
+    Every iteration generate up to n packets, including possibility of zero packets.
+
+    Store these packets in an array of ptrs and keep track of number.
+
+    Dummy stub out code to send the packets.
+
+    Delete the array of packets
+
+    Detect error on write aggregate packet and stop iterating.
+
+    Fixed weirdness with WriteAggregatePacket prototype fn. not getting picked up
+
     
 Tuesday January 5th, 2016
 =========================
