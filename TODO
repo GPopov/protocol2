@@ -1,71 +1,15 @@
 DONE
 
-    Next article should be about sending messages, or packet aggregation.
-
-    I am concerned about the patent aggregation patent.
-
-    Perhaps should be presented more like, OK we are sending messages in a packet type, "Connection" packet.
-
-    Think this through.
-
-    Decision: code it initially as packet aggregation.
-
-    Talk to Mike Zyda. If the packet aggregation packet is still an issue, reframe it packing messages into a packet to work around (different implementation), as I normally do.
-
-    Sketch out 004_packet_aggregation.cpp
-
-    Now design a new packet format, *not compatible with one packet at a time format*
-
-    Packet format:
-
-        <implicit prefix header for crc32>
-        [crc32]
-        [packet type+1]
-        [sequence]
-            (packet data)
-            (align byte)
-        [packet type+1]
-        [sequence]
-            (packet data)
-            (align byte)
-        [nop 0]
-        (end of packet sentinel)
-
-    Design function interface for send packets, receive packets.
-
-    Note, may return less than the full number of packets asked to be sent, in which case they need to be buffered.
-
-    Question: Should I allow smaller unreliable packets to attempt to fit in after a large one that doesn't fit? 
-
-    Possibly, but it seems advanced at this stage. Maybe want to punt on that.
-
-    Especially seeing as I generally want to say, OK, you wanted to send x packets, but I could only send y.
-
-    vs. for example a bitfield saying, OK I could actually send only the following packets.
-
-    Decided. Will stop sending packets on the first one that doesn't fit in.
-
-    Interface for sending packets function
-
-    Inputs:
-
-        0. protocol id
-        1. num packets (>=1)
-        2. maximum packet size that can be written
-
-        per-packet:
-
-            sequence uint16_t per-packet
-            packet data 
-            packet size (bytes)
-        
-    Outputs:
-
-        0. number of input packets that were written to the aggregate packet
-        1. size of packet written
-        2. the aggregate packet data
-
 TODO
+
+    ==================
+
+    Try to implement the main loop of 004 using the provided interfaces before actually implementing the functions.
+
+    This will let me know if the interfaces make sense or suck.
+
+    At minimum, going to need to adjust how the packet headers are passed in to read aggregate packet, and how read packets
+    are returned from that function to caller.
 
     ==================
 

@@ -1133,9 +1133,17 @@ namespace protocol2
         virtual Packet* CreateInternal( int type ) = 0;
     };
 
-    int WritePacket( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL );
+    int WritePacket( Packet *packet, int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL );
 
     Packet* ReadPacket( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL, int *errorCode = NULL );
+
+#if PROTOCOL2_PACKET_AGGREGATION
+
+    int WriteAggregatePacket( int numPackets, Packet *packets[], int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, int & numPacketsWritten, Object *headers[] = NULL );
+
+    int ReadAggregatePacket( int maxPacketsToRead, Packet **packets[], PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object **headers[] = NULL, int *errorCode = NULL );
+
+#endif // #if PROTOCOL2_PACKET_AGGREGATION
 
     const char* GetErrorString( int error );
 }
@@ -1190,7 +1198,7 @@ namespace protocol2
         return crc32 ^ 0xFFFFFFFF;
     }
 
-    inline int WritePacket( Packet *packet, const PacketFactory & packetFactory, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header )
+    inline int WritePacket( Packet *packet, int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header )
     {
         assert( packet );
         assert( buffer );
@@ -1211,8 +1219,6 @@ namespace protocol2
         }
 
         int packetType = packet->GetType();
-
-        const int numPacketTypes = packetFactory.GetNumTypes();
 
         assert( numPacketTypes > 0 );
 
@@ -1327,6 +1333,19 @@ namespace protocol2
         return NULL;
     }
 
+    int WriteAggregatePacket( int numPackets, Packet *packets[], int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, int & numPacketsWritten, Object *headers[] )
+    {
+        // todo: implement
+
+        return 0;
+    }
+
+    int ReadAggregatePacket( int maxPacketsToRead, Packet **packets[], PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object **headers[], int *errorCode )
+    {
+        // todo: implement
+
+        return 0;
+    }
 
     PacketFactory::PacketFactory( int numTypes )
     {

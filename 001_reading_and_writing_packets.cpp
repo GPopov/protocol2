@@ -234,7 +234,7 @@ int main()
 
         bool error = false;
 
-        const int bytesWritten = protocol2::WritePacket( writePacket, packetFactory, writeBuffer, MaxPacketSize, ProtocolId );
+        const int bytesWritten = protocol2::WritePacket( writePacket, packetFactory.GetNumTypes(), writeBuffer, MaxPacketSize, ProtocolId );
 
         if ( bytesWritten > 0 )
         {
