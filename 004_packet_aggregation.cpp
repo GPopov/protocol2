@@ -323,6 +323,8 @@ int main()
         // read individual packets from the aggregate on-the-wire packet
 
         {
+            int bytesToRead = bytesWritten;
+
             uint8_t readBuffer[MaxPacketSize];
 
             memset( readBuffer, 0, MaxPacketSize );
@@ -331,6 +333,8 @@ int main()
             // todo: setup headers to read
 
             int readError = 0;
+
+            printf( "reading aggregate packet (%d bytes)\n", bytesToRead );
 
             ReadAggregatePacket( MaxPacketsPerIteration, readPackets, packetFactory, readBuffer, bytesWritten, ProtocolId, numReadPackets );//, readPacketHeaders, readError );
 
@@ -341,18 +345,31 @@ int main()
                 goto cleanup;
             }
 
-            assert( numReadPackets == numWritePackets );
-
             // verify that packets read from the aggregate packet exactly match the packets written to it
 
-            /*
-                if ( !CheckPacketsAreIdentical( readPacket, writePacket ) )
+            assert( numReadPackets == numWritePackets );
+
+            // todo: check packet headers match as well
+
+            for ( int i = 0; i < numReadPackets; ++i )
+            {
+                assert( readPackets[i] );
+
+                printf( "%d: read packet [%d]\n", i, readPackets[i]->GetType() );
+
+                // todo: print out sequence of packet from header
+                //printf( "read packet %d [%d]\n", sequence, readPackets[i] );
+
+                if ( !CheckPacketsAreIdentical( readPackets[i], writePackets[i] ) )
                 {
                     printf( "read packet is not the same as written packet. something wrong with serialize function?\n" );
-
                     error = true;
+                    goto cleanup;
                 }
-            */
+            }
+
+            if ( numReadPackets > 0 )
+                printf( "read packets match written packets\n" );
         }
 
 cleanup:

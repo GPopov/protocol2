@@ -1,28 +1,28 @@
 DONE
 
-    Cleaned up some scaffolding in the protocol2.h read/write aggregate packet fns.
-
-    Added error handling to WriteAggregatePacket function
-
 TODO
-
-    Add error handling to ReadAggregatePacket function
 
     ==================
     
     Need to think about the best interface to get the packet headers in/out of the functions.
 
-    Right now current setup just doesn't work.
+    Right now current setup just doesn't work. Need array of pointers to packet headers.
+
+    Alternatively, need to know the stride for the packet headers so we can move forward in memory to the next one from the current pointer.
+
+    Array of pointers to the packet headers seems more *flexible* for the caller, because they can decide how they are laid out in memory.
+
+    Pointer to start of array, and stride of array is the simplest interface to pass in, but a bit naughty.
 
     ==================
 
-    Add packet headers to the mix
+    Add packet headers to the test
 
-    Verify packet headers write OK as well.
+    Verify read packet header match written ones (same sequence #)
 
-    ==================
+    Print sequence number out when printing packets that were read.
 
-    Add soak mode to make sure it is stable
+    Soak the example and make sure it is stable
 
     ==================
 

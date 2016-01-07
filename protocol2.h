@@ -1335,7 +1335,7 @@ namespace protocol2
                 *errorCode = stream.GetError();
             goto cleanup;
         }
-        
+
         assert( stream.GetBitsRemaining() == 0 );
 
         return packet;
@@ -1388,7 +1388,7 @@ namespace protocol2
 
             assert( numPacketTypes > 0 );
 
-            assert( stream.GetAlignBits() == 0 );       // should be aligned to byte at this point
+            assert( stream.GetAlignBits() == 0 );       // must be byte aligned at this point
 
             stream.SerializeInteger( packetTypePlusOne, 0, numPacketTypes );
 
@@ -1469,7 +1469,7 @@ namespace protocol2
         {
             assert( packetFactory.GetNumTypes() > 0 );
 
-            assert( stream.GetAlignBits() == 0 );       // should be aligned to byte at this point
+            assert( stream.GetAlignBits() == 0 );       // must be byte aligned at this point
 
             int packetTypePlusOne;
             stream.SerializeInteger( packetTypePlusOne, 0, packetFactory.GetNumTypes() );

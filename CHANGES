@@ -1,6 +1,14 @@
 
-Wednesday January 6-7th, 2015 (USA time)
-========================================
+Thursday January 7th, 2016
+==========================
+
+    Added error handling to read and write packet functions.
+
+    Added code to check that read packets match written packets (they do)
+
+
+Wednesday January 6th, 2016 (USA time)
+=====================================
 
     Implement the main loop of 004 using the provided interfaces before actually implementing the functions.
 
@@ -50,7 +58,7 @@ Wednesday January 6-7th, 2015 (USA time)
     Fuck it. Who cares.
 
 
-Wednesday January 6th, 2105 (on plane back to LA)
+Wednesday January 6th, 2016 (on plane back to LA)
 =================================================
 
     Next article should be about sending messages, or packet aggregation.
