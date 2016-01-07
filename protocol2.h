@@ -332,7 +332,6 @@ namespace protocol2
 
         int GetAlignBits() const
         {
-            // todo: i don't remember the logic for this one
             return ( 8 - ( m_bitsWritten % 8 ) ) % 8;
         }
 
@@ -1330,6 +1329,13 @@ namespace protocol2
         }
 #endif // #if PROTOCOL2_SERIALIZE_CHECKS
 
+        if ( stream.GetError() )
+        {
+            if ( errorCode )
+                *errorCode = stream.GetError();
+            goto cleanup;
+        }
+        
         assert( stream.GetBitsRemaining() == 0 );
 
         return packet;
@@ -1386,7 +1392,8 @@ namespace protocol2
 
             stream.SerializeInteger( packetTypePlusOne, 0, numPacketTypes );
 
-            packet->SerializeWrite( stream );
+            if ( !packet->SerializeWrite( stream ) )
+                return 0;
 
 #if PROTOCOL2_SERIALIZE_CHECKS
             stream.SerializeCheck( protocolId );
@@ -1397,10 +1404,7 @@ namespace protocol2
             stream.Flush();
 
             if ( stream.GetError() )
-            {
-                // todo: set appropriate error code
                 return 0;
-            }
 
             int packetSize = stream.GetBytesProcessed();
 
@@ -1490,27 +1494,50 @@ namespace protocol2
 
             if ( !packets[numPacketsRead] )
             {
-                // todo: clean up, set error code etc.
-                return;
+                if ( errorCode )
+                    *errorCode = PROTOCOL2_ERROR_CREATE_PACKET_FAILED;
+                goto cleanup;
             }
 
-            packets[numPacketsRead]->SerializeRead( stream );
+            if ( !packets[numPacketsRead]->SerializeRead( stream ) )
+            {
+                if ( errorCode )
+                    *errorCode = PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED;
+                goto cleanup;
+            }
 
 #if PROTOCOL2_SERIALIZE_CHECKS
-            stream.SerializeCheck( protocolId );
+            if ( !stream.SerializeCheck( protocolId ) )
+            {
+                if ( errorCode )
+                    *errorCode = PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED;
+                goto cleanup;
+            }
 #endif // #if PROTOCOL2_SERIALIZE_CHECKS
 
             stream.SerializeAlign();
 
             if ( stream.GetError() )
             {
-                // todo: clean up, abort
-                // todo: set appropriate error code
-                return;
+                if ( errorCode )
+                    *errorCode = stream.GetError();
+                goto cleanup;
             }
 
             ++numPacketsRead;
         }
+
+        return;
+
+    cleanup:
+
+        for ( int j = 0; j < numPacketsRead; ++j )
+        {
+            packetFactory.DestroyPacket( packets[j] );
+            packets[j] = NULL;
+        }
+
+        numPacketsRead = 0;
     }
 
 #endif // #if PROTOCOL2_PACKET_AGGREGATION

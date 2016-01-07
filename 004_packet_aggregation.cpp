@@ -300,8 +300,8 @@ int main()
                                                                   writeBuffer, 
                                                                   MaxPacketSize, 
                                                                   ProtocolId, 
-                                                                  numPacketsActuallyWritten,
-                                                                  writePacketHeaders );
+                                                                  numPacketsActuallyWritten );//,
+                                                                  //writePacketHeaders );
 
         bool error = false;
 
@@ -332,9 +332,7 @@ int main()
 
             int readError = 0;
 
-            ReadAggregatePacket( MaxPacketsPerIteration, readPackets, packetFactory, readBuffer, bytesWritten, ProtocolId, numReadPackets, readPacketHeaders, readError );
-
-            // todo: handle read error
+            ReadAggregatePacket( MaxPacketsPerIteration, readPackets, packetFactory, readBuffer, bytesWritten, ProtocolId, numReadPackets );//, readPacketHeaders, readError );
 
             if ( readError != PROTOCOL2_ERROR_NONE )
             {
@@ -343,7 +341,7 @@ int main()
                 goto cleanup;
             }
 
-            assert( numReadPackets == numWritePackets );`
+            assert( numReadPackets == numWritePackets );
 
             // verify that packets read from the aggregate packet exactly match the packets written to it
 

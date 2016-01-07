@@ -2,7 +2,13 @@ DONE
 
     Cleaned up some scaffolding in the protocol2.h read/write aggregate packet fns.
 
+    Added error handling to WriteAggregatePacket function
+
 TODO
+
+    Add error handling to ReadAggregatePacket function
+
+    ==================
     
     Need to think about the best interface to get the packet headers in/out of the functions.
 
