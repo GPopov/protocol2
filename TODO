@@ -1,20 +1,21 @@
 DONE
 
-TODO
-
-    ==================
-
-    Add a packet header
-
-
-    ==================
-
-    Try to implement the main loop of 004 using the provided interfaces before actually implementing the functions.
+    Implement the main loop of 004 using the provided interfaces before actually implementing the functions.
 
     This will let me know if the interfaces make sense or suck.
 
     At minimum, going to need to adjust how the packet headers are passed in to read aggregate packet, and how read packets
     are returned from that function to caller.
+
+TODO
+
+    Implement write aggregate packet function
+
+    ==================
+
+    Add packet headers to the mix
+
+    Verify packet headers write OK as well.
 
     ==================
 

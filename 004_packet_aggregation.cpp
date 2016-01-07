@@ -274,11 +274,11 @@ int main()
             error = true;
         }
 
-        // todo: read aggregate packets
+        // todo: read aggregate packets (if not error)
 
         // ...
 
-        // todo: compare written packets to aggregate packets
+        // todo: compare written packets to aggregate packets (if not error)
 
         /*
             if ( !CheckPacketsAreIdentical( readPacket, writePacket ) )
