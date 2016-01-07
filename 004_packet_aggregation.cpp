@@ -218,31 +218,61 @@ bool CheckPacketsAreIdentical( protocol2::Packet *p1, protocol2::Packet *p2 )
     }
 }
 
+struct TestPacketHeader : public protocol2::Object
+{
+    uint16_t sequence;
+
+    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    {
+        serialize_bits( stream, sequence, 16 );
+        return true;
+    }
+
+    bool operator == ( const TestPacketHeader & other )
+    {
+        return sequence == other.sequence;
+    }
+
+    bool operator != ( const TestPacketHeader & other )
+    {
+        return !(*this == other );
+    }
+};
+
 int main()
 {
     srand( time( NULL ) );
 
     TestPacketFactory packetFactory;
 
+    uint16_t sequence = 0;
+
     for ( int i = 0; i < NumIterations; ++i )
     {
+        printf( "==============================================================\n" );
         printf( "iteration %d\n", i );
 
         // create an array of different packets (may be zero length)
 
         const int numWritePackets = random_int( 0, MaxPacketsPerIteration );
 
+        printf( "creating %d packets\n", numWritePackets );
+
         protocol2::Packet *writePackets[MaxPacketsPerIteration];
+
+        // todo: setup headers to write
 
         for ( int j = 0; j < numWritePackets; ++j )
         {
             const int packetType = rand() % TEST_PACKET_NUM_TYPES;
 
-            printf( "%d: created packet type %d\n", j, packetType );
+            printf( "%d: created packet %d [%d]\n", j, sequence, packetType );
 
             writePackets[j] = packetFactory.CreatePacket( packetType );
 
             assert( writePackets[j] );
+
+            sequence++;
         }
 
         // combine packets together into one aggregate on-the-wire packet
@@ -272,22 +302,40 @@ int main()
             printf( "write aggregate packet failed\n" );
             
             error = true;
+
+            goto cleanup;
         }
 
-        // todo: read aggregate packets (if not error)
+        // read individual packets in aggregate packet
+        {
+            protocol2::Packet *readPackets[MaxPacketsPerIteration];
 
-        // ...
+            uint8_t readBuffer[MaxPacketSize];
 
-        // todo: compare written packets to aggregate packets (if not error)
+            memset( readBuffer, 0, MaxPacketSize );
+            memcpy( readBuffer, writeBuffer, bytesWritten );
 
-        /*
-            if ( !CheckPacketsAreIdentical( readPacket, writePacket ) )
-            {
-                printf( "read packet is not the same as written packet. something wrong with serialize function?\n" );
+            int numPacketsRead = 0;
 
-                error = true;
-            }
-        */
+            // todo: setup headers to read
+
+            int bytesRead = ReadAggregatePacket( MaxPacketsPerIteration, readPackets, packetFactory, readBuffer, bytesWritten, ProtocolId, numPacketsRead );
+
+            printf( "bytes read = %d\n", bytesRead );
+
+            // compare written packets to aggregate packet
+
+            /*
+                if ( !CheckPacketsAreIdentical( readPacket, writePacket ) )
+                {
+                    printf( "read packet is not the same as written packet. something wrong with serialize function?\n" );
+
+                    error = true;
+                }
+            */
+        }
+
+cleanup:
 
         // clean up packets for this iteration
 
@@ -296,65 +344,12 @@ int main()
             packetFactory.DestroyPacket( writePackets[j] );
         }
 
+        printf( "==============================================================\n\n" );
+
         // has there been an error? stop.
 
         if ( error )
             break;
-
-        /*
-
-        assert( writePacket );
-        assert( writePacket->GetType() == packetType );
-
-        uint8_t readBuffer[MaxPacketSize];
-        uint8_t writeBuffer[MaxPacketSize];
-
-        bool error = false;
-
-        const int bytesWritten = protocol2::WritePacket( writePacket, packetFactory, writeBuffer, MaxPacketSize, ProtocolId );
-
-        if ( bytesWritten > 0 )
-        {
-            printf( "wrote packet type %d (%d bytes)\n", writePacket->GetType(), bytesWritten );
-        }
-        else
-        {
-            printf( "write packet error\n" );
-            
-            error = true;
-        }
-
-        memset( readBuffer, 0, sizeof( readBuffer ) );
-        memcpy( readBuffer, writeBuffer, bytesWritten );
-
-        int readError;
-
-        protocol2::Packet *readPacket = protocol2::ReadPacket( packetFactory, readBuffer, bytesWritten, ProtocolId, NULL, &readError );
-        
-        if ( readPacket )
-        {
-            printf( "read packet type %d (%d bytes)\n", readPacket->GetType(), bytesWritten );
-
-            if ( !CheckPacketsAreIdentical( readPacket, writePacket ) )
-            {
-                printf( "read packet is not the same as written packet. something wrong with serialize function?\n" );
-
-                error = true;
-            }
-        }
-        else
-        {
-            printf( "read packet error: %s\n", protocol2::GetErrorString( readError ) );
-
-            error = true;
-        }
-
-        packetFactory.DestroyPacket( readPacket );
-        packetFactory.DestroyPacket( writePacket );
-
-        if ( error )
-            return 1;
-            */
     }
 
     return 0;

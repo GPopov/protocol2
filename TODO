@@ -7,10 +7,24 @@ DONE
     At minimum, going to need to adjust how the packet headers are passed in to read aggregate packet, and how read packets
     are returned from that function to caller.
 
-TODO
-
     Implement write aggregate packet function
 
+    Setup code to read the aggregate packet
+
+    Read aggregate packet is mismatching on the crc32. What's going on?!
+
+    Was just passing the wrong number of bytes to read. MaxPacketSize instead of bytesWritten. Fixed.
+
+    Iterate across the read packets to make sure it's all good and works.
+
+TODO
+
+    No. There is a strange desync where bits are left over, and reading back packets seem to be occasionally 1 byte less than written.
+
+    Probably some strange thing caused by writing packets piecemeal and copying over, vs. all at once in the stream, BUT...
+
+    It's annoying, and needs to be fixed.
+    
     ==================
 
     Add packet headers to the mix
@@ -20,6 +34,8 @@ TODO
     ==================
 
     Update reading and writing packets article with a good reason why big endian is used for network order [x][0][0][0] vs. [0][0][0][x]
+
+    Make note about copying or at least clearing to zeros after you write a packet so you don't accidentally truncate the packet and not notice.
 
     Need to go back over both 001 and 002 examples and add soak modes.
 
