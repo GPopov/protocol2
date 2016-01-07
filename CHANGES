@@ -1,4 +1,55 @@
 
+Wednesday January 6-7th, 2015 (USA time)
+========================================
+
+    Implement the main loop of 004 using the provided interfaces before actually implementing the functions.
+
+    This will let me know if the interfaces make sense or suck.
+
+    At minimum, going to need to adjust how the packet headers are passed in to read aggregate packet, and how read packets
+    are returned from that function to caller.
+
+    Implement write aggregate packet function
+
+    Setup code to read the aggregate packet
+
+    Read aggregate packet is mismatching on the crc32. What's going on?!
+
+    Was just passing the wrong number of bytes to read. MaxPacketSize instead of bytesWritten. Fixed.
+
+    Iterate across the read packets to make sure it's all good and works.
+
+    No. There is a strange desync where bits are left over, and reading back packets seem to be occasionally 1 byte less than written.
+
+    Probably some strange thing caused by writing packets piecemeal and copying over, vs. all at once in the stream, BUT...
+
+    It's annoying, and needs to be fixed.
+
+    The amount differing is actually small, and is on the bits processed level.
+
+    For example writing packets, 64 bits becomes 63, 136 bits becomes 131 etc.
+
+    I think it's alignment related.
+
+    136 bits = 17 bytes
+
+    131 bits = 16.375 bytes (rounded up to 17...)
+
+    I think it's just an error on the serialize read align not increasing the bits processed correctly
+
+    Yes. That was it.
+
+    Now it is not quite lining up the exact number of bits so it has bits to spare on serialize read.
+
+    Missing align after END packet marker => fixed.
+
+    When the align fails, it is because there is an extra 8 bits left over.
+
+    What is causing this?
+
+    Fuck it. Who cares.
+
+
 Wednesday January 6th, 2105 (on plane back to LA)
 =================================================
 

@@ -1,35 +1,22 @@
 DONE
 
-    Implement the main loop of 004 using the provided interfaces before actually implementing the functions.
-
-    This will let me know if the interfaces make sense or suck.
-
-    At minimum, going to need to adjust how the packet headers are passed in to read aggregate packet, and how read packets
-    are returned from that function to caller.
-
-    Implement write aggregate packet function
-
-    Setup code to read the aggregate packet
-
-    Read aggregate packet is mismatching on the crc32. What's going on?!
-
-    Was just passing the wrong number of bytes to read. MaxPacketSize instead of bytesWritten. Fixed.
-
-    Iterate across the read packets to make sure it's all good and works.
+    Cleaned up some scaffolding in the protocol2.h read/write aggregate packet fns.
 
 TODO
-
-    No. There is a strange desync where bits are left over, and reading back packets seem to be occasionally 1 byte less than written.
-
-    Probably some strange thing caused by writing packets piecemeal and copying over, vs. all at once in the stream, BUT...
-
-    It's annoying, and needs to be fixed.
     
+    Need to think about the best interface to get the packet headers in/out of the functions.
+
+    Right now current setup just doesn't work.
+
     ==================
 
     Add packet headers to the mix
 
     Verify packet headers write OK as well.
+
+    ==================
+
+    Add soak mode to make sure it is stable
 
     ==================
 

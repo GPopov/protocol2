@@ -10,7 +10,11 @@
 #include <stdio.h>
 #include <time.h>
 
+//#define SOAK_TEST 1                // uncomment this line to loop forever and soak. it's the only way to be really sure it's working!
+
+#if !SOAK_TEST
 const int NumIterations = 16;
+#endif // #if !SOAK_TEST
 
 const int MaxPacketsPerIteration = 8;
 
@@ -46,8 +50,6 @@ inline float random_float( float min, float max )
     double scale = ( rand() % res ) / double( res - 1 );
     return (float) ( min + (double) ( max - min ) * scale );
 }
-
-// todo: packet header with uint16_t sequence
 
 struct TestPacketA : public protocol2::Packet
 {
@@ -247,18 +249,29 @@ int main()
 
     uint16_t sequence = 0;
 
+#if !SOAK_TEST
     for ( int i = 0; i < NumIterations; ++i )
+#else // #if !SOAK_TEST
+    for ( uint32_t i = 0; ; ++i )
+#endif // #if !SOAK_TEST
     {
+        int numReadPackets = 0;
+        int numWritePackets = 0;
+        
+        protocol2::Packet *readPackets[MaxPacketsPerIteration];
+        protocol2::Packet *writePackets[MaxPacketsPerIteration];
+
+        TestPacketHeader readPacketHeaders[MaxPacketsPerIteration];
+        TestPacketHeader writePacketHeaders[MaxPacketsPerIteration];
+
         printf( "==============================================================\n" );
         printf( "iteration %d\n", i );
 
         // create an array of different packets (may be zero length)
 
-        const int numWritePackets = random_int( 0, MaxPacketsPerIteration );
+        numWritePackets = random_int( 0, MaxPacketsPerIteration );
 
         printf( "creating %d packets\n", numWritePackets );
-
-        protocol2::Packet *writePackets[MaxPacketsPerIteration];
 
         // todo: setup headers to write
 
@@ -272,7 +285,7 @@ int main()
 
             assert( writePackets[j] );
 
-            sequence++;
+            writePacketHeaders[j].sequence = sequence++;
         }
 
         // combine packets together into one aggregate on-the-wire packet
@@ -287,7 +300,8 @@ int main()
                                                                   writeBuffer, 
                                                                   MaxPacketSize, 
                                                                   ProtocolId, 
-                                                                  numPacketsActuallyWritten );
+                                                                  numPacketsActuallyWritten,
+                                                                  writePacketHeaders );
 
         bool error = false;
 
@@ -306,24 +320,32 @@ int main()
             goto cleanup;
         }
 
-        // read individual packets in aggregate packet
-        {
-            protocol2::Packet *readPackets[MaxPacketsPerIteration];
+        // read individual packets from the aggregate on-the-wire packet
 
+        {
             uint8_t readBuffer[MaxPacketSize];
 
             memset( readBuffer, 0, MaxPacketSize );
             memcpy( readBuffer, writeBuffer, bytesWritten );
 
-            int numPacketsRead = 0;
-
             // todo: setup headers to read
 
-            int bytesRead = ReadAggregatePacket( MaxPacketsPerIteration, readPackets, packetFactory, readBuffer, bytesWritten, ProtocolId, numPacketsRead );
+            int readError = 0;
 
-            printf( "bytes read = %d\n", bytesRead );
+            ReadAggregatePacket( MaxPacketsPerIteration, readPackets, packetFactory, readBuffer, bytesWritten, ProtocolId, numReadPackets, readPacketHeaders, readError );
 
-            // compare written packets to aggregate packet
+            // todo: handle read error
+
+            if ( readError != PROTOCOL2_ERROR_NONE )
+            {
+                printf( "read packet error: %s\n", protocol2::GetErrorString( readError ) );
+                error = true;
+                goto cleanup;
+            }
+
+            assert( numReadPackets == numWritePackets );`
+
+            // verify that packets read from the aggregate packet exactly match the packets written to it
 
             /*
                 if ( !CheckPacketsAreIdentical( readPacket, writePacket ) )
@@ -342,6 +364,11 @@ cleanup:
         for ( int j = 0; j < numWritePackets; ++j )
         {
             packetFactory.DestroyPacket( writePackets[j] );
+        }
+
+        for ( int j = 0; j < numReadPackets; ++j )
+        {
+            packetFactory.DestroyPacket( readPackets[j] );
         }
 
         printf( "==============================================================\n\n" );

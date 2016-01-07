@@ -135,7 +135,7 @@ if not os.is "windows" then
      
         execute = function ()
             if os.execute "make -j4 004_packet_aggregation" == 0 then
-                os.execute "./packet_aggregation"
+                os.execute "./004_packet_aggregation"
             end
         end
     }
