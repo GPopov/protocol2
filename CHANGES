@@ -6,6 +6,39 @@ Thursday January 7th, 2016
 
     Added code to check that read packets match written packets (they do)
 
+    Need to think about the best interface to get the packet headers in/out of the functions.
+
+    Right now current setup just doesn't work. Need array of pointers to packet headers.
+
+    Alternatively, need to know the stride for the packet headers so we can move forward in memory to the next one from the current pointer.
+
+    Array of pointers to the packet headers seems more *flexible* for the caller, because they can decide how they are laid out in memory.
+
+    Pointer to start of array, and stride of array is the simplest interface to pass in, but a bit naughty.
+
+    Decision: Went with protocol2::Object** pointer to array of pointers, because it is the most flexible.
+
+    Add packet headers to the test
+
+    Implemented header serialization. Works!
+
+    Print sequence number out when printing packets that were read.
+
+    Verify read packet header match written ones (same sequence #)
+
+    Soak the example and make sure it is stable
+
+    Ready to upload!
+
+    Plan next article example source code:
+
+    Next articles:
+
+        1. Reliable Packets over UDP
+        2. Time-Critical Reliable Messages over UDP
+        3. Building a Better Ack System over UDP
+        4. Reliable Messages with Bandwidth Limit
+
 
 Wednesday January 6th, 2016 (USA time)
 =====================================

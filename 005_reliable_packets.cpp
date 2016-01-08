@@ -1,11 +1,12 @@
 /*
-    Example source code for "Packet Aggregation"
+    Example source code for "Reliable Packets"
     This software is in the public domain. Where that dedication is not recognized, 
     you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
 */
 
 #define PROTOCOL2_IMPLEMENTATION
 
+#include "network2.h"
 #include "protocol2.h"
 #include <stdio.h>
 #include <time.h>
@@ -220,12 +221,26 @@ bool CheckPacketsAreIdentical( protocol2::Packet *p1, protocol2::Packet *p2 )
     }
 }
 
-struct TestPacketHeader : public protocol2::Object
+struct AggregatePacketHeader : public protocol2::Object
 {
+    // todo: ack info goes in here
+
+    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    {
+        int test = 10;
+        serialize_int( stream, test, 0, 20 );
+        return true;
+    }
+};
+
+struct PacketHeader : public protocol2::Object
+{
+    bool reliable;
     uint16_t sequence;
 
     PROTOCOL2_SERIALIZE_FUNCTION( stream )
     {
+        serialize_bool( stream, reliable );
         serialize_bits( stream, sequence, 16 );
         return true;
     }
@@ -239,13 +254,16 @@ int main()
 
     uint16_t sequence = 0;
 
-    TestPacketHeader *readPacketHeaders[MaxPacketsPerIteration];
-    TestPacketHeader *writePacketHeaders[MaxPacketsPerIteration];
+    AggregatePacketHeader aggregateReadHeader;
+    AggregatePacketHeader aggregateWriteHeader;
+
+    PacketHeader *readPacketHeaders[MaxPacketsPerIteration];
+    PacketHeader *writePacketHeaders[MaxPacketsPerIteration];
 
     for ( int i = 0; i < MaxPacketsPerIteration; ++i )
     {
-        readPacketHeaders[i] = new TestPacketHeader();
-        writePacketHeaders[i] = new TestPacketHeader();
+        readPacketHeaders[i] = new PacketHeader();
+        writePacketHeaders[i] = new PacketHeader();
     }
 
 #if !SOAK_TEST
@@ -263,11 +281,15 @@ int main()
         printf( "==============================================================\n" );
         printf( "iteration %d\n", i );
 
-        // create an array of different packets (may be zero length)
+        // todo: create one big packet to send unreliably (this represents state in typical protocol)
+
+        // ...
+
+        // create an array of packets to be sent reliably
 
         numWritePackets = random_int( 0, MaxPacketsPerIteration );
 
-        printf( "creating %d packets\n", numWritePackets );
+        printf( "creating %d reliable packets\n", numWritePackets );
 
         for ( int j = 0; j < numWritePackets; ++j )
         {
@@ -279,6 +301,7 @@ int main()
 
             assert( writePackets[j] );
 
+            writePacketHeaders[j]->reliable = true;
             writePacketHeaders[j]->sequence = sequence++;
         }
 
@@ -295,7 +318,7 @@ int main()
                                                                   MaxPacketSize, 
                                                                   ProtocolId, 
                                                                   numPacketsActuallyWritten,
-                                                                  NULL,
+                                                                  &aggregateWriteHeader,
                                                                   (protocol2::Object**) writePacketHeaders );
 
         bool error = false;
@@ -315,6 +338,12 @@ int main()
             goto cleanup;
         }
 
+        // todo: actually send this packet over the wire
+
+        // todo: implement sender and receiver
+
+        // todo: setup 
+
         // read individual packets from the aggregate on-the-wire packet
 
         {
@@ -329,7 +358,16 @@ int main()
 
             printf( "reading aggregate packet (%d bytes)\n", bytesToRead );
 
-            ReadAggregatePacket( MaxPacketsPerIteration, readPackets, packetFactory, readBuffer, bytesWritten, ProtocolId, numReadPackets, NULL, (protocol2::Object**) readPacketHeaders, &readError );
+            ReadAggregatePacket( MaxPacketsPerIteration, 
+                                 readPackets, 
+                                 packetFactory, 
+                                 readBuffer, 
+                                 bytesWritten, 
+                                 ProtocolId, 
+                                 numReadPackets, 
+                                 &aggregateReadHeader, 
+                                 (protocol2::Object**) readPacketHeaders, 
+                                 &readError );
 
             if ( readError != PROTOCOL2_ERROR_NONE )
             {

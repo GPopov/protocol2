@@ -1,30 +1,44 @@
 DONE
 
-    Need to think about the best interface to get the packet headers in/out of the functions.
+    Reliable Packets: The Plan
 
-    Right now current setup just doesn't work. Need array of pointers to packet headers.
+    Need to add a header for the aggregate packet. This is where ack data will go.
 
-    Alternatively, need to know the stride for the packet headers so we can move forward in memory to the next one from the current pointer.
+    Need a bit in header per-acket for reliable vs. unreliable packet in the aggregate packet.
 
-    Array of pointers to the packet headers seems more *flexible* for the caller, because they can decide how they are laid out in memory.
+    Do all the work for reliable and unreliable packets inside the example, as we won't do it this way moving forward.
 
-    Pointer to start of array, and stride of array is the simplest interface to pass in, but a bit naughty.
+    Separate sequence numbers for reliable and unreliable packets (otherwise, lots of unreliable packets in between reliable packets causes weirdness)
 
-    Decision: Went with protocol2::Object** pointer to array of pointers, because it is the most flexible.
+    Extended read/write aggregate packet function to take optional aggregate packet header.
 
-    Add packet headers to the test
+    Rename 005 packet headers into two parts:
 
-    Implemented header serialization. Works!
+        1. aggregate packet header (acks will go here)
 
-    Print sequence number out when printing packets that were read.
+        2. packet header (sequence, reliable true/false)
 
-    Verify read packet header match written ones (same sequence #)
+    Implement the code that serializes the optional aggregate packet header, and aligns to byte.
 
-    Soak the example and make sure it is stable
+    Add a dummy read/write aggregate packet header and pass it in to read/write aggregate.
 
-    Ready to upload!
+    Verify that everything still serializes properly.
 
 TODO
+
+    Work out what the example should look like.
+
+    ==================
+
+    Need to implement a sender and reciever side (structs).
+
+    Need to construct ack packets and send them back over.
+
+    Perhaps make this example bidirectional? If the acks are inside the header, instead of a packet type, then bidirectional is what makes the most sense.
+
+    I think making this protocol bidirectional is the whole point. Add a "Connection" class that is both sender and receiver?
+
+    Need to setup a network simulator and send packets over that.
 
     ==================
 
