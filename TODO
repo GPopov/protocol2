@@ -1,9 +1,5 @@
 DONE
 
-TODO
-
-    ==================
-    
     Need to think about the best interface to get the packet headers in/out of the functions.
 
     Right now current setup just doesn't work. Need array of pointers to packet headers.
@@ -14,15 +10,21 @@ TODO
 
     Pointer to start of array, and stride of array is the simplest interface to pass in, but a bit naughty.
 
-    ==================
+    Decision: Went with protocol2::Object** pointer to array of pointers, because it is the most flexible.
 
     Add packet headers to the test
 
-    Verify read packet header match written ones (same sequence #)
+    Implemented header serialization. Works!
 
     Print sequence number out when printing packets that were read.
 
+    Verify read packet header match written ones (same sequence #)
+
     Soak the example and make sure it is stable
+
+    Ready to upload!
+
+TODO
 
     ==================
 

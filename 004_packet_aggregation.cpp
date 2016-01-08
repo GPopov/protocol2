@@ -249,6 +249,15 @@ int main()
 
     uint16_t sequence = 0;
 
+    TestPacketHeader *readPacketHeaders[MaxPacketsPerIteration];
+    TestPacketHeader *writePacketHeaders[MaxPacketsPerIteration];
+
+    for ( int i = 0; i < MaxPacketsPerIteration; ++i )
+    {
+        readPacketHeaders[i] = new TestPacketHeader();
+        writePacketHeaders[i] = new TestPacketHeader();
+    }
+
 #if !SOAK_TEST
     for ( int i = 0; i < NumIterations; ++i )
 #else // #if !SOAK_TEST
@@ -261,9 +270,6 @@ int main()
         protocol2::Packet *readPackets[MaxPacketsPerIteration];
         protocol2::Packet *writePackets[MaxPacketsPerIteration];
 
-        TestPacketHeader readPacketHeaders[MaxPacketsPerIteration];
-        TestPacketHeader writePacketHeaders[MaxPacketsPerIteration];
-
         printf( "==============================================================\n" );
         printf( "iteration %d\n", i );
 
@@ -272,8 +278,6 @@ int main()
         numWritePackets = random_int( 0, MaxPacketsPerIteration );
 
         printf( "creating %d packets\n", numWritePackets );
-
-        // todo: setup headers to write
 
         for ( int j = 0; j < numWritePackets; ++j )
         {
@@ -285,7 +289,7 @@ int main()
 
             assert( writePackets[j] );
 
-            writePacketHeaders[j].sequence = sequence++;
+            writePacketHeaders[j]->sequence = sequence++;
         }
 
         // combine packets together into one aggregate on-the-wire packet
@@ -300,8 +304,8 @@ int main()
                                                                   writeBuffer, 
                                                                   MaxPacketSize, 
                                                                   ProtocolId, 
-                                                                  numPacketsActuallyWritten );//,
-                                                                  //writePacketHeaders );
+                                                                  numPacketsActuallyWritten,
+                                                                  (protocol2::Object**) writePacketHeaders );
 
         bool error = false;
 
@@ -330,13 +334,11 @@ int main()
             memset( readBuffer, 0, MaxPacketSize );
             memcpy( readBuffer, writeBuffer, bytesWritten );
 
-            // todo: setup headers to read
-
             int readError = 0;
 
             printf( "reading aggregate packet (%d bytes)\n", bytesToRead );
 
-            ReadAggregatePacket( MaxPacketsPerIteration, readPackets, packetFactory, readBuffer, bytesWritten, ProtocolId, numReadPackets );//, readPacketHeaders, readError );
+            ReadAggregatePacket( MaxPacketsPerIteration, readPackets, packetFactory, readBuffer, bytesWritten, ProtocolId, numReadPackets, (protocol2::Object**) readPacketHeaders, &readError );
 
             if ( readError != PROTOCOL2_ERROR_NONE )
             {
@@ -345,20 +347,24 @@ int main()
                 goto cleanup;
             }
 
+            printf( "num packets read: %d\n", numReadPackets );
+
             // verify that packets read from the aggregate packet exactly match the packets written to it
 
             assert( numReadPackets == numWritePackets );
-
-            // todo: check packet headers match as well
 
             for ( int i = 0; i < numReadPackets; ++i )
             {
                 assert( readPackets[i] );
 
-                printf( "%d: read packet [%d]\n", i, readPackets[i]->GetType() );
+                printf( "%d: read packet %d [%d]\n", i, readPacketHeaders[i]->sequence, readPackets[i]->GetType() );
 
-                // todo: print out sequence of packet from header
-                //printf( "read packet %d [%d]\n", sequence, readPackets[i] );
+                if ( readPacketHeaders[i]->sequence != writePacketHeaders[i]->sequence )
+                {
+                    printf( "read packet header is not the same as written packet header. something wrong with serialize function?\n" );
+                    error = true;
+                    goto cleanup;
+                }
 
                 if ( !CheckPacketsAreIdentical( readPackets[i], writePackets[i] ) )
                 {
@@ -392,6 +398,12 @@ cleanup:
 
         if ( error )
             break;
+    }
+
+    for ( int i = 0; i < MaxPacketsPerIteration; ++i )
+    {
+        delete readPacketHeaders[i];
+        delete writePacketHeaders[i];
     }
 
     return 0;
