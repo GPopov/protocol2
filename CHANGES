@@ -1,4 +1,31 @@
 
+Sunday January 17th, 2016
+=========================
+
+    Work out what the example should look like.
+
+    I think it probably looks like:
+
+    one side sends reliable packets to the other
+
+    then the other side switches around and does the same thing
+
+    (demonstrate bidirectionality)
+
+    Started setting up the sender/receiver but it doesn't make sense this way because the acks must be bidirectional,
+    and the aggregate packet header needs parts from the receiver (acks) while the including packets come from the sender
+
+    Therefore created a "Node" class which handles both send and recieve.
+
+    Sketched out all the functions I think that are required to get it working.
+
+    Cut the article on implementing reliable messages inside a packet type, I think that is overkill for this series. Keep it simple.
+
+    Now it will go from this reliability system to the client/server connection (implementing all these concepts together)
+
+    At the end of this will be a useful bunch of source code, and two useful one file libraries that don't try to do too much.
+
+
 Thursday January 7th, 2016
 ==========================
 
@@ -38,6 +65,26 @@ Thursday January 7th, 2016
         2. Time-Critical Reliable Messages over UDP
         3. Building a Better Ack System over UDP
         4. Reliable Messages with Bandwidth Limit
+
+    Reliable Packets: The Plan
+
+    Need to add a header for the aggregate packet. This is where ack data will go.
+
+    Need a bit in header per-acket for reliable vs. unreliable packet in the aggregate packet.
+
+    Do all the work for reliable and unreliable packets inside the example, as we won't do it this way moving forward.
+
+    Separate sequence numbers for reliable and unreliable packets (otherwise, lots of unreliable packets in between reliable packets causes weirdness)
+
+    Extended read/write aggregate packet function to take optional aggregate packet header.
+
+    Rename 005 packet headers into two parts:
+
+        1. aggregate packet header (acks will go here)
+
+        2. packet header (sequence, reliable true/false)
+
+    Implement the code that serializes the optional aggregate packet header, and aligns to byte.
 
 
 Wednesday January 6th, 2016 (USA time)

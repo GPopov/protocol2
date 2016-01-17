@@ -1,5 +1,5 @@
 /*
-    Example source code for "Reliable Packets"
+    Example source code for "Reliable Packets over UDP"
     This software is in the public domain. Where that dedication is not recognized, 
     you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
 */
@@ -246,13 +246,85 @@ struct PacketHeader : public protocol2::Object
     }
 };
 
+TestPacketFactory packetFactory;
+
+class Node
+{
+    uint16_t send_sequence_reliable;
+    uint16_t send_sequence_unreliable;
+
+    uint16_t receive_sequence_reliable;
+    uint16_t receive_sequence_unreliable;
+
+    // todo: send queue
+
+    // todo: receive queue
+
+public:
+
+    Node()
+    {
+        send_sequence_reliable = 0;
+        send_sequence_unreliable = 0;
+        receive_sequence_reliable = 0xFFFF;                    // todo: do we need bounds instead, eg. oldest packet in receive queue, newest packet in recv queue? probably.
+        receive_sequence_unreliable = 0xFFFF;
+    }
+
+    void SendPacket( protocol2::Packet *packet, bool reliable )
+    {
+        assert( packet );
+
+        // todo: serialize write the packet
+
+        // todo: queue the packet data to be sent (eg. uint8_t*, int packet_size, with reliable flag and corresponding sequence number)
+
+        packetFactory.DestroyPacket( packet );
+    }
+
+    void ProcessAcks( const uint16_t *acks, int numAcks )
+    {
+        // todo: remove any reliable packets in the send queue if they match an ack sequence
+    }
+
+    protocol2::Packet* GenerateAggregatePacket( double t )
+    {
+        // todo: work out acks that should be sent. this depends on receiver. it seems we must combine the receiver and sender in this case
+
+        // todo: generate aggregate packet header (acks), also I think we need to send the sequence # of the oldest unacked packet
+
+        // todo: queue up unreliable packets first (assumed time critical)
+
+        // todo: select n most reliable packets next, use minimum resend time, maybe sort in order of oldest -> newest
+
+        // todo: actually build the aggregate packet and return it to caller
+
+        return NULL;
+    }
+
+    void ProcessAggregatePacket( protocol2::Packet *packet )
+    {
+        assert( packet );
+
+        // todo: process the aggregate packet. 
+
+        // 1. get the acks out of the aggregate packet header, call "ProcessAcks"
+
+        // 2. process each of the packets in turn, and add them to the receive queue (if possible, they must be in range and we cannot go too far ahead of oldest unacked packet)
+
+        // 3. if a packet is received, add it to the ack queue (rolling window of received, true/false). if it cannot fit in send queue, don't add to ack queue
+
+        // 4. as each packet is acked, need to update oldest unacked (eg. slide from left -> right advance to move it forward), *or* do it once at end.
+    }
+};
+
 int main()
 {
     srand( time( NULL ) );
 
-    TestPacketFactory packetFactory;
-
     uint16_t sequence = 0;
+
+    Node a;
+    Node b;
 
     AggregatePacketHeader aggregateReadHeader;
     AggregatePacketHeader aggregateWriteHeader;

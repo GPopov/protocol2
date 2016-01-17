@@ -1,44 +1,15 @@
 DONE
 
-    Reliable Packets: The Plan
-
-    Need to add a header for the aggregate packet. This is where ack data will go.
-
-    Need a bit in header per-acket for reliable vs. unreliable packet in the aggregate packet.
-
-    Do all the work for reliable and unreliable packets inside the example, as we won't do it this way moving forward.
-
-    Separate sequence numbers for reliable and unreliable packets (otherwise, lots of unreliable packets in between reliable packets causes weirdness)
-
-    Extended read/write aggregate packet function to take optional aggregate packet header.
-
-    Rename 005 packet headers into two parts:
-
-        1. aggregate packet header (acks will go here)
-
-        2. packet header (sequence, reliable true/false)
-
-    Implement the code that serializes the optional aggregate packet header, and aligns to byte.
-
-    Add a dummy read/write aggregate packet header and pass it in to read/write aggregate.
-
-    Verify that everything still serializes properly.
-
 TODO
 
-    Work out what the example should look like.
+    Actually hook the example code up to the functions in node and make sure the interface matches what I expect.
 
-    ==================
+    Basically here I want to verify that all reliable packets are received reliably and in order, and to process (throw away)
+    the unreliable packets (make sure at least one gets through)
 
-    Need to implement a sender and reciever side (structs).
+    Need to setup the simulator.
 
-    Need to construct ack packets and send them back over.
-
-    Perhaps make this example bidirectional? If the acks are inside the header, instead of a packet type, then bidirectional is what makes the most sense.
-
-    I think making this protocol bidirectional is the whole point. Add a "Connection" class that is both sender and receiver?
-
-    Need to setup a network simulator and send packets over that.
+    Need to setup the function to serialize packet.
 
     ==================
 
