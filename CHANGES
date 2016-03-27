@@ -1,4 +1,20 @@
 
+Saturday March 26th, 2016
+=========================
+
+    Need to sort out the endian issues and make sure my bitpacker lines up with what I described in my article.
+
+    I may have fucked it up actually!
+
+    Yes. It was reversed, eg. rolling bits the wrong way, required big endian to function.
+
+    Reworked it to match the description in the article.
+
+    Just need to finish updating ReadBytes/WriteBytes and the source code is available.
+
+    Done. But it's not unit tested.
+
+
 Sunday January 17th, 2016
 =========================
 

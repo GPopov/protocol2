@@ -4,6 +4,46 @@
 		"selected_items":
 		[
 			[
+				"aggregate",
+				"aggregateReadHeader"
+			],
+			[
+				"PROTOCOL2_ERROR_SER",
+				"PROTOCOL2_ERROR_SERIALIZE_HEADER_FAILED"
+			],
+			[
+				"aggreg",
+				"aggregatePacketHeader"
+			],
+			[
+				"PROTOCOL2_ERROR_FAIL",
+				"PROTOCOL2_ERROR_SERIALIZE_HEADER_FAILED"
+			],
+			[
+				"PROTOCOL2_ERROR",
+				"PROTOCOL2_ERROR_CREATE_PACKET_FAILED"
+			],
+			[
+				"MaxPe",
+				"MaxPacketsPerIteration"
+			],
+			[
+				"numPackets",
+				"numPacketsRead"
+			],
+			[
+				"max",
+				"maxPacketsToRead"
+			],
+			[
+				"MaxPackets",
+				"MaxPacketsPerIteration"
+			],
+			[
+				"numPAckets",
+				"numPacketsWritten"
+			],
+			[
 				"previous",
 				"previous"
 			],
@@ -380,10 +420,6 @@
 				"SERVER_CLIENT_STATE_READY_FOR_CONNECTION"
 			],
 			[
-				"max",
-				"maxServerDataSize"
-			],
-			[
 				"fargmen",
 				"fragmentId"
 			],
@@ -478,42 +514,6 @@
 			[
 				"SendLrg",
 				"SendLargeBlockData"
-			],
-			[
-				"SERVER_CLIENT_",
-				"SERVER_CLIENT_Connected"
-			],
-			[
-				"SERVER_CLIENT",
-				"SERVER_CLIENT_Disconnected"
-			],
-			[
-				"CLIENT_ERROR_Td",
-				"CLIENT_ERROR_ConnectionTimedOut"
-			],
-			[
-				"CLIENT_ERROR_Conn",
-				"CLIENT_ERROR_ConnectionRequestDenied"
-			],
-			[
-				"CLIENT_STATE",
-				"CLIENT_STATE_ReadyForConnection"
-			],
-			[
-				"SERE",
-				"SERVER_CLIENT_SendingChallenge"
-			],
-			[
-				"CLIENT_ERROR",
-				"CLIENT_ERROR_ConnectionRequestTimedOut"
-			],
-			[
-				"Disconnec",
-				"DisconnectAndSetError"
-			],
-			[
-				"m_conn",
-				"m_sendingConnectionRequestData"
 			]
 		]
 	},
@@ -682,16 +682,32 @@
 	],
 	"file_history":
 	[
-		"/Users/gaffer/git/protocol2/premake4.lua",
-		"/Users/gaffer/git/protocol2/001_reading_and_writing_packets.cpp",
-		"/Users/gaffer/git/protocol2/002_packet_fragmentation_and_reassembly.cpp",
-		"/Users/gaffer/git/protocol2/003_sending_large_blocks_of_data_quickly_and_reliably.cpp",
-		"/Users/gaffer/git/protocol2/output.txt",
-		"/Users/gaffer/git/protocol2/test.cpp",
+		"/Users/gaffer/Desktop/taxes/corporate 2015/working.txt",
+		"/Users/gaffer/Documents/DONE",
+		"/Users/gaffer/Documents/TODO",
+		"/Users/gaffer/Documents/ADVISORS",
+		"/Users/gaffer/Documents/WORKLOG",
+		"/Users/gaffer/Documents/WORK",
+		"/Users/gaffer/Documents/RESPAWN RECS",
+		"/Users/gaffer/Documents/HOME OFFICE",
 		"/Users/gaffer/git/protocol2/TODO",
-		"/Users/gaffer/git/protocol2/protocol2.h",
-		"/Users/gaffer/git/protocol2/network2.h",
+		"/Users/gaffer/Documents/HEDGING",
+		"/Users/gaffer/Documents/INTUIT",
+		"/Users/gaffer/Downloads/JPMC.CSV",
+		"/Users/gaffer/Documents/BURN RATE",
+		"/Users/gaffer/git/protocol2/005_reliable_packets.cpp",
 		"/Users/gaffer/git/protocol2/CHANGES",
+		"/Users/gaffer/git/protocol2/premake4.lua",
+		"/Users/gaffer/git/protocol2/004_packet_aggregation.cpp",
+		"/Users/gaffer/git/protocol2/protocol2.h",
+		"/Users/gaffer/Desktop/taxes/working.txt",
+		"/Users/gaffer/git/protocol2/003_sending_large_blocks_of_data_quickly_and_reliably.cpp",
+		"/Users/gaffer/git/protocol2/002_packet_fragmentation_and_reassembly.cpp",
+		"/Users/gaffer/git/protocol2/001_reading_and_writing_packets.cpp",
+		"/Users/gaffer/git/protocol2/test.cpp",
+		"/Users/gaffer/git/protocol2/network2.h",
+		"/Users/gaffer/git/protocol2/GAME IDEAS",
+		"/Users/gaffer/git/protocol2/output.txt",
 		"/Users/gaffer/Desktop/Simulator.cpp",
 		"/Users/gaffer/git/protocol/tests/Network/TestAddress.cpp",
 		"/Users/gaffer/Desktop/Address.cpp",
@@ -704,7 +720,6 @@
 		"/Users/gaffer/git/protocol/src/Network/Network.h",
 		"/Users/gaffer/Desktop/Network.h",
 		"/Users/gaffer/Desktop/Simulator.h",
-		"/Users/gaffer/Desktop/taxes/working.txt",
 		"/Users/gaffer/Desktop/taxes/profit.txt",
 		"/Users/gaffer/Documents/AUSTRALIA",
 		"/Users/gaffer/Documents/FINANCES",
@@ -794,22 +809,7 @@
 		"/Users/gaffer/git/protocol/src/Cubes/Config.h",
 		"/Users/gaffer/git/protocol/data/shaders/Subroutine.vert",
 		"/Users/gaffer/git/protocol/data/shaders/Subroutine.frag",
-		"/Users/gaffer/git/protocol/src/Game/Cubes.h",
-		"/Users/gaffer/git/protocol/src/Game/Render.h",
-		"/Users/gaffer/git/protocol/src/Game/ShaderManager.h",
-		"/Users/gaffer/git/protocol/src/Cubes/Game.h",
-		"/Users/gaffer/git/protocol/src/Cubes/Mathematics.h",
-		"/Users/gaffer/git/protocol/premake4.lua",
-		"/Users/gaffer/git/protocol/external/ode/ode/src/ode.cpp",
-		"/Users/gaffer/git/protocol/src/Cubes/Simulation.cpp",
-		"/Users/gaffer/git/protocol/src/Game/Game.cpp",
-		"/Users/gaffer/git/protocol/src/Game/Demo.h",
-		"/Users/gaffer/git/protocol/tests/Cubes/TestCubes.cpp",
-		"/Users/gaffer/git/protocol/src/Game/DeltaDemo.h",
-		"/Users/gaffer/git/protocol/src/Game/ReplayManager.cpp",
-		"/Users/gaffer/git/protocol/src/Network/Simulator.h",
-		"/Users/gaffer/git/protocol/src/VirtualGo/CollisionResponse.h",
-		"/Users/gaffer/git/protocol/output/delta_quaternion.txt"
+		"/Users/gaffer/git/protocol/src/Game/Cubes.h"
 	],
 	"find":
 	{
@@ -860,6 +860,55 @@
 		"case_sensitive": true,
 		"find_history":
 		[
+			"980",
+			"1293.29",
+			"1,293.29",
+			"amazon.com",
+			"amazon",
+			"$50",
+			"amazon",
+			"deduc",
+			"amazon",
+			"deduc",
+			"50%",
+			"tax",
+			"TestPacketHeader",
+			"TestPacket",
+			"PacketHeader",
+			"printf",
+			"WriteAgg",
+			"// todo",
+			"ReadPacket(",
+			".GetError",
+			"TestPacket",
+			"printf",
+			"Aggregate",
+			"numPacketsRead",
+			"ReadAgg",
+			"Aggregate",
+			"BitsProcessed",
+			"Aggregate",
+			"AlignBits",
+			"SerializeAlign",
+			"align",
+			" % ",
+			"GetBytesProcessed",
+			"ReadAgg",
+			"header",
+			"ReadPacket",
+			"ReadAgg",
+			"AggregatePacket",
+			"Agg",
+			"Agff",
+			"Agg",
+			"WriteAgg",
+			"WriteAggreg",
+			"WritePacket",
+			"Factory",
+			"numPacketTypes",
+			"acked",
+			"SlicePacket",
+			"chunk mismatch",
 			"ack ",
 			"ack",
 			"ReceivePacket",
@@ -938,56 +987,7 @@
 			"Fragment",
 			"FragmentPacket",
 			"BitReader",
-			"GetBitsRemaining",
-			"BitReader",
-			"numPacketTyps",
-			"PacketFragmentHeaderBytes",
-			"PacketFragmentHeader",
-			"PacketHeader",
-			"Header",
-			"totalFragments",
-			"ProcessPacket",
-			"total",
-			"CreatePacket",
-			"PROTOCOL2_ERROR_CREATE_PACKET_FAILED",
-			"create packet failed",
-			"serialize_unint",
-			"SERIALIZE_HEADER",
-			"write_packet",
-			"crc32",
-			"bytesWritten",
-			"1024",
-			"error_string",
-			"list",
-			"DEBUG",
-			"// todo",
-			"// tede",
-			"==",
-			"SerializeAlign",
-			"Align",
-			"// todo",
-			"GetAlignBits",
-			"todo",
-			"read_packet",
-			"Abort",
-			"STREAM_INVALID",
-			"INVALID",
-			"gcc",
-			"ERROR_",
-			"error_string",
-			"ERROR_NONE",
-			"DestroyPacket",
-			"todo",
-			"CHECK_",
-			"PROTOCOL2_SERIALIZE_CHECK_FAILED",
-			"ERROR_",
-			"enum",
-			"calculate_crc32",
-			"write_packet",
-			"read_packet",
-			"GetNumTypes",
-			"// todo",
-			"error"
+			"GetBitsRemaining"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -1041,7 +1041,7 @@
 	],
 	"incremental_find":
 	{
-		"height": 25.0
+		"height": 22.0
 	},
 	"input":
 	{
@@ -1082,7 +1082,7 @@
 	"project": "protocol2.sublime-project",
 	"replace":
 	{
-		"height": 46.0
+		"height": 40.0
 	},
 	"save_all_on_build": true,
 	"select_file":
@@ -1092,52 +1092,88 @@
 		"selected_items":
 		[
 			[
-				"changes",
-				"CHANGES"
-			],
-			[
 				"todo",
 				"TODO"
 			],
 			[
-				"premake4.lua",
-				"premake4.lua"
+				"work",
+				"~/Documents/WORKLOG"
 			],
 			[
-				"network2.h",
-				"network2.h"
+				"changes",
+				"CHANGES"
 			],
 			[
-				"output.txt",
-				"output.txt"
+				"005",
+				"005_reliable_packets.cpp"
+			],
+			[
+				"done",
+				"~/Documents/DONE"
 			],
 			[
 				"protocol2.h",
 				"protocol2.h"
 			],
 			[
+				"004",
+				"004_packet_aggregation.cpp"
+			],
+			[
+				"premake4.lua",
+				"premake4.lua"
+			],
+			[
+				"",
+				"004_packet_aggregation.cpp"
+			],
+			[
 				"003",
 				"003_sending_large_blocks_of_data_quickly_and_reliably.cpp"
 			],
 			[
-				"protocol2h.",
-				"protocol2.h"
+				"pre",
+				"premake4.lua"
 			],
 			[
 				"test.cpp",
 				"test.cpp"
 			],
 			[
-				"protocol2h",
-				"protocol2.h"
-			],
-			[
 				"002",
 				"002_packet_fragmentation_and_reassembly.cpp"
 			],
 			[
+				"test",
+				"test.cpp"
+			],
+			[
 				"001",
 				"001_reading_and_writing_packets.cpp"
+			],
+			[
+				"proto",
+				"protocol2.h"
+			],
+			[
+				"protocol2h",
+				"protocol2.h"
+			],
+			[
+				"network2.h",
+				"network2.h"
+			],
+			[
+				"03",
+				"003_sending_large_blocks_of_data_quickly_and_reliably.cpp"
+			],
+			[
+				"output.txt",
+				"output.txt"
+			],
+			[
+				"protocol2h.",
+				"protocol2.h"
 			],
 			[
 				"001_read",
@@ -1158,10 +1194,6 @@
 			[
 				"premake4",
 				"premake4.lua"
-			],
-			[
-				"test",
-				"test.cpp"
 			],
 			[
 				"premake",
@@ -1189,10 +1221,6 @@
 			],
 			[
 				"read",
-				"001_reading_and_writing_packets.cpp"
-			],
-			[
-				"",
 				"001_reading_and_writing_packets.cpp"
 			],
 			[
@@ -1392,10 +1420,6 @@
 				"client.cpp"
 			],
 			[
-				"pre",
-				"premake4.lua"
-			],
-			[
 				"too",
 				"TODO"
 			],
@@ -1578,30 +1602,6 @@
 			[
 				"math.h",
 				"src/Cubes/Mathematics.h"
-			],
-			[
-				"simulat",
-				"src/Network/Simulator.h"
-			],
-			[
-				"snapshot",
-				"src/Game/Snapshot.h"
-			],
-			[
-				"ch",
-				"CHANGES"
-			],
-			[
-				"simulatino.h",
-				"src/Cubes/Simulation.h"
-			],
-			[
-				"compression",
-				"src/Game/CompressionDemo.cpp"
-			],
-			[
-				"stream.h",
-				"src/Protocol/Stream.h"
 			]
 		],
 		"width": 0.0

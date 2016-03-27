@@ -1,7 +1,27 @@
 /*
-    Protocol2 by Glenn Fiedler <glenn.fiedler@gmail.com>
-    This software is in the public domain. Where that dedication is not recognized, 
-    you are granted a perpetual, irrevocable license to copy, distribute, and modify this file as you see fit.
+    Protocol2 Library.
+
+    Copyright © 2016, The Network Protocol Company, Inc.
+    
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+        1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+        2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer 
+           in the documentation and/or other materials provided with the distribution.
+
+        3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived 
+           from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
+    INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+    SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+    USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #ifndef PROTOCOL2_H
@@ -103,6 +123,8 @@ namespace protocol2
         static const uint32_t result = ( min == max ) ? 0 : ( Log2<uint32_t(max-min)>::result + 1 );
     };
 
+    #define BITS_REQUIRED( min, max ) BitsRequired<min,max>::result
+
     inline uint32_t popcount( uint32_t x )
     {
 #ifdef __GNUC__
@@ -159,9 +181,11 @@ namespace protocol2
         return ( value & 0x00ff ) << 8 | ( value & 0xff00 ) >> 8;
     }
 
+    // IMPORTANT: These functions consider network order to be little endian because most modern processors are little endian. Least amount of work!
+
     inline uint32_t host_to_network( uint32_t value )
     {
-#if PROTOCOL2_LITTLE_ENDIAN
+#if PROTOCOL2_BIG_ENDIAN
         return bswap( value );
 #else // #if PROTOCOL2_BIG_ENDIAN
         return value;
@@ -170,29 +194,29 @@ namespace protocol2
 
     inline uint32_t network_to_host( uint32_t value )
     {
-#if PROTOCOL2_LITTLE_ENDIAN
+#if PROTOCOL2_BIG_ENDIAN
         return bswap( value );
-#else // #if PROTOCOL2_LITTLE_ENDIAN
+#else // #if PROTOCOL2_BIG_ENDIAN
         return value;
-#endif // #if PROTOCOL2_LITTLE_ENDIAN
+#endif // #if PROTOCOL2_BIG_ENDIAN
     }
 
     inline uint16_t host_to_network( uint16_t value )
     {
-#if PROTOCOL2_LITTLE_ENDIAN
+#if PROTOCOL2_BIG_ENDIAN
         return bswap( value );
-#else // #if PROTOCOL2_LITTLE_ENDIAN
+#else // #if PROTOCOL2_BIG_ENDIAN
         return value;
-#endif // #if PROTOCOL2_LITTLE_ENDIAN
+#endif // #if PROTOCOL2_BIG_ENDIAN
     }
 
     inline uint16_t network_to_host( uint16_t value )
     {
-#if PROTOCOL2_LITTLE_ENDIAN
+#if PROTOCOL2_BIG_ENDIAN
         return bswap( value );
-#else // #if PROTOCOL2_LITTLE_ENDIAN
+#else // #if PROTOCOL2_BIG_ENDIAN
         return value;
-#endif // #if PROTOCOL2_LITTLE_ENDIAN
+#endif // #if PROTOCOL2_BIG_ENDIAN
     }
 
     inline bool sequence_greater_than( uint16_t s1, uint16_t s2 )
@@ -242,9 +266,9 @@ namespace protocol2
             assert( ( bytes % 4 ) == 0 );           // buffer size must be a multiple of four
             m_numBits = m_numWords * 32;
             m_bitsWritten = 0;
-            m_scratch = 0;
-            m_bitIndex = 0;
             m_wordIndex = 0;
+            m_scratch = 0;
+            m_scratchBits = 0;
         }
 
         void WriteBits( uint32_t value, int bits )
@@ -253,18 +277,18 @@ namespace protocol2
             assert( bits <= 32 );
             assert( m_bitsWritten + bits <= m_numBits );
 
-            value &= ( uint64_t( 1 ) << bits ) - 1;
+            value &= ( uint64_t(1) << bits ) - 1;
 
-            m_scratch |= uint64_t( value ) << ( 64 - m_bitIndex - bits );
+            m_scratch |= uint64_t( value ) << m_scratchBits;
 
-            m_bitIndex += bits;
+            m_scratchBits += bits;
 
-            if ( m_bitIndex >= 32 )
+            if ( m_scratchBits >= 32 )
             {
                 assert( m_wordIndex < m_numWords );
-                m_data[m_wordIndex] = host_to_network( uint32_t( m_scratch >> 32 ) );
-                m_scratch <<= 32;
-                m_bitIndex -= 32;
+                m_data[m_wordIndex] = host_to_network( uint32_t( m_scratch ) );
+                m_scratch >>= 32;
+                m_scratchBits -= 32;
                 m_wordIndex++;
             }
 
@@ -286,9 +310,9 @@ namespace protocol2
         {
             assert( GetAlignBits() == 0 );
             assert( m_bitsWritten + bytes * 8 <= m_numBits );
-            assert( m_bitIndex == 0 || m_bitIndex == 8 || m_bitIndex == 16 || m_bitIndex == 24 );
+            assert( ( m_bitsWritten % 32 ) == 0 || ( m_bitsWritten % 32 ) == 8 || ( m_bitsWritten % 32 ) == 16 || ( m_bitsWritten % 32 ) == 24 );
 
-            int headBytes = ( 4 - m_bitIndex / 8 ) % 4;
+            int headBytes = ( 4 - ( m_bitsWritten % 32 ) / 8 ) % 4;
             if ( headBytes > bytes )
                 headBytes = bytes;
             for ( int i = 0; i < headBytes; ++i )
@@ -301,7 +325,7 @@ namespace protocol2
             int numWords = ( bytes - headBytes ) / 4;
             if ( numWords > 0 )
             {
-                assert( m_bitIndex == 0 );
+                assert( ( m_bitsWritten % 32 ) == 0 );
                 memcpy( &m_data[m_wordIndex], data + headBytes, numWords * 4 );
                 m_bitsWritten += numWords * 32;
                 m_wordIndex += numWords;
@@ -323,10 +347,10 @@ namespace protocol2
 
         void FlushBits()
         {
-            if ( m_bitIndex != 0 )
+            if ( m_scratchBits != 0 )
             {
                 assert( m_wordIndex < m_numWords );
-                m_data[m_wordIndex++] = host_to_network( uint32_t( m_scratch >> 32 ) );
+                m_data[m_wordIndex++] = host_to_network( uint32_t( m_scratch ) );
             }
         }
 
@@ -367,8 +391,8 @@ namespace protocol2
         int m_numBits;
         int m_numWords;
         int m_bitsWritten;
-        int m_bitIndex;
         int m_wordIndex;
+        int m_scratchBits;
     };
 
     class BitReader
@@ -382,9 +406,9 @@ namespace protocol2
             assert( data );
             m_numBits = m_numBytes * 8;
             m_bitsRead = 0;
-            m_bitIndex = 0;
+            m_scratch = 0;
+            m_scratchBits = 0;
             m_wordIndex = 0;
-            m_scratch = network_to_host( m_data[0] );
         }
 
         bool WouldOverflow( int bits ) const
@@ -400,37 +424,22 @@ namespace protocol2
 
             m_bitsRead += bits;
 
-            assert( m_bitIndex < 32 );
+            assert( m_scratchBits >= 0 && m_scratchBits <= 64 );
 
-            if ( m_bitIndex + bits < 32 )
+            if ( m_scratchBits < bits )
             {
-                m_scratch <<= bits;
-                m_bitIndex += bits;
-            }
-            else
-            {
-                if ( m_wordIndex < m_numWords - 1 )
-                {
-                    m_wordIndex++;
-                    const uint32_t a = 32 - m_bitIndex;
-                    const uint32_t b = bits - a;
-                    m_scratch <<= a;
-                    m_scratch |= network_to_host( m_data[m_wordIndex] );
-                    m_scratch <<= b;
-                    m_bitIndex = b;
-                }
-                else
-                {
-                    const uint32_t a = 32 - m_bitIndex;
-                    const uint32_t b = bits - a;
-                    m_scratch <<= ( a + b );
-                    m_bitIndex = b;
-                }
+                assert( m_wordIndex < m_numWords );
+                m_scratch |= uint64_t( network_to_host( m_data[m_wordIndex] ) ) << m_scratchBits;
+                m_scratchBits += 32;
+                m_wordIndex++;
             }
 
-            const uint32_t output = uint32_t( m_scratch >> 32 );
+            assert( m_scratchBits >= bits );
 
-            m_scratch &= 0xFFFFFFFF;
+            const uint32_t output = m_scratch & ( (uint64_t(1)<<bits) - 1 );
+
+            m_scratch >>= bits;
+            m_scratchBits -= bits;
 
             return output;
         }
@@ -455,9 +464,9 @@ namespace protocol2
         {
             assert( GetAlignBits() == 0 );
             assert( m_bitsRead + bytes * 8 <= m_numBits );
-            assert( m_bitIndex == 0 || m_bitIndex == 8 || m_bitIndex == 16 || m_bitIndex == 24 );
+            assert( ( m_bitsRead % 32 ) == 0 || ( m_bitsRead % 32 ) == 8 || ( m_bitsRead % 32 ) == 16 || ( m_bitsRead % 32 ) == 24 );
 
-            int headBytes = ( 4 - m_bitIndex / 8 ) % 4;
+            int headBytes = ( 4 - ( m_bitsRead % 32 ) / 8 ) % 4;
             if ( headBytes > bytes )
                 headBytes = bytes;
             for ( int i = 0; i < headBytes; ++i )
@@ -470,7 +479,7 @@ namespace protocol2
             int numWords = ( bytes - headBytes ) / 4;
             if ( numWords > 0 )
             {
-                assert( m_bitIndex == 0 );
+                assert( ( m_bitsRead % 32 ) == 0 );
                 memcpy( data + headBytes, &m_data[m_wordIndex], numWords * 4 );
                 m_bitsRead += numWords * 32;
                 m_wordIndex += numWords;
@@ -502,7 +511,7 @@ namespace protocol2
 
         int GetBytesRead() const
         {
-            return ( m_wordIndex + 1 ) * 4;
+            return m_wordIndex * 4;
         }
 
         int GetBitsRemaining() const
@@ -533,7 +542,7 @@ namespace protocol2
         int m_numBytes;
         int m_numWords;
         int m_bitsRead;
-        int m_bitIndex;
+        int m_scratchBits;
         int m_wordIndex;
     };
 
