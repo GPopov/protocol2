@@ -979,6 +979,41 @@ namespace protocol2
                 return false;                                                       \
         } while (0)
 
+    template <typename Stream> bool internal_serialize_compressed_float( Stream & stream, float & value, float min, float max, float res )
+    {
+        const float delta = max - min;
+        const float values = delta / res;
+        const uint32_t maxIntegerValue = (uint32_t) ceil( values );
+        const int bits = bits_required( 0, maxIntegerValue );
+        
+        uint32_t integerValue = 0;
+        
+        if ( Stream::IsWriting )
+        {
+            float normalizedValue = clamp( ( value - min ) / delta, 0.0f, 1.0f );
+            integerValue = (uint32_t) floor( normalizedValue * maxIntegerValue + 0.5f );
+        }
+        
+        if ( !stream.SerializeBits( integerValue, bits ) )
+            return false;
+
+        if ( Stream::IsReading )
+        {
+            const float normalizedValue = integerValue / float( maxIntegerValue );
+            value = normalizedValue * delta + min;
+        }
+
+        return true;
+    }
+
+    #define serialize_compressed_float( stream, value, min, max, res )                  \
+    do                                                                                  \
+    {                                                                                   \
+        if ( !internal_serialize_compressed_float( stream, value, min, max, res ) )     \
+            return false;                                                               \
+    }                                                                                   \
+    while(0)
+
     template <typename Stream> bool serialize_uint64_internal( Stream & stream, uint64_t & value )
     {
         uint32_t hi,lo;

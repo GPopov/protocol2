@@ -16,25 +16,30 @@ project "001_reading_and_writing_packets"
     kind "ConsoleApp"
     files { "001_reading_and_writing_packets.cpp", "protocol2.h", "network2.h" }
 
-project "002_packet_fragmentation_and_reassembly"
+project "002_serialization_strategies"
     language "C++"
     kind "ConsoleApp"
-    files { "002_packet_fragmentation_and_reassembly.cpp", "protocol2.h", "network2.h" }
+    files { "002_serialization_strategies.cpp", "protocol2.h", "network2.h" }
 
-project "003_sending_large_blocks_of_data_quickly_and_reliably"
+project "003_packet_fragmentation_and_reassembly"
     language "C++"
     kind "ConsoleApp"
-    files { "003_sending_large_blocks_of_data_quickly_and_reliably.cpp", "protocol2.h", "network2.h" }
+    files { "003_packet_fragmentation_and_reassembly.cpp", "protocol2.h", "network2.h" }
 
-project "004_packet_aggregation"
+project "004_sending_large_blocks_of_data"
     language "C++"
     kind "ConsoleApp"
-    files { "004_packet_aggregation.cpp", "protocol2.h", "network2.h" }
+    files { "004_sending_large_blocks_of_data.cpp", "protocol2.h", "network2.h" }
 
-project "005_reliable_packets"
+project "005_packet_aggregation"
     language "C++"
     kind "ConsoleApp"
-    files { "005_reliable_packets.cpp", "protocol2.h", "network2.h" }
+    files { "005_packet_aggregation.cpp", "protocol2.h", "network2.h" }
+
+project "006_reliable_packets"
+    language "C++"
+    kind "ConsoleApp"
+    files { "006_reliable_packets.cpp", "protocol2.h", "network2.h" }
 
 if _ACTION == "clean" then
     os.rmdir "obj"

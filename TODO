@@ -2,6 +2,15 @@ DONE
 
 TODO
 
+    I think I want to remove the virtuals on the packet read/write. PROTOCOL2_SERIALIZE_FUNCTION( stream ) is a shitty macro.
+
+
+
+
+
+
+    
+
     ==================
 
     Actually hook the example code up to the functions in node and make sure the interface matches what I expect.
