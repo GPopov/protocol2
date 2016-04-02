@@ -30,7 +30,13 @@
 #include <stdio.h>
 #include <time.h>
 
-/*
+#include "vectorial/vec3f.h"
+#include "vectorial/vec4f.h"
+#include "vectorial/quat4f.h"
+#include "vectorial/mat4f.h"
+
+using namespace vectorial;
+
 template <typename Stream> bool serialize_vector_internal( Stream & stream, vec3f & vector )
 {
     float values[3];
@@ -70,7 +76,6 @@ template <typename Stream> bool serialize_compressed_vector_internal( Stream & s
         vector.load( values );
     return true;
 }
-*/
 
 template <int bits> struct compressed_quaternion
 {
@@ -198,8 +203,6 @@ template <int bits> struct compressed_quaternion
 
     void Save( float & x, float & y, float & z, float & w ) const
     {
-        // note: you're going to want to normalize the quaternion returned from this function
-
         assert( bits > 1 );
         assert( bits <= 10 );
 
@@ -263,12 +266,13 @@ template <int bits> struct compressed_quaternion
         }
     }
 
-    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_bits( stream, largest, 2 );
         serialize_bits( stream, integer_a, bits );
         serialize_bits( stream, integer_b, bits );
         serialize_bits( stream, integer_c, bits );
+        return true;
     }
 
     bool operator == ( const compressed_quaternion & other ) const
@@ -294,9 +298,64 @@ template <int bits> struct compressed_quaternion
     }
 };
 
+template <typename Stream> bool serialize_compressed_quaternion_internal( Stream & stream, quat4f & quat )
+{
+    compressed_quaternion<10> compressed_quat;
+    
+    if ( Stream::IsWriting )
+        compressed_quat.Load( quat.x(), quat.y(), quat.z(), quat.w() );
+    
+    serialize_object( stream, compressed_quat );
+
+    if ( Stream::IsReading )
+    {
+        float x,y,z,w;
+        compressed_quat.Save( x, y, z, w );
+        quat = normalize( quat4f( x, y, z, w ) );
+    }
+
+    return true;
+}
+
+struct Object
+{
+    vec3f position;
+    quat4f orientation;
+    vec3f linear_velocity;
+    vec3f angular_velocity;
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_vector( stream, position );
+        serialize_orientation( stream, orientation );
+
+        bool at_rest = Stream::IsWriting ? ( length( linear_velocity ) == 0.0f && length( angular_velocity ) == 0.0f ) : false;
+
+        serialize_bool( stream, at_rest );
+
+        if ( !at_rest )
+        {
+            serialize_vector( stream, linear_velocity );
+            serialize_vector( stream, angular_velocity );
+        }
+
+        return true;
+    }
+};
+
+const int MaxObjects = 1024;
+
+struct Scene
+{
+    Object objects[MaxObjects];
+};
+
+// ...
 
 int main()
 {
+    printf( "hello world\n" );
+
     // todo: this is a new example source code because the first article got too long. It's not coded yet, but check the next examples because they are.
 
     return 0;

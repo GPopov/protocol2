@@ -1,5 +1,6 @@
 solution "protocol2"
     platforms { "x64" }
+    includedirs { ".", "vectorial" }
     configurations { "Debug", "Release" }
     flags { "Symbols", "ExtraWarnings", "EnableSSE2", "FloatFast" , "NoRTTI", "NoExceptions" }
     configuration "Release"
@@ -109,14 +110,14 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "002",
-        description = "Build example source for packet fragmentation and reassembly",
+        description = "Build example source for serialization strategies",
         valid_kinds = premake.action.get("gmake").valid_kinds,
         valid_languages = premake.action.get("gmake").valid_languages,
         valid_tools = premake.action.get("gmake").valid_tools,
      
         execute = function ()
-            if os.execute "make -j4 002_packet_fragmentation_and_reassembly" == 0 then
-                os.execute "./002_packet_fragmentation_and_reassembly"
+            if os.execute "make -j4 002_serialization_strategies" == 0 then
+                os.execute "./002_serialization_strategies"
             end
         end
     }
@@ -124,14 +125,14 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "003",
-        description = "Build example source for sending large blocks of data quickly and reliably",
+        description = "Build example source for packet fragmentation and reassembly",
         valid_kinds = premake.action.get("gmake").valid_kinds,
         valid_languages = premake.action.get("gmake").valid_languages,
         valid_tools = premake.action.get("gmake").valid_tools,
      
         execute = function ()
-            if os.execute "make -j4 003_sending_large_blocks_of_data_quickly_and_reliably" == 0 then
-                os.execute "./003_sending_large_blocks_of_data_quickly_and_reliably"
+            if os.execute "make -j4 003_packet_fragmentation_and_reassembly" == 0 then
+                os.execute "./003_packet_fragmentation_and_reassembly"
             end
         end
     }
@@ -139,14 +140,14 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "004",
-        description = "Build example source for packet aggregation",
+        description = "Build example source for sending large blocks of data quickly and reliably",
         valid_kinds = premake.action.get("gmake").valid_kinds,
         valid_languages = premake.action.get("gmake").valid_languages,
         valid_tools = premake.action.get("gmake").valid_tools,
      
         execute = function ()
-            if os.execute "make -j4 004_packet_aggregation" == 0 then
-                os.execute "./004_packet_aggregation"
+            if os.execute "make -j4 004_sending_large_blocks_of_data_quickly_and_reliably" == 0 then
+                os.execute "./004_sending_large_blocks_of_data_quickly_and_reliably"
             end
         end
     }
@@ -154,14 +155,29 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "005",
+        description = "Build example source for packet aggregation",
+        valid_kinds = premake.action.get("gmake").valid_kinds,
+        valid_languages = premake.action.get("gmake").valid_languages,
+        valid_tools = premake.action.get("gmake").valid_tools,
+     
+        execute = function ()
+            if os.execute "make -j4 005_packet_aggregation" == 0 then
+                os.execute "./005_packet_aggregation"
+            end
+        end
+    }
+
+    newaction
+    {
+        trigger     = "006",
         description = "Build example source for reliable packets",
         valid_kinds = premake.action.get("gmake").valid_kinds,
         valid_languages = premake.action.get("gmake").valid_languages,
         valid_tools = premake.action.get("gmake").valid_tools,
      
         execute = function ()
-            if os.execute "make -j4 005_reliable_packets" == 0 then
-                os.execute "./005_reliable_packets"
+            if os.execute "make -j4 006_reliable_packets" == 0 then
+                os.execute "./006_reliable_packets"
             end
         end
     }

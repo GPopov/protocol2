@@ -119,7 +119,7 @@ void test_bitpacker()
     check( reader.GetBitsRemaining() == bytesWritten * 8 - bitsWritten );
 }
 
-const int MaxItems = 16;
+const int MaxItems = 11;
 
 struct TestData
 {
@@ -134,6 +134,7 @@ struct TestData
     double double_value;
     uint64_t uint64_value;
     uint8_t bytes[17];
+    char string[64];
 };
 
 struct TestContext
@@ -171,6 +172,8 @@ struct TestObject : public protocol2::Object
 
         for ( int i = 0; i < sizeof( data.bytes ); ++i )
             data.bytes[i] = rand() % 255;
+
+        strcpy( data.string, "hello world!" );
     }
 
     PROTOCOL2_SERIALIZE_FUNCTION( stream )
@@ -203,6 +206,10 @@ struct TestObject : public protocol2::Object
         serialize_uint64( stream, data.uint64_value );
 
         serialize_bytes( stream, data.bytes, sizeof( data.bytes ) );
+
+        serialize_string( stream, data.string, sizeof( data.string ) );
+
+        printf( "string: %s\n", data.string );
 
         serialize_check( stream, 0x12341111 );
 

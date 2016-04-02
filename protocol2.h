@@ -317,6 +317,7 @@ namespace protocol2
                 headBytes = bytes;
             for ( int i = 0; i < headBytes; ++i )
                 WriteBits( data[i], 8 );
+            FlushBits();
             if ( headBytes == bytes )
                 return;
 
@@ -480,8 +481,7 @@ namespace protocol2
                 memcpy( data + headBytes, &m_data[m_wordIndex], numWords * 4 );
                 m_bitsRead += numWords * 32;
                 m_wordIndex += numWords;
-                m_scratch = network_to_host( m_data[m_wordIndex] );
-                m_scratchBits = 32;
+                m_scratchBits = 0;
             }
 
             assert( GetAlignBits() == 0 );
@@ -978,7 +978,7 @@ namespace protocol2
                 return false;                                                       \
         } while (0)
 
-    template <typename Stream> bool internal_serialize_compressed_float( Stream & stream, float & value, float min, float max, float res )
+    template <typename Stream> bool serialize_compressed_float_internal( Stream & stream, float & value, float min, float max, float res )
     {
         const float delta = max - min;
         const float values = delta / res;
@@ -1005,12 +1005,12 @@ namespace protocol2
         return true;
     }
 
-    #define serialize_compressed_float( stream, value, min, max, res )                  \
-    do                                                                                  \
-    {                                                                                   \
-        if ( !internal_serialize_compressed_float( stream, value, min, max, res ) )     \
-            return false;                                                               \
-    }                                                                                   \
+    #define serialize_compressed_float( stream, value, min, max, res )                              \
+    do                                                                                              \
+    {                                                                                               \
+        if ( !protocol2::serialize_compressed_float_internal( stream, value, min, max, res ) )      \
+            return false;                                                                           \
+    }                                                                                               \
     while(0)
 
     template <typename Stream> bool serialize_uint64_internal( Stream & stream, uint64_t & value )
@@ -1086,6 +1086,7 @@ namespace protocol2
         serialize_bytes( stream, (uint8_t*)string, length );
         if ( Stream::IsReading )
             string[length] = '\0';
+        return true;
     }
 
     #define serialize_string( stream, string, buffer_size )                                 \
@@ -1114,6 +1115,14 @@ namespace protocol2
                 return false;                                                               \
         } while (0)
 
+    #define serialize_object( stream, object )                                              \
+    do                                                                                      \
+    {                                                                                       \
+        if ( !object.Serialize( stream ) )                                                  \
+            return false;                                                                   \
+    }                                                                                       \
+    while(0)
+
     class Object
     {  
     public:
@@ -1126,6 +1135,8 @@ namespace protocol2
 
         virtual bool SerializeMeasure( class MeasureStream & stream ) = 0;
     };
+
+    // todo: split this into two parts. the template function, and then the declaration of the virtuals?
 
     #define PROTOCOL2_SERIALIZE_FUNCTION( stream )                                                            \
         bool SerializeRead( class protocol2::ReadStream & stream ) { return Serialize( stream ); };           \
