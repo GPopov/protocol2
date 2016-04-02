@@ -2,9 +2,7 @@ DONE
 
 TODO
 
-    I think I want to remove the virtuals on the packet read/write. PROTOCOL2_SERIALIZE_FUNCTION( stream ) is a shitty macro.
-
-
+    Make sure to actually test the serialize_bytes and serialize_string
 
 
 

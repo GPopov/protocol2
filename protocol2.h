@@ -444,20 +444,17 @@ namespace protocol2
             return output;
         }
 
-        void ReadAlign()
+        bool ReadAlign()
         {
             const int remainderBits = m_bitsRead % 8;
-
             if ( remainderBits != 0 )
             {
-                #ifdef NDEBUG
-                ReadBits( 8 - remainderBits );
-                #else
                 uint32_t value = ReadBits( 8 - remainderBits );
-                assert( value == 0 );
                 assert( m_bitsRead % 8 == 0 );
-                #endif
+                if ( value != 0 )
+                    return false;
             }
+            return true;
         }
 
         void ReadBytes( uint8_t* data, int bytes )
@@ -484,6 +481,7 @@ namespace protocol2
                 m_bitsRead += numWords * 32;
                 m_wordIndex += numWords;
                 m_scratch = network_to_host( m_data[m_wordIndex] );
+                m_scratchBits = 32;
             }
 
             assert( GetAlignBits() == 0 );
@@ -732,7 +730,8 @@ namespace protocol2
                 m_error = PROTOCOL2_ERROR_STREAM_OVERFLOW;
                 return false;
             }
-            m_reader.ReadAlign();
+            if ( !m_reader.ReadAlign() )
+                return false;
             m_bitsRead += alignBits;
             return true;
         }
@@ -1075,15 +1074,16 @@ namespace protocol2
                 return false;                                                       \
         } while (0)
 
-    template <typename Stream> void serialize_string_internal( Stream & stream, char* string, int buffer_size )
+    template <typename Stream> bool serialize_string_internal( Stream & stream, char* string, int buffer_size )
     {
         uint32_t length;
         if ( Stream::IsWriting )
+        {
             length = strlen( string );
-        stream.Align();
-        stream.SerializeBits( length, 32 );
-        assert( length < buffer_size - 1 );
-        stream.SerializeBytes( (uint8_t*)string, length );
+            assert( length < buffer_size - 1 );
+        }
+        serialize_int( stream, length, 0, buffer_size - 1 );
+        serialize_bytes( stream, (uint8_t*)string, length );
         if ( Stream::IsReading )
             string[length] = '\0';
     }
