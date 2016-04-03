@@ -39,7 +39,7 @@ using namespace vectorial;
 
 const int NumIterations = 16;
 
-const uint32_t MaxPacketSize = 10 * 1024;
+const uint32_t MaxPacketSize = 32 * 1024;
 
 const uint32_t ProtocolId = 0x44551177;
 
@@ -131,6 +131,14 @@ template <typename Stream> bool serialize_compressed_vector_internal( Stream & s
         vector.load( values );
     return true;
 }
+
+#define serialize_compressed_vector( stream, value, min, max, res )                             \
+do                                                                                              \
+{                                                                                               \
+    if ( !serialize_compressed_vector_internal( stream, value, min, max, res ) )                \
+        return false;                                                                           \
+}                                                                                               \
+while(0)
 
 template <int bits> struct compressed_quaternion
 {
@@ -357,6 +365,59 @@ template <typename Stream> bool serialize_compressed_quaternion_internal( Stream
             return false;                                                       \
     } while ( 0 )
 
+inline int random_int( int min, int max )
+{
+    assert( max > min );
+    int result = min + rand() % ( max - min + 1 );
+    assert( result >= min );
+    assert( result <= max );
+    return result;
+}
+
+inline float random_float( float min, float max )
+{
+    const int res = 10000000;
+    double scale = ( rand() % res ) / double( res - 1 );
+    return (float) ( min + (double) ( max - min ) * scale );
+}
+
+const float PositionMin = -1000.0f;
+const float PositionMax = +1000.0f;
+const float PositionRes = 0.001f;
+
+const float LinearVelocityMin = -10.0f;
+const float LinearVelocityMax = +10.0f;
+const float LinearVelocityRes = 0.01f;
+
+const float AngularVelocityMin = -20.0f;
+const float AngularVelocityMax = +20.0f;
+const float AngularVelocityRes = 0.01f;
+
+inline vec3f random_position()
+{
+    return vec3f(0,0,0);
+}
+
+inline quat4f random_orientation()
+{
+    return quat4f( 0, 0, 0, 1 );
+}
+
+inline vec3f random_linear_velocity()
+{
+    return vec3f(0,0,0);
+}
+
+inline vec3f random_angular_velocity()
+{
+    return vec3f(0,0,0);
+}
+
+#define serialize_position( stream, value )             serialize_compressed_vector( stream, value, PositionMin, PositionMax, PositionRes );
+#define serialize_orientation( stream, value )          serialize_compressed_quaternion( stream, value );
+#define serialize_linear_velocity( stream, value )      serialize_compressed_vector( stream, value, LinearVelocityMin, LinearVelocityMax, LinearVelocityRes );
+#define serialize_angular_velocity( stream, value )     serialize_compressed_vector( stream, value, AngularVelocityMin, AngularVelocityMax, AngularVelocityRes );
+
 struct Object
 {
     bool send;
@@ -365,10 +426,28 @@ struct Object
     vec3f linear_velocity;
     vec3f angular_velocity;
 
+    void Randomize()
+    {
+        send = (bool) random_int( 0, 1 );
+
+        if ( send )
+        {
+            position = random_position();
+            orientation = random_orientation();
+            linear_velocity = random_linear_velocity();
+            angular_velocity = random_angular_velocity();
+        }
+        else
+        {
+            memset( this, 0, sizeof( Object ) );
+        }
+    }
+
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        serialize_vector( stream, position );
-        serialize_quaternion( stream, orientation );
+        serialize_position( stream, position );
+
+        serialize_orientation( stream, orientation );
 
         bool at_rest = Stream::IsWriting ? ( length( linear_velocity ) == 0.0f && length( angular_velocity ) == 0.0f ) : false;
 
@@ -376,8 +455,9 @@ struct Object
 
         if ( !at_rest )
         {
-            serialize_vector( stream, linear_velocity );
-            serialize_vector( stream, angular_velocity );
+            serialize_linear_velocity( stream, linear_velocity );
+
+            serialize_angular_velocity( stream, angular_velocity );
         }
 
         return true;
@@ -391,7 +471,13 @@ struct Scene
     Object objects[MaxObjects];
 };
 
-template <typename Stream> bool serialize_objects_a( Stream & stream, Scene & scene )
+void RandomizeScene( Scene & scene )
+{
+    for ( int i = 0; i < MaxObjects; ++i )
+        scene.objects[i].Randomize();
+}
+
+template <typename Stream> bool serialize_scene_a( Stream & stream, Scene & scene )
 {
     for ( int i = 0; i < MaxObjects; ++i )
     {
@@ -406,9 +492,11 @@ template <typename Stream> bool serialize_objects_a( Stream & stream, Scene & sc
 
         serialize_object( stream, scene.objects[i] );
     }
+
+    return true;
 }
 
-bool write_objects_b( protocol2::WriteStream & stream, Scene & scene )
+bool write_scene_b( protocol2::WriteStream & stream, Scene & scene )
 {
     int num_objects_sent = 0;
 
@@ -433,8 +521,10 @@ bool write_objects_b( protocol2::WriteStream & stream, Scene & scene )
     return true;
 }
 
-bool read_objects_b( protocol2::ReadStream & stream, Scene & scene )
+bool read_scene_b( protocol2::ReadStream & stream, Scene & scene )
 {
+    memset( &scene, 0, sizeof( scene ) );
+
     int num_objects_sent; read_int( stream, num_objects_sent, 0, MaxObjects );
 
     for ( int i = 0; i < num_objects_sent; ++i )
@@ -447,7 +537,7 @@ bool read_objects_b( protocol2::ReadStream & stream, Scene & scene )
     return true;
 }
 
-bool write_objects_c( protocol2::WriteStream & stream, Scene & scene )
+bool write_scene_c( protocol2::WriteStream & stream, Scene & scene )
 {
     for ( int i = 0; i < MaxObjects; ++i )
     {
@@ -464,8 +554,10 @@ bool write_objects_c( protocol2::WriteStream & stream, Scene & scene )
     return true;
 }
 
-bool read_objects_c( protocol2::ReadStream & stream, Scene & scene )
+bool read_scene_c( protocol2::ReadStream & stream, Scene & scene )
 {
+    memset( &scene, 0, sizeof( scene ) );
+
     while ( true )
     {
         int index; read_int( stream, index, 0, MaxObjects );
@@ -498,118 +590,120 @@ template <typename Stream> bool serialize_object_index_internal( Stream & stream
     if ( plusOne )
     {
         if ( Stream::IsReading )
-        {
             current = previous + 1;
-            previous = current;
-        }
+        previous = current;
         return true;
     }
 
-    // [+2,6] (2 bits)
+    // [+2,5] -> [0,3] (2 bits)
 
     bool twoBits;
     if ( Stream::IsWriting )
-        twoBits = difference <= 6;
+        twoBits = difference <= 5;
     serialize_bool( stream, twoBits );
     if ( twoBits )
     {
-        serialize_int( stream, difference, 2, 6 );
+        serialize_int( stream, difference, 2, 5 );
         if ( Stream::IsReading )
-        {
             current = previous + difference;
-            previous = current;
-        }
+        previous = current;
         return true;
     }
 
-    // [7,14] -> [0,7] (3 bits)
+    // [6,13] -> [0,7] (3 bits)
 
     bool threeBits;
     if ( Stream::IsWriting )
-        threeBits = difference <= 14;
+        threeBits = difference <= 13;
     serialize_bool( stream, threeBits );
     if ( threeBits )
     {
-        serialize_int( stream, difference, 7, 14 );
+        serialize_int( stream, difference, 6, 13 );
         if ( Stream::IsReading )
-        {
             current = previous + difference;
-            previous = current;
-        }
+        previous = current;
         return true;
     }
 
-    // [15,30] -> [0,15] (4 bits)
+    // [14,29] -> [0,15] (4 bits)
 
     bool fourBits;
     if ( Stream::IsWriting )
-        fourBits = difference <= 30;
+        fourBits = difference <= 29;
     serialize_bool( stream, fourBits );
     if ( fourBits )
     {
-        serialize_int( stream, difference, 15, 30 );
+        serialize_int( stream, difference, 14, 29 );
         if ( Stream::IsReading )
-        {
             current = previous + difference;
-            previous = current;
-        }
+        previous = current;
         return true;
     }
 
-    // [31,62] -> [0,31] (5 bits)
+    // [30,61] -> [0,31] (5 bits)
 
     bool fiveBits;
     if ( Stream::IsWriting )
-        fiveBits = difference <= 62;
+        fiveBits = difference <= 61;
     serialize_bool( stream, fiveBits );
     if ( fiveBits )
     {
-        serialize_int( stream, difference, 31, 62 );
+        serialize_int( stream, difference, 30, 61 );
         if ( Stream::IsReading )
-        {
             current = previous + difference;
-            previous = current;
-        }
+        previous = current;
         return true;
     }
 
-    // [63,126] -> [0,63] (6 bits)
+    // [62,125] -> [0,63] (6 bits)
 
     bool sixBits;
     if ( Stream::IsWriting )
-        sixBits = difference <= 126;
+        sixBits = difference <= 125;
     serialize_bool( stream, sixBits );
     if ( sixBits )
     {
-        serialize_int( stream, difference, 63, 126 );
+        serialize_int( stream, difference, 62, 125 );
         if ( Stream::IsReading )
-        {
             current = previous + difference;
-            previous = current;
-        }
+        previous = current;
         return true;
     }
 
-    // [127,MaxObjects]
+    // [126,MaxObjects+1] (required in case we go from -1 directly to MaxObjects, eg. no objects to send...)
 
-    serialize_int( stream, difference, 127, MaxObjects );
+    serialize_int( stream, difference, 126, MaxObjects + 1 );
     if ( Stream::IsReading )
     {
         current = previous + difference;
-        previous = current;
+        if ( current > MaxObjects )
+        {
+            printf( "WTF: previous = %d, difference = %d, current = %d\n", previous, difference, current );
+            current = MaxObjects;
+        }
     }
+
+    previous = current;
 
     return true;
 }
 
-#define serialize_object_index( stream, previous, current )                     \
+#define read_object_index( stream, previous, current )                          \
     do                                                                          \
     {                                                                           \
-        if ( !serialize_object_index( stream, previous, current ) )             \
+        if ( !serialize_object_index_internal( stream, previous, current ) )    \
             return false;                                                       \
     } while ( 0 )
 
-template <typename Stream> bool serialize_objects_d( Stream & stream, Scene & scene )
+#define write_object_index( stream, previous, current )                         \
+    do                                                                          \
+    {                                                                           \
+        int tmp = current;                                                      \
+        if ( !serialize_object_index_internal( stream, previous, tmp ) )        \
+            return false;                                                       \
+    } while ( 0 )
+
+template <typename Stream> bool serialize_scene_d( Stream & stream, Scene & scene )
 {
     if ( Stream::IsWriting )
     {
@@ -620,12 +714,12 @@ template <typename Stream> bool serialize_objects_d( Stream & stream, Scene & sc
             if ( !scene.objects[i].send )
                 continue;
 
-            serialize_object_index( stream, previous_index, i );
+            write_object_index( stream, previous_index, i );
 
-            serialize_object( stream, scene.objects[i] );
+            write_object( stream, scene.objects[i] );
         }
 
-        serialize_object_index( stream, previous_index, MaxObjects );
+        write_object_index( stream, previous_index, MaxObjects );
     }
     else
     {
@@ -633,16 +727,21 @@ template <typename Stream> bool serialize_objects_d( Stream & stream, Scene & sc
 
         while ( true )
         {
-            int index;
-
-            serialize_object_index( stream, previous_index, index );
-
+            int index; read_object_index( stream, previous_index, index );
             if ( index == MaxObjects )
                 break;
 
-            serialize_object( stream, scene.objects[index] );
+            if ( index > MaxObjects )
+                printf( "index = %d\n", index );
+
+            assert( index >= 0 );
+            assert( index < MaxObjects );
+
+            read_object( stream, scene.objects[index] );
         }
     }
+
+    return true;
 }
 
 enum TestPacketTypes
@@ -654,182 +753,85 @@ enum TestPacketTypes
     TEST_PACKET_NUM_TYPES
 };
 
-// todo: remove this once going
-struct Vector
-{
-    float x,y,z;
-};
-
-inline int random_int( int min, int max )
-{
-    assert( max > min );
-    int result = min + rand() % ( max - min + 1 );
-    assert( result >= min );
-    assert( result <= max );
-    return result;
-}
-
-inline float random_float( float min, float max )
-{
-    const int res = 10000000;
-    double scale = ( rand() % res ) / double( res - 1 );
-    return (float) ( min + (double) ( max - min ) * scale );
-}
-
 struct TestPacketA : public protocol2::Packet
 {
-    int a,b,c;
+    Scene scene;
 
     TestPacketA() : Packet( TEST_PACKET_A )
     {
-        a = random_int( -10, +10 );
-        b = random_int( -20, +20 );
-        c = random_int( -30, +30 );
+        RandomizeScene( scene );
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        serialize_int( stream, a, -10, 10 );
-        serialize_int( stream, b, -20, 20 );
-        serialize_int( stream, c, -30, 30 );
-        return true;
+        return serialize_scene_a( stream, scene );
     }
 
     PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
 
-static const int MaxItems = 32;
-
 struct TestPacketB : public protocol2::Packet
 {
-    int numItems;
-    int items[MaxItems];
+    Scene scene;
 
     TestPacketB() : Packet( TEST_PACKET_B )
     {
-        numItems = random_int( 0, MaxItems );
-        for ( int i = 0; i < numItems; ++i )
-            items[i] = random_int( -100, +100 );
+        RandomizeScene( scene );
     }
 
-    template <typename Stream> bool Serialize( Stream & stream )
+    bool SerializeRead( protocol2::ReadStream & stream )
     {
-        serialize_int( stream, numItems, 0, MaxItems );
-        for ( int i = 0; i < numItems; ++i )
-            serialize_int( stream, items[i], -100, +100 );
-        return true;
+        return read_scene_b( stream, scene );
     }
 
-    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
+    bool SerializeWrite( protocol2::WriteStream & stream )
+    {
+        return write_scene_b( stream, scene );
+    }
+
+    bool SerializeMeasure( protocol2::MeasureStream & stream )
+    {
+        return false;
+    }
 };
 
 struct TestPacketC : public protocol2::Packet
 {
-    Vector position;
-    Vector velocity;
+    Scene scene;
 
     TestPacketC() : Packet( TEST_PACKET_C )
     {
-        position.x = random_float( -1000, +1000 );
-        position.y = random_float( -1000, +1000 );
-        position.z = random_float( -1000, +1000 );
-
-        if ( rand() % 2 )
-        {
-            velocity.x = random_float( -100, +100 );
-            velocity.y = random_float( -100, +100 );
-            velocity.z = random_float( -100, +100 );
-        }
-        else
-        {
-            velocity.x = 0.0f;
-            velocity.y = 0.0f;
-            velocity.z = 0.0f;
-        }
+        RandomizeScene( scene );
     }
 
-    template <typename Stream> bool Serialize( Stream & stream )
+    bool SerializeRead( protocol2::ReadStream & stream )
     {
-        serialize_float( stream, position.x );
-        serialize_float( stream, position.y );
-        serialize_float( stream, position.z );
-
-        bool at_rest = Stream::IsWriting && velocity.x == 0.0f && velocity.y == 0.0f && velocity.z == 0.0f;
-
-        serialize_bool( stream, at_rest );
-
-        if ( !at_rest )
-        {
-            serialize_float( stream, velocity.x );
-            serialize_float( stream, velocity.y );
-            serialize_float( stream, velocity.z );
-        }
-        else
-        {
-            if ( Stream::IsReading )
-            {
-                velocity.x = 0.0f;
-                velocity.y = 0.0f;
-                velocity.z = 0.0f;
-            }
-        }
-        return true;
+        return read_scene_c( stream, scene );
     }
 
-    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
+    bool SerializeWrite( protocol2::WriteStream & stream )
+    {
+        return write_scene_c( stream, scene );
+    }
+
+    bool SerializeMeasure( protocol2::MeasureStream & stream )
+    {
+        return false;
+    }
 };
 
 struct TestPacketD : public protocol2::Packet
 {
-    Vector position;
-    Vector velocity;
+    Scene scene;
 
     TestPacketD() : Packet( TEST_PACKET_D )
     {
-        position.x = random_float( -1000, +1000 );
-        position.y = random_float( -1000, +1000 );
-        position.z = random_float( -1000, +1000 );
-
-        if ( rand() % 2 )
-        {
-            velocity.x = random_float( -100, +100 );
-            velocity.y = random_float( -100, +100 );
-            velocity.z = random_float( -100, +100 );
-        }
-        else
-        {
-            velocity.x = 0.0f;
-            velocity.y = 0.0f;
-            velocity.z = 0.0f;
-        }
+        RandomizeScene( scene );
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        serialize_float( stream, position.x );
-        serialize_float( stream, position.y );
-        serialize_float( stream, position.z );
-
-        bool at_rest = Stream::IsWriting && velocity.x == 0.0f && velocity.y == 0.0f && velocity.z == 0.0f;
-
-        serialize_bool( stream, at_rest );
-
-        if ( !at_rest )
-        {
-            serialize_float( stream, velocity.x );
-            serialize_float( stream, velocity.y );
-            serialize_float( stream, velocity.z );
-        }
-        else
-        {
-            if ( Stream::IsReading )
-            {
-                velocity.x = 0.0f;
-                velocity.y = 0.0f;
-                velocity.z = 0.0f;
-            }
-        }
-        return true;
+        return serialize_scene_d( stream, scene );
     }
 
     PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();

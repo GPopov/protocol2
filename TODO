@@ -4,7 +4,8 @@ TODO
 
     Now actually need to hook up the example serialization code in 002 and make it as clean as possible.
 
-    
+    I think I'm going to skip the +/- integer trick, or put it before the object array stuff in the article?
+
 
 
 
