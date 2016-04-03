@@ -1,50 +1,11 @@
 DONE
 
-    Make sure to actually test the serialize_bytes and serialize_string
-
-    It's actually really annoying to have to use serialize methods when you are splitting read/write, eg. for sets of objects.
-
-    Maybe split out and have:
-
-        int value = read_bits( stream, 32 );
-
-        write_bits( stream, EOF, 32 );
-
-    etc...
-
-    I think this is the best.
-
-    Best of both world!
-
-    Sketched out methods.
-
-    Moved compressed float into 002 example. Not part of core library.
-
-
-    It seems I should be able to get read int to work in-place nicely like this:
-
-        uint32_t value = read_bits( stream, 32 );
-
-    The problem is that I'm going to need to implement error checking in an exception like way, and I can't return false to indicate error.
-
-    So... can this actually be done the way I want it to be done? I don't think it actually can be done.
-
-    Frankly, this really sucks. If I can't solve this, move on.
-
-    Found a better idiom:
-
-        int value; serialize_bits( stream, value, 32 );
-
-    Redefine the read/write functions to not work off Stream::IsReading etc.
-
-    Seems to be good.
-
 TODO
 
-    Now rework the packet read/write functions to not be sucky with typedef Stream
+    Now actually need to hook up the example serialization code in 002 and make it as clean as possible.
 
-    And cleanup the definition of the serialize function.
     
+
 
 
     ==================
