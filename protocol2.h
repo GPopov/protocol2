@@ -403,7 +403,7 @@ namespace protocol2
         BitReader( const void* data, int bytes ) : m_data( (const uint32_t*)data ), m_numBytes( bytes ), m_numWords( ( bytes + 3 ) / 4)
         {
             // IMPORTANT: Although we support non-multiples of four bytes passed in, the actual buffer
-            // underneath the bit reader must round up to at least 4 bytes because we read one dword at a time.
+            // underneath the bit reader must round up to at least 4 bytes because we read a dword at a time.
             assert( data );
             m_numBits = m_numBytes * 8;
             m_bitsRead = 0;
@@ -899,21 +899,6 @@ namespace protocol2
         int m_bitsWritten;
     };
 
-    template <typename T> bool serialize_object( ReadStream & stream, T & object )
-    {                        
-        return object.SerializeRead( stream );
-    }
-
-    template <typename T> bool serialize_object( WriteStream & stream, T & object )
-    {                        
-        return object.SerializeWrite( stream );
-    }
-
-    template <typename T> bool serialize_object( MeasureStream & stream, T & object )
-    {                        
-        return object.SerializeMeasure( stream );
-    }
-
     #define serialize_int( stream, value, min, max )                    \
         do                                                              \
         {                                                               \
@@ -977,41 +962,6 @@ namespace protocol2
             if ( !protocol2::serialize_float_internal( stream, value ) )            \
                 return false;                                                       \
         } while (0)
-
-    template <typename Stream> bool serialize_compressed_float_internal( Stream & stream, float & value, float min, float max, float res )
-    {
-        const float delta = max - min;
-        const float values = delta / res;
-        const uint32_t maxIntegerValue = (uint32_t) ceil( values );
-        const int bits = bits_required( 0, maxIntegerValue );
-        
-        uint32_t integerValue = 0;
-        
-        if ( Stream::IsWriting )
-        {
-            float normalizedValue = clamp( ( value - min ) / delta, 0.0f, 1.0f );
-            integerValue = (uint32_t) floor( normalizedValue * maxIntegerValue + 0.5f );
-        }
-        
-        if ( !stream.SerializeBits( integerValue, bits ) )
-            return false;
-
-        if ( Stream::IsReading )
-        {
-            const float normalizedValue = integerValue / float( maxIntegerValue );
-            value = normalizedValue * delta + min;
-        }
-
-        return true;
-    }
-
-    #define serialize_compressed_float( stream, value, min, max, res )                              \
-    do                                                                                              \
-    {                                                                                               \
-        if ( !protocol2::serialize_compressed_float_internal( stream, value, min, max, res ) )      \
-            return false;                                                                           \
-    }                                                                                               \
-    while(0)
 
     template <typename Stream> bool serialize_uint64_internal( Stream & stream, uint64_t & value )
     {
@@ -1096,11 +1046,6 @@ namespace protocol2
                 return false;                                                               \
         } while (0)
 
-    template <typename Stream> bool serialize_check_internal( Stream & stream, uint32_t value )
-    {
-        return stream.SerializeCheck( value );
-    }
-
     #define serialize_align( stream )                                                       \
         do                                                                                  \
         {                                                                                   \
@@ -1111,17 +1056,81 @@ namespace protocol2
     #define serialize_check( stream, value )                                                \
         do                                                                                  \
         {                                                                                   \
-            if ( !protocol2::serialize_check_internal( stream, value ) )                    \
+            if ( !stream.SerializeCheck( value ) )                                          \
                 return false;                                                               \
         } while (0)
 
     #define serialize_object( stream, object )                                              \
+        do                                                                                  \
+        {                                                                                   \
+            if ( !object.Serialize( stream ) )                                              \
+                return false;                                                               \
+        }                                                                                   \
+        while(0)
+
+    #define read_bits( stream, value, bits )                                                \
     do                                                                                      \
     {                                                                                       \
-        if ( !object.Serialize( stream ) )                                                  \
+        assert( bits > 0 );                                                                 \
+        assert( bits <= 32 );                                                               \
+        uint32_t uint32_value;                                                              \
+        if ( !stream.SerializeBits( uint32_value, bits ) )                                  \
             return false;                                                                   \
-    }                                                                                       \
-    while(0)
+        value = uint32_value;                                                               \
+    } while (0)
+
+    #define read_int( stream, value, min, max )                                             \
+        do                                                                                  \
+        {                                                                                   \
+            assert( min < max );                                                            \
+            int32_t int32_value;                                                            \
+            if ( !stream.SerializeInteger( int32_value, min, max ) )                        \
+                return false;                                                               \
+            value = int32_value;                                                            \
+            if ( value < min || value > max )                                               \
+                return false;                                                               \
+        } while (0)
+
+    #define read_bool( stream, value ) read_bits( stream, value, 1 )
+
+    #define read_float     serialize_float
+    #define read_uint64    serialize_uint64
+    #define read_double    serialize_double
+    #define read_bytes     serialize_bytes
+    #define read_string    serialize_string
+    #define read_align     serialize_align
+    #define read_check     serialize_check
+    #define read_object    serialize_object
+
+    #define write_bits( stream, value, bits )                                               \
+        do                                                                                  \
+        {                                                                                   \
+            assert( bits > 0 );                                                             \
+            assert( bits <= 32 );                                                           \
+            uint32_t uint32_value = (uint32_t) value;                                       \
+            if ( !stream.SerializeBits( uint32_value, bits ) )                              \
+                return false;                                                               \
+        } while (0)
+
+    #define write_int( stream, value, min, max )                                            \
+        do                                                                                  \
+        {                                                                                   \
+            assert( min < max );                                                            \
+            assert( value >= min );                                                         \
+            assert( value <= max );                                                         \
+            int32_t int32_value = (int32_t) value;                                          \
+            if ( !stream.SerializeInteger( int32_value, min, max ) )                        \
+                return false;                                                               \
+        } while (0)
+
+    #define write_float    serialize_float
+    #define write_uint64   serialize_uint64
+    #define write_double   serialize_double
+    #define write_bytes    serialize_bytes
+    #define write_string   serialize_string
+    #define write_align    serialize_align
+    #define write_check    serialize_check
+    #define write_object   serialize_object
 
     class Object
     {  
@@ -1136,7 +1145,7 @@ namespace protocol2
         virtual bool SerializeMeasure( class MeasureStream & stream ) = 0;
     };
 
-    // todo: split this into two parts. the template function, and then the declaration of the virtuals?
+    // todo: split this into two parts. the template function, and then the declaration of the virtuals? yes. I prefer that.
 
     #define PROTOCOL2_SERIALIZE_FUNCTION( stream )                                                            \
         bool SerializeRead( class protocol2::ReadStream & stream ) { return Serialize( stream ); };           \
@@ -1263,9 +1272,7 @@ namespace protocol2
         assert( bufferSize > 0 );
         assert( protocolId != 0 );
 
-        typedef WriteStream Stream;
-
-        Stream stream( buffer, bufferSize );
+        WriteStream stream( buffer, bufferSize );
 
         uint32_t crc32 = 0;
         stream.SerializeBits( crc32, 32 );
@@ -1314,9 +1321,7 @@ namespace protocol2
         if ( errorCode )
             *errorCode = PROTOCOL2_ERROR_NONE;
 
-        typedef protocol2::ReadStream Stream;
-
-        Stream stream( buffer, bufferSize );
+        ReadStream stream( buffer, bufferSize );
 
         uint32_t read_crc32 = 0;
         stream.SerializeBits( read_crc32, 32 );
