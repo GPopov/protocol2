@@ -176,7 +176,7 @@ struct TestObject : public protocol2::Object
         strcpy( data.string, "hello world!" );
     }
 
-    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    template <typename Stream> bool Serialize( Stream & stream )
     {
         const TestContext & context = *(const TestContext*) stream.GetContext();
 
@@ -209,12 +209,12 @@ struct TestObject : public protocol2::Object
 
         serialize_string( stream, data.string, sizeof( data.string ) );
 
-        printf( "string: %s\n", data.string );
-
         serialize_check( stream, 0x12341111 );
 
         return true;
     }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 
     bool operator == ( const TestObject & other ) const
     {
@@ -278,13 +278,15 @@ struct TestPacketA : public protocol2::Packet
         c = 3;        
     }
 
-    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_int( stream, a, -10, 10 );
         serialize_int( stream, b, -20, 20 );
         serialize_int( stream, c, -30, 30 );
         return true;
     }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
 
 struct TestPacketB : public protocol2::Packet
@@ -297,12 +299,14 @@ struct TestPacketB : public protocol2::Packet
         y = 1;
     }
 
-    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_int( stream, x, -5, +5 );
         serialize_int( stream, y, -5, +5 );
         return true;
     }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
 
 struct TestPacketC : public protocol2::Packet
@@ -315,12 +319,14 @@ struct TestPacketC : public protocol2::Packet
             data[i] = i;
     }
 
-    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    template <typename Stream> bool Serialize( Stream & stream )
     {
         for ( int i = 0; i < sizeof( data ); ++i )
             serialize_int( stream, data[i], 0, 255 );
         return true;
     }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
 
 struct TestPacketFactory : public protocol2::PacketFactory

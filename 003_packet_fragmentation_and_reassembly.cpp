@@ -73,7 +73,7 @@ struct FragmentPacket : public protocol2::Object
     uint8_t numFragments;
     uint8_t fragmentData[MaxFragmentSize];
 
-    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_bits( stream, crc32, 32 );
         serialize_bits( stream, sequence, 16 );
@@ -106,6 +106,8 @@ struct FragmentPacket : public protocol2::Object
 
         return true;
     }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
 
 struct PacketData
@@ -486,13 +488,15 @@ struct TestPacketA : public protocol2::Packet
         c = random_int( -30, +30 );
     }
 
-    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_int( stream, a, -10, 10 );
         serialize_int( stream, b, -20, 20 );
         serialize_int( stream, c, -30, 30 );
         return true;
     }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 
     bool operator == ( const TestPacketA & other ) const
     {
@@ -519,13 +523,15 @@ struct TestPacketB : public protocol2::Packet
             items[i] = random_int( -100, +100 );
     }
 
-    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_int( stream, numItems, 0, MaxItems );
         for ( int i = 0; i < numItems; ++i )
             serialize_int( stream, items[i], -100, +100 );
         return true;
     }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 
     bool operator == ( const TestPacketB & other ) const
     {
@@ -570,7 +576,7 @@ struct TestPacketC : public protocol2::Packet
         }
     }
 
-    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_float( stream, position.x );
         serialize_float( stream, position.y );
@@ -599,6 +605,8 @@ struct TestPacketC : public protocol2::Packet
         return true;
     }
 
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
+
     bool operator == ( const TestPacketC & other )
     {
         return position.x == other.position.x &&
@@ -614,11 +622,13 @@ struct TestPacketHeader : public protocol2::Object
 {
     uint16_t sequence;
 
-    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_bits( stream, sequence, 16 );
         return true;
     }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 
     bool operator == ( const TestPacketHeader & other )
     {

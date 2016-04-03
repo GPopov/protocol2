@@ -1145,13 +1145,10 @@ namespace protocol2
         virtual bool SerializeMeasure( class MeasureStream & stream ) = 0;
     };
 
-    // todo: split this into two parts. the template function, and then the declaration of the virtuals? yes. I prefer that.
-
-    #define PROTOCOL2_SERIALIZE_FUNCTION( stream )                                                            \
+    #define PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS()                                                   \
         bool SerializeRead( class protocol2::ReadStream & stream ) { return Serialize( stream ); };           \
         bool SerializeWrite( class protocol2::WriteStream & stream ) { return Serialize( stream ); };         \
         bool SerializeMeasure( class protocol2::MeasureStream & stream ) { return Serialize( stream ); };     \
-        template <typename Stream> bool Serialize( Stream & stream )                            
 
     class Packet : public Object
     {

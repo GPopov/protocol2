@@ -74,7 +74,7 @@ struct SlicePacket : public protocol2::Packet
         memset( data, 0, sizeof( data ) );
     }
 
-    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_bits( stream, chunkId, 16 );
         serialize_int( stream, sliceId, 0, MaxSlicesPerChunk - 1 );
@@ -90,6 +90,8 @@ struct SlicePacket : public protocol2::Packet
         serialize_bytes( stream, data, sliceBytes );
         return true;
     }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
 
 struct AckPacket : public protocol2::Packet
@@ -105,7 +107,7 @@ struct AckPacket : public protocol2::Packet
         memset( acked, 0, sizeof( acked ) );
     }
 
-    PROTOCOL2_SERIALIZE_FUNCTION( stream )
+    template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_bits( stream, chunkId, 16 );
         serialize_int( stream, numSlices, 1, MaxSlicesPerChunk );
@@ -113,6 +115,8 @@ struct AckPacket : public protocol2::Packet
             serialize_bool( stream, acked[i] );
         return true;
     }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
 
 struct PacketFactory : public protocol2::PacketFactory
