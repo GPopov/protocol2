@@ -78,7 +78,6 @@ template <typename Stream> bool serialize_quaternion_internal( Stream & stream, 
             return false;                                                       \
     } while ( 0 )
 
-
 template <typename Stream> bool serialize_compressed_float_internal( Stream & stream, float & value, float min, float max, float res )
 {
     const float delta = max - min;
@@ -367,6 +366,13 @@ template <typename Stream> bool serialize_compressed_quaternion_internal( Stream
     return true;
 }
 
+#define serialize_compressed_quaternion( stream, value )                        \
+    do                                                                          \
+    {                                                                           \
+        if ( !serialize_compressed_quaternion_internal( stream, value ) )       \
+            return false;                                                       \
+    } while ( 0 )
+
 struct Object
 {
     bool send;
@@ -418,45 +424,6 @@ template <typename Stream> bool serialize_objects_a( Stream & stream, Scene & sc
     }
 }
 
-template <typename Stream> bool serialize_objects_b( Stream & stream, Scene & scene )
-{
-    if ( Stream::IsWriting )
-    {
-        int num_objects_sent = 0;
-
-        for ( int i = 0; i < MaxObjects; ++i )
-        {
-            if ( scene.objects[i].send )
-                num_objects_sent++;
-        }
-
-        serialize_int( stream, num_objects_sent, 0, MaxObjects );
-
-        for ( int i = 0; i < MaxObjects; ++i )
-        {
-            if ( !scene.objects[i].send )
-                continue;
-
-            serialize_int( stream, i, 0, MaxObjects - 1 );
-            
-            serialize_object( stream, scene.objects[i] );
-        }
-    }
-    else
-    {
-        int num_objects_sent;
-
-        serialize_int( stream, num_objects_sent, 0, MaxObjects );
-
-        for ( int i = 0; i < num_objects_sent; ++i )
-        {
-            int index;
-            serialize_int( stream, index, 0, MaxObjects - 1 );            
-            serialize_object( stream, scene.objects[index] );
-        }
-    }
-}
-
 bool write_objects_b( protocol2::WriteStream & stream, Scene & scene )
 {
     int num_objects_sent = 0;
@@ -496,34 +463,36 @@ bool read_objects_b( protocol2::ReadStream & stream, Scene & scene )
     return true;
 }
 
-template <typename Stream> bool serialize_objects_c( Stream & stream, Scene & scene )
+bool write_objects_c( protocol2::WriteStream & stream, Scene & scene )
 {
-    if ( Stream::IsWriting )
+    for ( int i = 0; i < MaxObjects; ++i )
     {
-        int end_marker = MaxObjects;
+        if ( !scene.objects[i].send )
+            continue;
 
-        for ( int i = 0; i < MaxObjects; ++i )
-        {
-            if ( !scene.objects[i].send )
-                continue;
+        write_int( stream, i, 0, MaxObjects );
 
-            serialize_int( stream, i, 0, MaxObjects );
-            serialize_object( stream, scene.objects[i] );
-        }
-
-        serialize_int( stream, end_marker, 0, MaxObjects );
+        write_object( stream, scene.objects[i] );
     }
-    else
+
+    write_int( stream, MaxObjects, 0, MaxObjects );
+
+    return true;
+}
+
+bool read_objects_c( protocol2::ReadStream & stream, Scene & scene )
+{
+    while ( true )
     {
-        while ( true )
-        {
-            int index;
-            serialize_int( stream, index, 0, MaxObjects );
-            if ( index == MaxObjects )
-                break;
-            serialize_object( stream, scene.objects[index] );
-        }
+        int index; read_int( stream, index, 0, MaxObjects );
+
+        if ( index == MaxObjects )
+            break;
+
+        read_object( stream, scene.objects[index] );
     }
+
+    return true;
 }
 
 template <typename Stream> bool serialize_object_index( Stream & stream, int & current_index, int & previous_index )
