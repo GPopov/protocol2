@@ -2,6 +2,12 @@
 Sunday April 3rd, 2016
 ======================
 
+    ...
+    
+
+Saturday April 2nd, 2016
+========================
+
     Make sure to actually test the serialize_bytes and serialize_string
 
     It's actually really annoying to have to use serialize methods when you are splitting read/write, eg. for sets of objects.
