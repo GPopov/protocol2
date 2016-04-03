@@ -39,7 +39,7 @@ using namespace vectorial;
 
 const int NumIterations = 16;
 
-const uint32_t MaxPacketSize = 32 * 1024;
+const uint32_t MaxPacketSize = 256 * 1024;
 
 const uint32_t ProtocolId = 0x44551177;
 
@@ -395,22 +395,54 @@ const float AngularVelocityRes = 0.01f;
 
 inline vec3f random_position()
 {
-    return vec3f(0,0,0);
+    return vec3f( random_float( PositionMin, PositionMax ), 
+                  random_float( PositionMin, PositionMax ), 
+                  random_float( PositionMin, PositionMax ) );
+}
+
+inline float random_angle()
+{
+    const float pi = 3.1415926;
+    return random_float( 0, 2*pi );
+}
+
+inline vec3f random_axis()
+{
+    while ( true )
+    {
+        const float v1 = random_float( -1, +1 );
+        const float v2 = random_float( -1, +1 );
+
+        const float s = v1*v1 + v2*v2;
+
+        if ( s >= 1 )
+            continue;
+
+        return vec3f( 2 * v1 * sqrt( 1 - s ), 
+                      2 * v2 * sqrt( 1 - s ), 
+                      1 - 2 * s );
+    }
 }
 
 inline quat4f random_orientation()
 {
-    return quat4f( 0, 0, 0, 1 );
+    const vec3f axis = random_axis();
+    const float angle = random_angle();
+    return quat4f::axis_rotation( angle, axis );
 }
 
 inline vec3f random_linear_velocity()
 {
-    return vec3f(0,0,0);
+    return vec3f( random_float( LinearVelocityMin, LinearVelocityMax ), 
+                  random_float( LinearVelocityMin, LinearVelocityMax ), 
+                  random_float( LinearVelocityMin, LinearVelocityMax ) );
 }
 
 inline vec3f random_angular_velocity()
 {
-    return vec3f(0,0,0);
+    return vec3f( random_float( AngularVelocityMin, AngularVelocityMax ), 
+                  random_float( AngularVelocityMin, AngularVelocityMax ), 
+                  random_float( AngularVelocityMin, AngularVelocityMax ) );
 }
 
 #define serialize_position( stream, value )             serialize_compressed_vector( stream, value, PositionMin, PositionMax, PositionRes );
