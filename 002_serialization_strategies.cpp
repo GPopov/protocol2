@@ -709,10 +709,7 @@ template <typename Stream> bool serialize_object_index_internal( Stream & stream
     {
         current = previous + difference;
         if ( current > MaxObjects )
-        {
-            printf( "WTF: previous = %d, difference = %d, current = %d\n", previous, difference, current );
             current = MaxObjects;
-        }
     }
 
     previous = current;
@@ -737,10 +734,10 @@ template <typename Stream> bool serialize_object_index_internal( Stream & stream
 
 template <typename Stream> bool serialize_scene_d( Stream & stream, Scene & scene )
 {
+    int previous_index = -1;
+
     if ( Stream::IsWriting )
     {
-        int previous_index = -1;
-
         for ( int i = 0; i < MaxObjects; ++i )
         {
             if ( !scene.objects[i].send )
@@ -755,16 +752,11 @@ template <typename Stream> bool serialize_scene_d( Stream & stream, Scene & scen
     }
     else
     {
-        int previous_index = -1;
-
         while ( true )
         {
             int index; read_object_index( stream, previous_index, index );
             if ( index == MaxObjects )
                 break;
-
-            if ( index > MaxObjects )
-                printf( "index = %d\n", index );
 
             assert( index >= 0 );
             assert( index < MaxObjects );
