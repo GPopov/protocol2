@@ -46,10 +46,11 @@ if _ACTION == "clean" then
     os.rmdir "obj"
     if not os.is "windows" then
         os.execute "rm -f 001_reading_and_writing_packets"
-        os.execute "rm -f 002_packet_fragmentation_and_reassembly"
-        os.execute "rm -f 003_sending_large_blocks_of_data_quickly_and_reliably"
-        os.execute "rm -f 004_packet_aggregation"
-        os.execute "rm -f 005_reliable_packets"
+        os.execute "rm -f 002_serialization_strategies"
+        os.execute "rm -f 003_packet_fragmentation_and_reassembly"
+        os.execute "rm -f 004_sending_large_blocks_of_data_quickly_and_reliably"
+        os.execute "rm -f 005_packet_aggregation"
+        os.execute "rm -f 006_reliable_packets"
         os.execute "rm -f protocol2"
         os.execute "rm -f network2"
         os.execute "rm -f *.zip"
@@ -73,7 +74,7 @@ if not os.is "windows" then
         execute = function ()
             _ACTION = "clean"
             premake.action.call( "clean" )
-            os.execute "zip -9r \"Building a Game Network Protocol.zip\" *.cpp *.h premake4.lua"
+            os.execute "zip -9r \"Building a Game Network Protocol.zip\" *.cpp *.h vectorial premake4.lua"
         end
     }
 
@@ -140,14 +141,14 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "004",
-        description = "Build example source for sending large blocks of data quickly and reliably",
+        description = "Build example source for sending large blocks of data",
         valid_kinds = premake.action.get("gmake").valid_kinds,
         valid_languages = premake.action.get("gmake").valid_languages,
         valid_tools = premake.action.get("gmake").valid_tools,
      
         execute = function ()
-            if os.execute "make -j4 004_sending_large_blocks_of_data_quickly_and_reliably" == 0 then
-                os.execute "./004_sending_large_blocks_of_data_quickly_and_reliably"
+            if os.execute "make -j4 004_sending_large_blocks_of_data" == 0 then
+                os.execute "./004_sending_large_blocks_of_data"
             end
         end
     }

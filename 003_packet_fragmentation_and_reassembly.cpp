@@ -33,7 +33,6 @@
 const int PacketBufferSize = 256;                       // size of packet buffer, eg. number of historical packets for which we can buffer fragments
 const int MaxFragmentSize = 1024;                       // maximum size of a packet fragment
 const int MaxFragmentsPerPacket = 256;                  // maximum number of fragments per-packet
-const int MaxBufferedFragments = 256;                   // maximum number of buffered fragments (in total) per-packet buffer
 
 const int MaxPacketSize = MaxFragmentSize * MaxFragmentsPerPacket;
 
@@ -192,11 +191,6 @@ struct PacketBuffer
     {
         assert( fragmentData );
 
-        // too many buffered fragments? discard the fragment
-
-        if ( numFragments >= MaxBufferedFragments )
-            return false;
-
         // fragment size is <= zero? discard the fragment.
 
         if ( fragmentSize <= 0 )
@@ -224,7 +218,7 @@ struct PacketBuffer
 
         // packet sequence number wildly out of range from the current sequence? discard the fragment
 
-        if ( protocol2::sequence_difference( packetSequence, currentSequence ) > 10 * 1024 )
+        if ( protocol2::sequence_difference( packetSequence, currentSequence ) > 1024 )
             return false;
 
         // if the entry exists, but has a different sequence number, discard the fragment
