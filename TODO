@@ -28,8 +28,23 @@ DONE
 
     Back to windows... o_O
 
+    Fixed issue in 002, it was a problem with too much resolution in random_float
+
+    Windows version of premake needs to delete "protocol2.VC.db" on clean
+
+    How to fix ld: warning: directory not found for option '-L/usr/lib64' on Mac?!
+
+    ^--- worked around. Aint got nothing to do with me.
+
+    Remove network2.h from projects that don't use it. 001, 002, 003.
+
+    How to fix /arch:SSE2 on windows? Done.
+
 TODO
 
+    Try upgrading to premake5?
+
+    It probably has better support for vs2015.
 
 
 

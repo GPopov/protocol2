@@ -2,7 +2,9 @@ solution "protocol2"
     platforms { "x64" }
     includedirs { ".", "vectorial" }
     configurations { "Debug", "Release" }
-    flags { "Symbols", "ExtraWarnings", "EnableSSE2", "FloatFast" , "NoRTTI", "NoExceptions" }
+    flags { "ExtraWarnings", "FloatFast" , "NoRTTI", "NoExceptions" }
+    configuration "Debug"
+        flags { "Symbols" }
     configuration "Release"
         flags { "OptimizeSpeed" }
         defines { "NDEBUG" }
@@ -15,17 +17,17 @@ project "test"
 project "001_reading_and_writing_packets"
     language "C++"
     kind "ConsoleApp"
-    files { "001_reading_and_writing_packets.cpp", "protocol2.h", "network2.h" }
+    files { "001_reading_and_writing_packets.cpp", "protocol2.h" }
 
 project "002_serialization_strategies"
     language "C++"
     kind "ConsoleApp"
-    files { "002_serialization_strategies.cpp", "protocol2.h", "network2.h" }
+    files { "002_serialization_strategies.cpp", "protocol2.h" }
 
 project "003_packet_fragmentation_and_reassembly"
     language "C++"
     kind "ConsoleApp"
-    files { "003_packet_fragmentation_and_reassembly.cpp", "protocol2.h", "network2.h" }
+    files { "003_packet_fragmentation_and_reassembly.cpp", "protocol2.h" }
 
 project "004_sending_large_blocks_of_data"
     language "C++"
@@ -58,6 +60,7 @@ if _ACTION == "clean" then
     else
         os.rmdir "ipch"
         os.execute "del /F /Q *.zip"
+        os.execute "del /F /Q *.db"
     end
 end
 
