@@ -28,7 +28,7 @@
 
 #include "protocol2.h"
 #include <stdio.h>
-#include <stdib.h>
+#include <stdlib.h>
 #include <time.h>
 
 #include "vectorial/vec3f.h"

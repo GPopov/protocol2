@@ -30,7 +30,7 @@
 #include "network2.h"
 #include "protocol2.h"
 #include <stdio.h>
-#include <stdib.h>
+#include <stdlib.h>
 #include <time.h>
 
 const int MaxPacketSize = 1200;

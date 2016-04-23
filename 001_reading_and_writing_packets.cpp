@@ -28,7 +28,7 @@
 
 #include "protocol2.h"
 #include <stdio.h>
-#include <stdib.h>
+#include <stdlib.h>
 #include <time.h>
 
 //#define SOAK_TEST 1                // uncomment this line to loop forever and soak
