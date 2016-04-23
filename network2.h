@@ -24,6 +24,8 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#if 0 // tmp
+
 #ifndef NETWORK2_H
 #define NETWORK2_H
 
@@ -204,12 +206,19 @@ namespace network2
 
 #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
 
-    #include <winsock2.h>
-    #pragma comment( lib, "wsock32.lib" )
+	#ifndef WIN32_LEAN_AND_MEAN
+	#define WIN32_LEAN_AND_MEAN
+	#endif
+
+	#include <winsock2.h>
+	#include <WS2tcpip.h>
+	#include <windows.h>
+	
+	#pragma comment(lib, "Ws2_32.lib")
 
 #elif NETWORK2_PLATFORM == NETWORK2_PLATFORM_MAC || NETWORK2_PLATFORM == NETWORK2_PLATFORM_UNIX
 
-    #include <sys/socket.h>
+	#include <netdb.h>
     #include <sys/types.h>
     #include <sys/socket.h>
     #include <netinet/in.h>
@@ -225,8 +234,6 @@ namespace network2
 
 #endif
 
-#include <netdb.h>
-#include <arpa/inet.h>
 #include <memory.h>
 #include <string.h>
 
@@ -387,7 +394,7 @@ namespace network2
         strncpy( address, address_in, 255 );
         address[255] = '\0';
 
-        int addressLength = strlen( address );
+        int addressLength = (int) strlen( address );
         m_port = 0;
         if ( address[0] == '[' )
         {
@@ -399,7 +406,7 @@ namespace network2
                     break;
                 if ( address[index] == ':' )
                 {
-                    m_port = atoi( &address[index+1] );
+					m_port = uint16_t( atoi( &address[index + 1] ) );
                     address[index-1] = '\0';
                 }
             }
@@ -417,7 +424,7 @@ namespace network2
         // 1. look for ":portnum", if found save the portnum and strip it out
         // 2. parse remaining ipv4 address via inet_pton
 
-        addressLength = strlen( address );
+        addressLength = (int) strlen( address );
         const int base_index = addressLength - 1;
         for ( int i = 0; i < 6; ++i )   // note: no need to search past 6 characters as ":65535" is longest port value
         {
@@ -426,7 +433,7 @@ namespace network2
                 break;
             if ( address[index] == ':' )
             {
-                m_port = atoi( &address[index+1] );
+                m_port = (uint16_t) atoi( &address[index+1] );
                 address[index] = '\0';
             }
         }
@@ -627,13 +634,13 @@ namespace network2
 
             memcpy( duplicatePacketData, packetData, packetSize );
 
-            Entry & entry = m_entries[m_currentIndex];
+            Entry & nextEntry = m_entries[m_currentIndex];
 
-            entry.from = from;
-            entry.to = to;
-            entry.packetData = duplicatePacketData;
-            entry.packetSize = packetSize;
-            entry.deliveryTime = m_currentTime + delay + random_float( -1.0, +1.0 );
+            nextEntry.from = from;
+            nextEntry.to = to;
+            nextEntry.packetData = duplicatePacketData;
+            nextEntry.packetSize = packetSize;
+            nextEntry.deliveryTime = m_currentTime + delay + random_float( -1.0, +1.0 );
 
             m_currentIndex = ( m_currentIndex + 1 ) % m_numEntries;
         }
@@ -685,3 +692,5 @@ namespace network2
 }
 
 #endif // #ifdef NETWORK2_IMPLEMENTATION
+
+#endif // #if 0

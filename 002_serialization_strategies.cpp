@@ -425,8 +425,8 @@ inline vec3f random_axis()
         if ( s >= 1 )
             continue;
 
-        return vec3f( 2 * v1 * sqrt( 1 - s ), 
-                      2 * v2 * sqrt( 1 - s ), 
+        return vec3f( 2 * v1 * (float) sqrt( 1 - s ), 
+                      2 * v2 * (float) sqrt( 1 - s ), 
                       1 - 2 * s );
     }
 }
@@ -467,7 +467,7 @@ struct Object
 
     void Randomize()
     {
-        send = (bool) random_int( 0, 1 );
+		send = random_int( 0, 1 ) ? true : false;
 
         if ( send )
         {
@@ -820,7 +820,7 @@ struct TestPacketB : public protocol2::Packet
         return write_scene_b( stream, scene );
     }
 
-    bool SerializeMeasure( protocol2::MeasureStream & stream )
+    bool SerializeMeasure( protocol2::MeasureStream & /*stream*/ )
     {
         return false;
     }
@@ -845,7 +845,7 @@ struct TestPacketC : public protocol2::Packet
         return write_scene_c( stream, scene );
     }
 
-    bool SerializeMeasure( protocol2::MeasureStream & stream )
+    bool SerializeMeasure( protocol2::MeasureStream & /*stream*/ )
     {
         return false;
     }
@@ -887,7 +887,7 @@ struct TestPacketFactory : public protocol2::PacketFactory
 
 int main()
 {
-    srand( time( NULL ) );
+    srand( (unsigned int) time( NULL ) );
 
     TestPacketFactory packetFactory;
 

@@ -248,7 +248,7 @@ bool CheckPacketsAreIdentical( protocol2::Packet *p1, protocol2::Packet *p2 )
 
 int main()
 {
-    srand( time( NULL ) );
+    srand( (unsigned int) time( NULL ) );
 
     TestPacketFactory packetFactory;
 

@@ -163,7 +163,7 @@ struct PacketBuffer
                 {
                     printf( "remove old packet entry %d\n", entries[i].sequence );
 
-                    for ( int j = 0; j < entries[i].numFragments; ++j )
+                    for ( int j = 0; j < (int) entries[i].numFragments; ++j )
                     {
                         if ( entries[i].fragmentData[j] )
                         {
@@ -194,7 +194,7 @@ struct PacketBuffer
         of maliciously constructed packets attempting to overflow and corrupt the packet buffer!
     */
 
-    bool ProcessFragment( const uint8_t *fragmentData, int fragmentSize, uint16_t packetSequence, int fragmentId, int numFragments )
+    bool ProcessFragment( const uint8_t *fragmentData, int fragmentSize, uint16_t packetSequence, int fragmentId, int numFragmentsInPacket )
     {
         assert( fragmentData );
 
@@ -210,17 +210,17 @@ struct PacketBuffer
 
         // num fragments outside of range? discard the fragment
 
-        if ( numFragments <= 0 || numFragments > MaxFragmentsPerPacket )
+        if ( numFragmentsInPacket <= 0 || numFragmentsInPacket > MaxFragmentsPerPacket )
             return false;
 
         // fragment index out of range? discard the fragment
 
-        if ( fragmentId < 0 || fragmentId >= numFragments )
+        if ( fragmentId < 0 || fragmentId >= numFragmentsInPacket )
             return false;
 
         // if this is not the last fragment in the packet and fragment size is not equal to MaxFragmentSize, discard the fragment
 
-        if ( fragmentId != numFragments - 1 && fragmentSize != MaxFragmentSize )
+        if ( fragmentId != numFragmentsInPacket - 1 && fragmentSize != MaxFragmentSize )
             return false;
 
         // packet sequence number wildly out of range from the current sequence? discard the fragment
@@ -241,7 +241,7 @@ struct PacketBuffer
         {
             Advance( packetSequence );
             entries[index].sequence = packetSequence;
-            entries[index].numFragments = numFragments;
+            entries[index].numFragments = numFragmentsInPacket;
             assert( entries[index].receivedFragments == 0 );            // IMPORTANT: Should have already been cleared to zeros in "Advance"
             valid[index] = true;
         }
@@ -253,14 +253,14 @@ struct PacketBuffer
 
         // if the total number fragments is different for this packet vs. the entry, discard the fragment
 
-        if ( numFragments != entries[index].numFragments )
+        if ( numFragmentsInPacket != (int) entries[index].numFragments )
             return false;
 
         // if this fragment has already been received, ignore it because it must have come from a duplicate packet
 
-        assert( fragmentId < numFragments );
+        assert( fragmentId < numFragmentsInPacket );
         assert( fragmentId < MaxFragmentsPerPacket );
-        assert( numFragments <= MaxFragmentsPerPacket );
+        assert( numFragmentsInPacket <= MaxFragmentsPerPacket );
 
         if ( entries[index].fragmentSize[fragmentId] )
             return false;
@@ -279,6 +279,7 @@ struct PacketBuffer
 
         assert( entries[index].receivedFragments <= entries[index].numFragments );
 
+		// todo: rename to numBufferedFragment?! -- bug
         numFragments++;
 
         return true;
@@ -328,7 +329,7 @@ struct PacketBuffer
 
         for ( int i = 0; i < PacketBufferSize; ++i )
         {
-            const uint16_t sequence = uint16_t( oldestSequence + i );
+            const uint16_t sequence = uint16_t( ( oldestSequence + i ) & 0xFF );
 
             const int index = sequence % PacketBufferSize;
 
@@ -344,7 +345,7 @@ struct PacketBuffer
                 // what's the total size of this packet?
 
                 int packetSize = 0;
-                for ( int j = 0; j < entries[index].numFragments; ++j )
+                for ( int j = 0; j < (int) entries[index].numFragments; ++j )
                 {
                     packetSize += entries[index].fragmentSize[j];
                 }
@@ -364,7 +365,7 @@ struct PacketBuffer
                 printf( "reassembling packet %d from fragments (%d bytes)\n", sequence, packetSize );
 
                 uint8_t *dst = packet.data;
-                for ( int j = 0; j < entries[index].numFragments; ++j )
+                for ( int j = 0; j < (int) entries[index].numFragments; ++j )
                 {
                     memcpy( dst, entries[index].fragmentData[i], entries[index].fragmentSize[i] );
                     dst += entries[index].fragmentSize[i];
@@ -372,7 +373,7 @@ struct PacketBuffer
 
                 // free all fragments
 
-                for ( int j = 0; j < entries[index].numFragments; ++j )
+                for ( int j = 0; j < (int) entries[index].numFragments; ++j )
                 {
                     delete [] entries[index].fragmentData[j];
                     numFragments--;
@@ -407,7 +408,7 @@ bool SplitPacketIntoFragments( uint16_t sequence, const uint8_t *packetData, int
 
     for ( int i = 0; i < numFragments; ++i )
     {
-        const int fragmentSize = ( i == numFragments - 1 ) ? ( packetData + packetSize - src ) : MaxFragmentSize;
+        const int fragmentSize = ( i == numFragments - 1 ) ? ( (int) ( intptr_t( packetData + packetSize ) - intptr_t( src ) ) ) : MaxFragmentSize;
 
         static const int MaxFragmentPacketSize = MaxFragmentSize + PacketFragmentHeaderBytes;
 
@@ -419,8 +420,8 @@ bool SplitPacketIntoFragments( uint16_t sequence, const uint8_t *packetData, int
         fragmentPacket.fragmentSize = fragmentSize;
         fragmentPacket.crc32 = 0;
         fragmentPacket.sequence = sequence;
-        fragmentPacket.fragmentId = i;
-        fragmentPacket.numFragments = numFragments;
+        fragmentPacket.fragmentId = (uint8_t) i;
+        fragmentPacket.numFragments = (uint8_t) numFragments;
         memcpy( fragmentPacket.fragmentData, src, fragmentSize );
 
         if ( !fragmentPacket.SerializeWrite( stream ) )
@@ -681,7 +682,7 @@ bool CheckPacketsAreIdentical( protocol2::Packet *p1, protocol2::Packet *p2, Tes
 
 int main()
 {
-    srand( time( NULL ) );
+    srand( (unsigned int) time( NULL ) );
 
     TestPacketFactory packetFactory;
 
@@ -726,8 +727,8 @@ int main()
             PacketData fragmentPackets[MaxFragmentsPerPacket];
             SplitPacketIntoFragments( sequence, buffer, bytesWritten, numFragments, fragmentPackets );
 
-            for ( int i = 0; i < numFragments; ++i )
-                packetBuffer.ProcessPacket( fragmentPackets[i].data, fragmentPackets[i].size );
+            for ( int j = 0; j < numFragments; ++j )
+                packetBuffer.ProcessPacket( fragmentPackets[j].data, fragmentPackets[j].size );
         }
         else
         {
@@ -740,7 +741,7 @@ int main()
         PacketData packets[PacketBufferSize];
         packetBuffer.ReceivePackets( numPackets, packets );
 
-        for ( int i = 0; i < numPackets; ++i )
+        for ( int j = 0; j < numPackets; ++j )
         {
             int readError;
             TestPacketHeader readPacketHeader;

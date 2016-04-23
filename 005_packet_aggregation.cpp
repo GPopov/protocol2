@@ -24,6 +24,9 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+// temp
+#if 0
+
 #define PROTOCOL2_IMPLEMENTATION
 
 #include "protocol2.h"
@@ -262,7 +265,7 @@ struct TestPacketHeader : public protocol2::Object
 
 int main()
 {
-    srand( time( NULL ) );
+    srand( (unsigned int) time( NULL ) );
 
     TestPacketFactory packetFactory;
 
@@ -373,20 +376,20 @@ int main()
 
             assert( numReadPackets == numWritePackets );
 
-            for ( int i = 0; i < numReadPackets; ++i )
+            for ( int j = 0; j < numReadPackets; ++j )
             {
-                assert( readPackets[i] );
+                assert( readPackets[j] );
 
-                printf( "%d: read packet %d [%d]\n", i, readPacketHeaders[i]->sequence, readPackets[i]->GetType() );
+                printf( "%d: read packet %d [%d]\n", j, readPacketHeaders[j]->sequence, readPackets[j]->GetType() );
 
-                if ( readPacketHeaders[i]->sequence != writePacketHeaders[i]->sequence )
+                if ( readPacketHeaders[j]->sequence != writePacketHeaders[j]->sequence )
                 {
                     printf( "read packet header is not the same as written packet header. something wrong with serialize function?\n" );
                     error = true;
                     goto cleanup;
                 }
 
-                if ( !CheckPacketsAreIdentical( readPackets[i], writePackets[i] ) )
+                if ( !CheckPacketsAreIdentical( readPackets[j], writePackets[j] ) )
                 {
                     printf( "read packet is not the same as written packet. something wrong with serialize function?\n" );
                     error = true;
@@ -428,3 +431,15 @@ cleanup:
 
     return 0;
 }
+
+#else
+
+#include <stdio.h>
+
+int main()
+{
+	printf( "hello\n" );
+	return 0;
+}
+
+#endif // #if 0

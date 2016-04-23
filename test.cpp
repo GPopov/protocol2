@@ -30,6 +30,7 @@
 #include "network2.h"
 #include "protocol2.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 static void CheckHandler( const char * condition, 
                           const char * function,
@@ -316,7 +317,7 @@ struct TestPacketC : public protocol2::Packet
     TestPacketC() : Packet( TEST_PACKET_C )
     {
         for ( int i = 0; i < (int) sizeof( data ); ++i )
-            data[i] = i;
+            data[i] = (uint8_t) i;
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
@@ -367,6 +368,8 @@ void test_packets()
     packetFactory.DestroyPacket( b );
     packetFactory.DestroyPacket( c );
 }
+
+#if 0 // tmp
 
 void test_address_ipv4()
 {
@@ -568,12 +571,16 @@ void test_address_ipv6()
     }
 }
 
+#endif // #if 0
+
 int main()
 {
     test_bitpacker();   
     test_stream();
     test_packets();
+#if 0 // tmp
     test_address_ipv4();
     test_address_ipv6();
+#endif // #if 0
     return 0;
 }

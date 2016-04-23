@@ -57,20 +57,25 @@
 #endif
 
 #ifdef _MSC_VER
-#include "intrins.h"
+#pragma warning( disable : 4127 )
+#pragma warning( disable : 4244 )
 #endif // #ifdef _MSC_VER
 
 namespace protocol2
 {
+	#ifndef min
     template <typename T> const T & min( const T & a, const T & b )
     {
         return ( a < b ) ? a : b;
     }
+	#endif
 
+	#ifndef max
     template <typename T> const T & max( const T & a, const T & b )
     {
         return ( a > b ) ? a : b;
     }
+	#endif
 
     template <typename T> T clamp( const T & value, const T & min, const T & max )
     {
@@ -252,7 +257,7 @@ namespace protocol2
 
     inline int unsigned_to_signed( uint32_t n )
     {
-        return ( n >> 1 ) ^ ( -( n & 1 ) );
+        return ( n >> 1 ) ^ ( -int32_t( n & 1 ) );
     }
 
     uint32_t calculate_crc32( const uint8_t *buffer, size_t length, uint32_t crc32 = 0 );
@@ -476,7 +481,7 @@ namespace protocol2
             if ( bytes <= 8 )
             {
                 for ( int i = 0; i < bytes; ++i )
-                    data[i] = ReadBits( 8 );
+                    data[i] = (uint8_t) ReadBits( 8 );
             }
             else
             {
@@ -484,7 +489,7 @@ namespace protocol2
                 if ( headBytes > bytes )
                     headBytes = bytes;
                 for ( int i = 0; i < headBytes; ++i )
-                    data[i] = ReadBits( 8 );
+                    data[i] = (uint8_t) ReadBits( 8 );
                 if ( headBytes == bytes )
                     return;
 
@@ -506,7 +511,7 @@ namespace protocol2
                 int tailBytes = bytes - tailStart;
                 assert( tailBytes >= 0 && tailBytes < 4 );
                 for ( int i = 0; i < tailBytes; ++i )
-                    data[tailStart+i] = ReadBits( 8 );
+                    data[tailStart+i] = (uint8_t) ReadBits( 8 );
 
                 assert( GetAlignBits() == 0 );
 
@@ -832,7 +837,7 @@ namespace protocol2
             return true;
         }
 
-        bool SerializeBits( uint32_t value, int bits )
+        bool SerializeBits( uint32_t /*value*/, int bits )
         {
             assert( bits > 0 );
             assert( bits <= 32 );
@@ -840,7 +845,7 @@ namespace protocol2
             return true;
         }
 
-        bool SerializeBytes( const uint8_t* data, int bytes )
+        bool SerializeBytes( const uint8_t* /*data*/, int bytes )
         {
             SerializeAlign();
             m_bitsWritten += bytes * 8;
@@ -859,7 +864,7 @@ namespace protocol2
             return 7;       // we can't know for sure, so be conservative and assume worst case
         }
 
-        bool SerializeCheck( uint32_t magic )
+        bool SerializeCheck( uint32_t /*magic*/ )
         {
 #if PROTOCOL2_SERIALIZE_CHECKS
             SerializeAlign();
@@ -914,9 +919,9 @@ namespace protocol2
         int m_error;
         int m_totalBytes;
         int m_bitsWritten;
-    };
+	};
 
-    #define serialize_int( stream, value, min, max )                    \
+	#define serialize_int( stream, value, min, max )                    \
         do                                                              \
         {                                                               \
             assert( min < max );                                        \
@@ -937,7 +942,7 @@ namespace protocol2
             }                                                           \
         } while (0)
 
-    #define serialize_bits( stream, value, bits )                       \
+	#define serialize_bits( stream, value, bits )						\
         do                                                              \
         {                                                               \
             assert( bits > 0 );                                         \
@@ -951,7 +956,16 @@ namespace protocol2
                 value = uint32_value;                                   \
         } while (0)
 
-    #define serialize_bool( stream, value ) serialize_bits( stream, value, 1 )
+	#define serialize_bool( stream, value )								\
+		do																\
+		{																\
+            uint32_t uint32_bool_value;									\
+			if ( Stream::IsWriting )									\
+				uint32_bool_value = value ? 1 : 0; 						\
+			serialize_bits( stream, uint32_bool_value, 1 );				\
+			if ( Stream::IsReading )									\
+				value = uint32_bool_value ? true : false;				\
+		} while (0)
 
     template <typename Stream> bool serialize_float_internal( Stream & stream, float & value )
     {
@@ -1046,7 +1060,7 @@ namespace protocol2
         int length;
         if ( Stream::IsWriting )
         {
-            length = strlen( string );
+            length = (int) strlen( string );
             assert( length < buffer_size - 1 );
         }
         serialize_int( stream, length, 0, buffer_size - 1 );
@@ -1232,6 +1246,8 @@ namespace protocol2
 #endif // #ifndef PROTOCOL2_H
 
 #ifdef PROTOCOL2_IMPLEMENTATION
+
+#include <malloc.h>
 
 namespace protocol2
 {
@@ -1447,7 +1463,9 @@ namespace protocol2
 
         if ( aggregatePacketHeader )
         {
-            uint8_t scratch[bufferSize];
+            //uint8_t scratch[bufferSize];
+
+			uint8_t *scratch = (uint8_t*) alloca( bufferSize );
 
             typedef WriteStream Stream;
 
@@ -1478,7 +1496,7 @@ namespace protocol2
 
         for ( int i = 0; i < numPackets; ++i )
         {
-            uint8_t scratch[bufferSize];
+			uint8_t *scratch = (uint8_t*) alloca( bufferSize );
 
             typedef WriteStream Stream;
 

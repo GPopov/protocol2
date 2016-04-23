@@ -27,6 +27,9 @@
 #define NETWORK2_IMPLEMENTATION
 #define PROTOCOL2_IMPLEMENTATION
 
+// tmp
+#if 0
+
 #include "network2.h"
 #include "protocol2.h"
 #include <stdio.h>
@@ -397,12 +400,12 @@ public:
         return NULL;
     }
 
-    const uint8_t* ReadChunk( int & chunkSize )
+    const uint8_t* ReadChunk( int & resultChunkSize )
     {
         if ( !readyToRead )
             return NULL;
         readyToRead = false;
-        chunkSize = this->chunkSize;
+        resultChunkSize = chunkSize;
         return chunkData;
     }
 };
@@ -446,7 +449,7 @@ protocol2::Packet* ReceivePacket( network2::Address & from, network2::Address & 
 
 int main()
 {
-    srand( time( NULL ) );
+    srand( (unsigned int) time( NULL ) );
 
     printf( "\n" );
 
@@ -549,3 +552,15 @@ int main()
 
     return 0;
 }
+
+#else
+
+#include <stdio.h>
+
+int main()
+{
+	printf( "hello\n" );
+	return 0;
+}
+
+#endif // #if 0
