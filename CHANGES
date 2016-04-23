@@ -1,4 +1,28 @@
 
+Friday April 22nd, 2016
+=======================
+
+    There is a bug in chunk sender when the chunk size is small (eg. 2-10 bytes or so)
+
+    Reduced maximum chunk size to a point where it's failing 100%
+
+    What the fuck is going on?!
+
+    It's the end of packet serialize check...
+
+    Why is it failing here and not elsewhere?!
+
+    Ah.... it must be a desync that only shows up with small fragments?
+
+    Mmmmm. I'm pretty sure it's a bug in serialize_bytes!
+
+    Confirmed. If I replace the serialize_bytes with a simpler implementation, it works fine.
+
+    There must be a bug when serialize_bytes has a small number of bytes (eg. no body)
+
+    Fixed by using the simple non-head/tail codepath for read/write bytes if the # of bytes is <= 8.
+
+
 Sunday April 3rd, 2016
 ======================
 

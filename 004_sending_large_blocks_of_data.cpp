@@ -40,7 +40,7 @@ const int MaxChunkSize = SliceSize * MaxSlicesPerChunk;
 const float SliceMinimumResendTime = 0.1f;
 const float MinimumTimeBetweenAcks = 0.1f;
 
-//#define SOAK_TEST 1                // uncomment this line to loop forever and soak. it's the only way to be really sure it's working!
+#define SOAK_TEST 1                // uncomment this line to loop forever and soak. it's the only way to be really sure it's working!
 
 #if SOAK_TEST
 const int NumChunksToSend = -1;

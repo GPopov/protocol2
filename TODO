@@ -2,6 +2,19 @@ DONE
 
 TODO
 
+    Need to go back over 001 and 002 examples and add soak modes.
+
+    Soaking is essential to guarantee correct behavior.
+
+    Add more unit tests for protocol2 behavior, there was a bug in serialize_bytes for small buffer sizes and I missed it.
+
+    There are probably more!
+
+    This is a good way to get back into the swing of coding on this stuff.
+
+    Also, port to windows. Compile and run and test everything on there. You have a windows box. Use it!
+
+    Also, run on linux and make sure it compiles there as well. GCC etc. Build it on my linode box.
 
 
 
@@ -18,12 +31,5 @@ TODO
 
     ==================
 
-    Update reading and writing packets article with a good reason why big endian is used for network order [x][0][0][0] vs. [0][0][0][x]
-
-    Make note about copying or at least clearing to zeros after you write a packet so you don't accidentally truncate the packet and not notice.
-
-    Need to go back over both 001 and 002 examples and add soak modes.
-
-    Soaking is essential to guarantee correct behavior.
 
     ==================
