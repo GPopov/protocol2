@@ -1247,7 +1247,11 @@ namespace protocol2
 
 #ifdef PROTOCOL2_IMPLEMENTATION
 
+#ifdef _MSC_VER
 #include <malloc.h>
+#else
+#include <alloca.h>
+#endif
 
 namespace protocol2
 {

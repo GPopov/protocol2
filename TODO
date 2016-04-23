@@ -1,13 +1,46 @@
 DONE
 
-TODO
-
     Port to windows.
 
     How to get git going under win64?
 
     Need to also install premake for windows.
 
+    Wow... there are a lot of issues...
+
+    Bunch of problems with winsock...
+
+    Ignoring winsock for now. Disabling network aspects...
+
+    Fixing a bunch of compile errors, switch to alloca...
+
+    002 example hangs... (WHY?!!!)
+
+    Had to disable some warnings, simply no way to get around.
+
+    Runtime errors can happen on truncation of int, eg. bits set in high. Crazy!
+
+    Port back to MacOSX...
+
+    Unix doesn't like #include <malloc.h> for alloca? Fixed. 
+
+    Port back to linux...
+
+TODO
+
+
+
+
+
+
+
+    This code is so messed up in Visual C++, it's probably a good idea to port the networked physics demo there as well.
+
+    People are looking at that code, but very few must be able to run it.
+
+    The code has much more value if you can actually run it and play around!
+
+    
 
 
 
