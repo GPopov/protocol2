@@ -27,6 +27,10 @@
 #ifndef PROTOCOL2_H
 #define PROTOCOL2_H
 
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <stdint.h>
 #include <assert.h>
 #include <math.h>

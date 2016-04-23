@@ -383,9 +383,9 @@ inline int random_int( int min, int max )
 
 inline float random_float( float min, float max )
 {
-    const int res = 10000000;
+    const int res = 100000;
     double scale = ( rand() % res ) / double( res - 1 );
-    return (float) ( min + (double) ( max - min ) * scale );
+    return (float) ( min + ( double( max - min ) * scale ) );
 }
 
 const float PositionMin = -1000.0f;
