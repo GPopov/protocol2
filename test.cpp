@@ -170,7 +170,7 @@ struct TestObject : public protocol2::Object
         data.double_value = 1 / 3.0;   
         data.uint64_value = 0x1234567898765432L;
 
-        for ( int i = 0; i < sizeof( data.bytes ); ++i )
+        for ( int i = 0; i < (int) sizeof( data.bytes ); ++i )
             data.bytes[i] = rand() % 255;
 
         strcpy( data.string, "hello world!" );
@@ -315,13 +315,13 @@ struct TestPacketC : public protocol2::Packet
 
     TestPacketC() : Packet( TEST_PACKET_C )
     {
-        for ( int i = 0; i < sizeof( data ); ++i )
+        for ( int i = 0; i < (int) sizeof( data ); ++i )
             data[i] = i;
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        for ( int i = 0; i < sizeof( data ); ++i )
+        for ( int i = 0; i < (int) sizeof( data ); ++i )
             serialize_int( stream, data[i], 0, 255 );
         return true;
     }
