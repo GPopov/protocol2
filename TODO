@@ -24,7 +24,9 @@ DONE
 
     Unix doesn't like #include <malloc.h> for alloca? Fixed. 
 
-    Port back to linux...
+    Port back to linux... done.
+
+    Back to windows... o_O
 
 TODO
 
