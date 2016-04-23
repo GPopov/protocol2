@@ -1,14 +1,15 @@
 DONE
 
-    Went back over all previous examples and added soak behavior.
-
-    Soaking is essential to guarantee correct behavior. Passes.
-
 TODO
 
-    Port to linux (linode box)
+    Port to windows.
 
-    Port to windows
+    How to get git going under win64?
+
+    Need to also install premake for windows.
+
+
+
 
 
 

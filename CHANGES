@@ -1,4 +1,18 @@
 
+Saturday April 23rd, 2016
+=========================
+
+    Went back over all previous examples and added soak behavior.
+
+    Soaking is essential to guarantee correct behavior. Passes.
+
+    Port to linux (linode box)
+
+    Bunch of errors/warnings in there.
+
+    All good now. Worthy exercise!
+
+
 Friday April 22nd, 2016
 =======================
 
