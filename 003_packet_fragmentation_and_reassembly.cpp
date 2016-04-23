@@ -37,7 +37,7 @@ const int MaxFragmentsPerPacket = 256;                  // maximum number of fra
 
 const int MaxPacketSize = MaxFragmentSize * MaxFragmentsPerPacket;
 
-#define SOAK_TEST 1                // uncomment this line to loop forever and soak
+//#define SOAK_TEST 1                // uncomment this line to loop forever and soak
 
 #if SOAK_TEST
 const int NumIterations = -1;
