@@ -31,6 +31,7 @@
 #include <assert.h>
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #define NETWORK2_SIMULATOR 1
