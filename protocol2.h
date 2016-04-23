@@ -1323,15 +1323,11 @@ namespace protocol2
         if ( stream.GetError() )
             return 0;
 
-        printf( "wrote %d byte packet\n", stream.GetBytesProcessed() );
-
         return stream.GetBytesProcessed();
     }
 
     inline Packet* ReadPacket( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header, int *errorCode )
     {
-        printf( "read %d byte packet\n", bufferSize );
-
         assert( buffer );
         assert( bufferSize > 0 );
         assert( protocolId != 0 );

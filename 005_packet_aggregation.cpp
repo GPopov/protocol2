@@ -30,7 +30,7 @@
 #include <stdio.h>
 #include <time.h>
 
-//#define SOAK_TEST 1                // uncomment this line to loop forever and soak. it's the only way to be really sure it's working!
+//#define SOAK_TEST 1                // uncomment this line to loop forever and soak
 
 #if !SOAK_TEST
 const int NumIterations = 16;

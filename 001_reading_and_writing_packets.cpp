@@ -30,7 +30,13 @@
 #include <stdio.h>
 #include <time.h>
 
+//#define SOAK_TEST 1                // uncomment this line to loop forever and soak
+
+#if SOAK_TEST
+const int NumIterations = -1;
+#else // #if SOAK_TEST
 const int NumIterations = 16;
+#endif // #if SOAK_TEST
 
 const uint32_t MaxPacketSize = 1024;
 
@@ -245,7 +251,7 @@ int main()
 
     TestPacketFactory packetFactory;
 
-    for ( int i = 0; i < NumIterations; ++i )
+    for ( int i = 0; ( i < NumIterations || NumIterations < 0 ); ++i )
     {
         const int packetType = rand() % TEST_PACKET_NUM_TYPES;
 

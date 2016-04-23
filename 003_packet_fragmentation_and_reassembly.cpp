@@ -36,7 +36,13 @@ const int MaxFragmentsPerPacket = 256;                  // maximum number of fra
 
 const int MaxPacketSize = MaxFragmentSize * MaxFragmentsPerPacket;
 
-const int NumIterations = 32;                               
+#define SOAK_TEST 1                // uncomment this line to loop forever and soak
+
+#if SOAK_TEST
+const int NumIterations = -1;
+#else // #if SOAK_TEST
+const int NumIterations = 32;
+#endif // #if SOAK_TEST
 
 const uint32_t ProtocolId = 0x55667788;
 
@@ -680,7 +686,7 @@ int main()
 
     uint16_t sequence = 0;
 
-    for ( int i = 0; i < NumIterations; ++i )
+    for ( int i = 0; ( i < NumIterations || NumIterations == -1 ); ++i )
     {
         const int packetType = 1 + rand() % ( TEST_PACKET_NUM_TYPES - 1 );              // because packet type 0 indicate a packet fragment
 

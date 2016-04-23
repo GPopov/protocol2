@@ -1,24 +1,26 @@
 DONE
 
+    Went back over all previous examples and added soak behavior.
+
+    Soaking is essential to guarantee correct behavior. Passes.
+
 TODO
 
-    Need to go back over 001 and 002 examples and add soak modes.
-
-    Soaking is essential to guarantee correct behavior.
-
-    Add more unit tests for protocol2 behavior, there was a bug in serialize_bytes for small buffer sizes and I missed it.
-
-    There are probably more!
-
-    This is a good way to get back into the swing of coding on this stuff.
+    -----------
 
     Also, port to windows. Compile and run and test everything on there. You have a windows box. Use it!
 
     Also, run on linux and make sure it compiles there as well. GCC etc. Build it on my linode box.
 
+    -----------
 
 
-    ==================
+
+
+
+    =======================================
+           Reliable Packets over UDP
+    =======================================
 
     Actually hook the example code up to the functions in node and make sure the interface matches what I expect.
 
@@ -28,8 +30,3 @@ TODO
     Need to setup the simulator.
 
     Need to setup the function to serialize packet.
-
-    ==================
-
-
-    ==================
