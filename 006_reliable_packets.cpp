@@ -31,6 +31,7 @@
 #include "network2.h"
 #include "protocol2.h"
 #include <stdio.h>
+#include <stdib.h>
 #include <time.h>
 
 //#define SOAK_TEST 1                // uncomment this line to loop forever and soak. it's the only way to be really sure it's working!
