@@ -923,8 +923,8 @@ namespace protocol2
             int32_t int32_value;                                        \
             if ( Stream::IsWriting )                                    \
             {                                                           \
-                assert( value >= min );                                 \
-                assert( value <= max );                                 \
+                assert( int64_t(value) >= int64_t(min) );               \
+                assert( int64_t(value) <= int64_t(max) );               \
                 int32_value = (int32_t) value;                          \
             }                                                           \
             if ( !stream.SerializeInteger( int32_value, min, max ) )    \
@@ -1043,7 +1043,7 @@ namespace protocol2
 
     template <typename Stream> bool serialize_string_internal( Stream & stream, char* string, int buffer_size )
     {
-        uint32_t length;
+        int length;
         if ( Stream::IsWriting )
         {
             length = strlen( string );
