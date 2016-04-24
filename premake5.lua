@@ -1,4 +1,4 @@
-solution "protocol2"
+solution "Building a Game Network Protocol"
     platforms { "x64" }
     includedirs { ".", "vectorial" }
     configurations { "Debug", "Release" }
@@ -50,7 +50,7 @@ if _ACTION == "clean" then
         os.execute "rm -f 001_reading_and_writing_packets"
         os.execute "rm -f 002_serialization_strategies"
         os.execute "rm -f 003_packet_fragmentation_and_reassembly"
-        os.execute "rm -f 004_sending_large_blocks_of_data_quickly_and_reliably"
+        os.execute "rm -f 004_sending_large_blocks_of_data"
         os.execute "rm -f 005_packet_aggregation"
         os.execute "rm -f 006_reliable_packets"
         os.execute "rm -f protocol2"
@@ -59,8 +59,14 @@ if _ACTION == "clean" then
         os.execute "find . -name *.DS_Store -type f -exec rm {} \\;"
     else
         os.rmdir "ipch"
+		os.rmdir "bin"
+		os.rmdir ".vs"
         os.execute "del /F /Q *.zip"
         os.execute "del /F /Q *.db"
+        os.execute "del /F /Q *.opendb"
+        os.execute "del /F /Q *.vcproj"
+        os.execute "del /F /Q *.vcxproj"
+        os.execute "del /F /Q *.sln"
     end
 end
 
