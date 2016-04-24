@@ -24,8 +24,6 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#if 0 // tmp
-
 #ifndef NETWORK2_H
 #define NETWORK2_H
 
@@ -692,5 +690,3 @@ namespace network2
 }
 
 #endif // #ifdef NETWORK2_IMPLEMENTATION
-
-#endif // #if 0

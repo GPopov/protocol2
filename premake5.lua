@@ -1,12 +1,19 @@
+
 solution "Building a Game Network Protocol"
     platforms { "x64" }
     includedirs { ".", "vectorial" }
+    if not os.is "windows" then
+        targetdir "bin/"
+    end
     configurations { "Debug", "Release" }
-    flags { "ExtraWarnings", "FloatFast" , rtti "Off", exceptionhandling "Off" }
+    flags { "ExtraWarnings", "FloatFast" }
+    exceptionhandling "Off"
+    rtti "Off"
     configuration "Debug"
         flags { "Symbols" }
+        defines { "DEBUG" }
     configuration "Release"
-        flags { "OptimizeSpeed" }
+        optimize "Speed"
         defines { "NDEBUG" }
 
 project "test"
@@ -47,16 +54,14 @@ project "006_reliable_packets"
 if _ACTION == "clean" then
     os.rmdir "obj"
     if not os.is "windows" then
-        os.execute "rm -f 001_reading_and_writing_packets"
-        os.execute "rm -f 002_serialization_strategies"
-        os.execute "rm -f 003_packet_fragmentation_and_reassembly"
-        os.execute "rm -f 004_sending_large_blocks_of_data"
-        os.execute "rm -f 005_packet_aggregation"
-        os.execute "rm -f 006_reliable_packets"
+        os.execute "rm -rf bin"
+        os.execute "rm -rf obj"
+        os.execute "rm -f Makefile"
         os.execute "rm -f protocol2"
         os.execute "rm -f network2"
         os.execute "rm -f *.zip"
-        os.execute "find . -name *.DS_Store -type f -exec rm {} \\;"
+        os.execute "rm -f *.make"
+        os.execute "find . -name .DS_Store -delete"
     else
         os.rmdir "ipch"
 		os.rmdir "bin"
@@ -97,7 +102,7 @@ if not os.is "windows" then
      
         execute = function ()
             if os.execute "make -j4 test" == 0 then
-                os.execute "./test"
+                os.execute "./bin/test"
             end
         end
     }
@@ -112,7 +117,7 @@ if not os.is "windows" then
      
         execute = function ()
             if os.execute "make -j4 001_reading_and_writing_packets" == 0 then
-                os.execute "./001_reading_and_writing_packets"
+                os.execute "./bin/001_reading_and_writing_packets"
             end
         end
     }
@@ -127,7 +132,7 @@ if not os.is "windows" then
      
         execute = function ()
             if os.execute "make -j4 002_serialization_strategies" == 0 then
-                os.execute "./002_serialization_strategies"
+                os.execute "./bin/002_serialization_strategies"
             end
         end
     }
@@ -142,7 +147,7 @@ if not os.is "windows" then
      
         execute = function ()
             if os.execute "make -j4 003_packet_fragmentation_and_reassembly" == 0 then
-                os.execute "./003_packet_fragmentation_and_reassembly"
+                os.execute "./bin/003_packet_fragmentation_and_reassembly"
             end
         end
     }
@@ -157,7 +162,7 @@ if not os.is "windows" then
      
         execute = function ()
             if os.execute "make -j4 004_sending_large_blocks_of_data" == 0 then
-                os.execute "./004_sending_large_blocks_of_data"
+                os.execute "./bin/004_sending_large_blocks_of_data"
             end
         end
     }
@@ -172,7 +177,7 @@ if not os.is "windows" then
      
         execute = function ()
             if os.execute "make -j4 005_packet_aggregation" == 0 then
-                os.execute "./005_packet_aggregation"
+                os.execute "./bin/005_packet_aggregation"
             end
         end
     }
@@ -187,7 +192,7 @@ if not os.is "windows" then
      
         execute = function ()
             if os.execute "make -j4 006_reliable_packets" == 0 then
-                os.execute "./006_reliable_packets"
+                os.execute "./bin/006_reliable_packets"
             end
         end
     }

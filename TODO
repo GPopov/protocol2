@@ -40,16 +40,19 @@ DONE
 
     How to fix /arch:SSE2 on windows? Done.
 
-TODO
-
     Try upgrading to premake5?
 
     It probably has better support for vs2015.
+    
+    It does, but clean is not ported yet, fucking lazy bastard...
 
+    Also, it sticks the binaries in some stupid place so my build aliases don't work...
 
+    FAAAAAAAAAAK...
 
+TODO
 
-
+    Fix this mess.
 
     This code is so messed up in Visual C++, it's probably a good idea to port the networked physics demo there as well.
 

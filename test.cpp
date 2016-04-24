@@ -369,8 +369,6 @@ void test_packets()
     packetFactory.DestroyPacket( c );
 }
 
-#if 0 // tmp
-
 void test_address_ipv4()
 {
     printf( "test_address_ipv4\n" );
@@ -571,16 +569,12 @@ void test_address_ipv6()
     }
 }
 
-#endif // #if 0
-
 int main()
 {
     test_bitpacker();   
     test_stream();
     test_packets();
-#if 0 // tmp
     test_address_ipv4();
     test_address_ipv6();
-#endif // #if 0
     return 0;
 }

@@ -27,9 +27,6 @@
 #define NETWORK2_IMPLEMENTATION
 #define PROTOCOL2_IMPLEMENTATION
 
-// tmp
-#if 0
-
 #include "network2.h"
 #include "protocol2.h"
 #include <stdio.h>
@@ -552,15 +549,3 @@ int main()
 
     return 0;
 }
-
-#else
-
-#include <stdio.h>
-
-int main()
-{
-	printf( "hello\n" );
-	return 0;
-}
-
-#endif // #if 0

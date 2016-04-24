@@ -24,9 +24,6 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-// temp
-#if 0
-
 #define PROTOCOL2_IMPLEMENTATION
 
 #include "protocol2.h"
@@ -431,15 +428,3 @@ cleanup:
 
     return 0;
 }
-
-#else
-
-#include <stdio.h>
-
-int main()
-{
-	printf( "hello\n" );
-	return 0;
-}
-
-#endif // #if 0

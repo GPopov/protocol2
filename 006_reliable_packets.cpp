@@ -24,8 +24,6 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#if 0 // tmp
-
 // todo: this one is work in progress and not finished yet
 
 #define PROTOCOL2_IMPLEMENTATION
@@ -305,7 +303,7 @@ public:
         receive_sequence_unreliable = 0xFFFF;
     }
 
-    void SendPacket( protocol2::Packet *packet, bool reliable )
+    void SendPacket( protocol2::Packet *packet, bool /*reliable*/ )
     {
         assert( packet );
 
@@ -316,12 +314,12 @@ public:
         packetFactory.DestroyPacket( packet );
     }
 
-    void ProcessAcks( const uint16_t *acks, int numAcks )
+    void ProcessAcks( const uint16_t * /*acks*/, int /*numAcks*/ )
     {
         // todo: remove any reliable packets in the send queue if they match an ack sequence
     }
 
-    protocol2::Packet* GenerateAggregatePacket( double t )
+    protocol2::Packet* GenerateAggregatePacket( double /*t*/ )
     {
         // todo: work out acks that should be sent. this depends on receiver. it seems we must combine the receiver and sender in this case
 
@@ -544,15 +542,3 @@ cleanup:
 
     return 0;
 }
-
-#else
-
-#include <stdio.h>
-
-int main()
-{
-	printf( "hello\n" );
-	return 0;
-}
-
-#endif // #if 0
