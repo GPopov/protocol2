@@ -444,6 +444,24 @@ protocol2::Packet* ReceivePacket( network2::Address & from, network2::Address & 
     return packet;
 }
 
+inline int random_int( int a, int b )
+{
+    assert( a < b );
+    int result = a + rand() % ( b - a + 1 );
+    assert( result >= a );
+    assert( result <= b );
+    return result;
+}
+
+inline float random_float( float a, float b )
+{
+    assert( a < b );
+    float random = ( (float) rand() ) / (float) RAND_MAX;
+    float diff = b - a;
+    float r = random * diff;
+    return a + r;
+}
+
 int main()
 {
     srand( (unsigned int) time( NULL ) );
@@ -474,9 +492,9 @@ int main()
         if ( !sendingChunk )
         {
             printf( "=======================================================\n" );
-            sendChunkSize = network2::random_int( 1, MaxChunkSize );
+            sendChunkSize = random_int( 1, MaxChunkSize );
             for ( int i = 0; i < sendChunkSize; ++i )
-                sendChunkData[i] = (uint8_t) network2::random_int( 0, 255 );
+                sendChunkData[i] = (uint8_t) random_int( 0, 255 );
             sender.SendChunk( sendChunkData, sendChunkSize );
             sendingChunk = true;
         }

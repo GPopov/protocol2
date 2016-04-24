@@ -372,20 +372,22 @@ template <typename Stream> bool serialize_compressed_quaternion_internal( Stream
             return false;                                                       \
     } while ( 0 )
 
-inline int random_int( int min, int max )
+inline int random_int( int a, int b )
 {
-    assert( max > min );
-    int result = min + rand() % ( max - min + 1 );
-    assert( result >= min );
-    assert( result <= max );
+    assert( a < b );
+    int result = a + rand() % ( b - a + 1 );
+    assert( result >= a );
+    assert( result <= b );
     return result;
 }
 
-inline float random_float( float min, float max )
+inline float random_float( float a, float b )
 {
-    const int res = 100000;
-    double scale = ( rand() % res ) / double( res - 1 );
-    return (float) ( min + ( double( max - min ) * scale ) );
+    assert( a < b );
+    float random = ( (float) rand() ) / (float) RAND_MAX;
+    float diff = b - a;
+    float r = random * diff;
+    return a + r;
 }
 
 const float PositionMin = -1000.0f;
