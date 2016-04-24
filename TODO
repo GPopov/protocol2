@@ -1,58 +1,17 @@
 DONE
 
-    Port to windows.
-
-    How to get git going under win64?
-
-    Need to also install premake for windows.
-
-    Wow... there are a lot of issues...
-
-    Bunch of problems with winsock...
-
-    Ignoring winsock for now. Disabling network aspects...
-
-    Fixing a bunch of compile errors, switch to alloca...
-
-    002 example hangs... (WHY?!!!)
-
-    Had to disable some warnings, simply no way to get around.
-
-    Runtime errors can happen on truncation of int, eg. bits set in high. Crazy!
-
-    Port back to MacOSX...
-
-    Unix doesn't like #include <malloc.h> for alloca? Fixed. 
-
-    Port back to linux... done.
-
-    Back to windows... o_O
-
-    Fixed issue in 002, it was a problem with too much resolution in random_float
-
-    Windows version of premake needs to delete "protocol2.VC.db" on clean
-
-    How to fix ld: warning: directory not found for option '-L/usr/lib64' on Mac?!
-
-    ^--- worked around. Aint got nothing to do with me.
-
-    Remove network2.h from projects that don't use it. 001, 002, 003.
-
-    How to fix /arch:SSE2 on windows? Done.
-
-    Try upgrading to premake5?
-
-    It probably has better support for vs2015.
-    
-    It does, but clean is not ported yet, fucking lazy bastard...
-
-    Also, it sticks the binaries in some stupid place so my build aliases don't work...
-
-    FAAAAAAAAAAK...
-
 TODO
 
-    Fix this mess.
+    Back to windows!
+
+
+
+
+
+
+
+
+    =======================================
 
     This code is so messed up in Visual C++, it's probably a good idea to port the networked physics demo there as well.
 
@@ -60,7 +19,7 @@ TODO
 
     The code has much more value if you can actually run it and play around!
 
-    
+    =======================================    
 
 
 
