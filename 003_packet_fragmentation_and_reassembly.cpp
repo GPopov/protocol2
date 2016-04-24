@@ -137,7 +137,7 @@ struct PacketBuffer
 
     uint16_t currentSequence;                           // sequence number of most recent packet in buffer
 
-    int numFragments;                                   // number of fragments currently buffered
+    int numBufferedFragments;                           // total number of fragments stored in the packet buffer (across *all* packets)
 
     bool valid[PacketBufferSize];                       // true if there is a valid buffered packet entry at this index
 
@@ -168,8 +168,8 @@ struct PacketBuffer
                         if ( entries[i].fragmentData[j] )
                         {
                             delete [] entries[i].fragmentData[j];
-                            assert( numFragments > 0 );
-                            numFragments--;
+                            assert( numBufferedFragments > 0 );
+                            numBufferedFragments--;
                         }
                     }
                 }
@@ -279,8 +279,7 @@ struct PacketBuffer
 
         assert( entries[index].receivedFragments <= entries[index].numFragments );
 
-		// todo: rename to numBufferedFragment?! -- bug
-        numFragments++;
+        numBufferedFragments++;
 
         return true;
     }
@@ -376,7 +375,7 @@ struct PacketBuffer
                 for ( int j = 0; j < (int) entries[index].numFragments; ++j )
                 {
                     delete [] entries[index].fragmentData[j];
-                    numFragments--;
+                    numBufferedFragments--;
                 }
 
                 // clear the packet buffer entry

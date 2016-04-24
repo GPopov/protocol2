@@ -219,19 +219,6 @@ namespace network2
 	#undef SetPort
 	#endif // #ifdef SetPort
 
-/*
-	#ifndef WIN32_LEAN_AND_MEAN
-	#define WIN32_LEAN_AND_MEAN
-	#endif
-
-	#include <winsock2.h>
-	#include <ws2def.h>
-//	
-//	#include <windows.h>
-	
-	#pragma comment( lib, "Ws2_32.lib" )
-	*/
-
 #elif NETWORK2_PLATFORM == NETWORK2_PLATFORM_MAC || NETWORK2_PLATFORM == NETWORK2_PLATFORM_UNIX
 
 	#include <netdb.h>

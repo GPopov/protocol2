@@ -1,13 +1,20 @@
 DONE
 
-    Back to windows!
-
-    Broken VS2015 install. Repaired.
-
-    Rest of breakage was caused by #define min #define max fucking up the random_int and random_float functions
-
 TODO
 
+    Is it worth adding more unit tests for basic serialization behavior at this point and cleaning up
+
+    Or should I save that for later? Probably later is OK.
+
+    So do I write the sending large blocks article today, or do I write more code?
+
+    What's the pros and cons.
+
+        a) more articles = more support, writing unit tests or more code not likely to create more support
+
+        b) more code does create more *retention*, but retention is pretty good already I think.
+
+    So it seems that the best thing to do right now
 
 
 
