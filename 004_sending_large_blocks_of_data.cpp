@@ -36,7 +36,7 @@
 const int MaxPacketSize = 1200;
 const int SliceSize = 1024;
 const int MaxSlicesPerChunk = 32;
-const int MaxChunkSize = SliceSize * MaxSlicesPerChunk;
+const int MaxChunkSize = 10;//SliceSize * MaxSlicesPerChunk;
 
 const float SliceMinimumResendTime = 0.1f;
 const float MinimumTimeBetweenAcks = 0.1f;

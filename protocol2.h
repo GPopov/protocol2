@@ -322,46 +322,39 @@ namespace protocol2
             assert( m_bitsWritten + bytes * 8 <= m_numBits );
             assert( ( m_bitsWritten % 32 ) == 0 || ( m_bitsWritten % 32 ) == 8 || ( m_bitsWritten % 32 ) == 16 || ( m_bitsWritten % 32 ) == 24 );
 
-            if ( bytes <= 8 )
+            int headBytes = ( 4 - ( m_bitsWritten % 32 ) / 8 ) % 4;
+            if ( headBytes > bytes )
+                headBytes = bytes;
+            for ( int i = 0; i < headBytes; ++i )
+                WriteBits( data[i], 8 );
+            if ( headBytes == bytes )
+                return;
+
+            FlushBits();
+
+            assert( GetAlignBits() == 0 );
+
+            int numWords = ( bytes - headBytes ) / 4;
+            if ( numWords > 0 )
             {
-                for ( int i = 0; i < bytes; ++i )
-                    WriteBits( data[i], 8 );
+                assert( ( m_bitsWritten % 32 ) == 0 );
+                memcpy( &m_data[m_wordIndex], data + headBytes, numWords * 4 );
+                m_bitsWritten += numWords * 32;
+                m_wordIndex += numWords;
+                m_scratch = 0;
             }
-            else
-            {
-                int headBytes = ( 4 - ( m_bitsWritten % 32 ) / 8 ) % 4;
-                if ( headBytes > bytes )
-                    headBytes = bytes;
-                for ( int i = 0; i < headBytes; ++i )
-                    WriteBits( data[i], 8 );
-                FlushBits();
-                if ( headBytes == bytes )
-                    return;
 
-                assert( GetAlignBits() == 0 );
+            assert( GetAlignBits() == 0 );
 
-                int numWords = ( bytes - headBytes ) / 4;
-                if ( numWords > 0 )
-                {
-                    assert( ( m_bitsWritten % 32 ) == 0 );
-                    memcpy( &m_data[m_wordIndex], data + headBytes, numWords * 4 );
-                    m_bitsWritten += numWords * 32;
-                    m_wordIndex += numWords;
-                    m_scratch = 0;
-                }
+            int tailStart = headBytes + numWords * 4;
+            int tailBytes = bytes - tailStart;
+            assert( tailBytes >= 0 && tailBytes < 4 );
+            for ( int i = 0; i < tailBytes; ++i )
+                WriteBits( data[tailStart+i], 8 );
 
-                assert( GetAlignBits() == 0 );
+            assert( GetAlignBits() == 0 );
 
-                int tailStart = headBytes + numWords * 4;
-                int tailBytes = bytes - tailStart;
-                assert( tailBytes >= 0 && tailBytes < 4 );
-                for ( int i = 0; i < tailBytes; ++i )
-                    WriteBits( data[tailStart+i], 8 );
-
-                assert( GetAlignBits() == 0 );
-
-                assert( headBytes + numWords * 4 + tailBytes == bytes );
-            }
+            assert( headBytes + numWords * 4 + tailBytes == bytes );
         }
 
         void FlushBits()
@@ -369,7 +362,10 @@ namespace protocol2
             if ( m_scratchBits != 0 )
             {
                 assert( m_wordIndex < m_numWords );
-                m_data[m_wordIndex++] = host_to_network( uint32_t( m_scratch & 0xFFFFFFFF ) );
+                m_data[m_wordIndex] = host_to_network( uint32_t( m_scratch & 0xFFFFFFFF ) );
+                m_scratch >>= 32;
+                m_scratchBits -= 32;
+                m_wordIndex++;                
             }
         }
 
@@ -482,45 +478,37 @@ namespace protocol2
             assert( m_bitsRead + bytes * 8 <= m_numBits );
             assert( ( m_bitsRead % 32 ) == 0 || ( m_bitsRead % 32 ) == 8 || ( m_bitsRead % 32 ) == 16 || ( m_bitsRead % 32 ) == 24 );
 
-            if ( bytes <= 8 )
+            int headBytes = ( 4 - ( m_bitsRead % 32 ) / 8 ) % 4;
+            if ( headBytes > bytes )
+                headBytes = bytes;
+            for ( int i = 0; i < headBytes; ++i )
+                data[i] = (uint8_t) ReadBits( 8 );
+            if ( headBytes == bytes )
+                return;
+
+            assert( GetAlignBits() == 0 );
+
+            int numWords = ( bytes - headBytes ) / 4;
+            if ( numWords > 0 )
             {
-                for ( int i = 0; i < bytes; ++i )
-                    data[i] = (uint8_t) ReadBits( 8 );
+                assert( ( m_bitsRead % 32 ) == 0 );
+                memcpy( data + headBytes, &m_data[m_wordIndex], numWords * 4 );
+                m_bitsRead += numWords * 32;
+                m_wordIndex += numWords;
+                m_scratchBits = 0;
             }
-            else
-            {
-                int headBytes = ( 4 - ( m_bitsRead % 32 ) / 8 ) % 4;
-                if ( headBytes > bytes )
-                    headBytes = bytes;
-                for ( int i = 0; i < headBytes; ++i )
-                    data[i] = (uint8_t) ReadBits( 8 );
-                if ( headBytes == bytes )
-                    return;
 
-                assert( GetAlignBits() == 0 );
+            assert( GetAlignBits() == 0 );
 
-                int numWords = ( bytes - headBytes ) / 4;
-                if ( numWords > 0 )
-                {
-                    assert( ( m_bitsRead % 32 ) == 0 );
-                    memcpy( data + headBytes, &m_data[m_wordIndex], numWords * 4 );
-                    m_bitsRead += numWords * 32;
-                    m_wordIndex += numWords;
-                    m_scratchBits = 0;
-                }
+            int tailStart = headBytes + numWords * 4;
+            int tailBytes = bytes - tailStart;
+            assert( tailBytes >= 0 && tailBytes < 4 );
+            for ( int i = 0; i < tailBytes; ++i )
+                data[tailStart+i] = (uint8_t) ReadBits( 8 );
 
-                assert( GetAlignBits() == 0 );
+            assert( GetAlignBits() == 0 );
 
-                int tailStart = headBytes + numWords * 4;
-                int tailBytes = bytes - tailStart;
-                assert( tailBytes >= 0 && tailBytes < 4 );
-                for ( int i = 0; i < tailBytes; ++i )
-                    data[tailStart+i] = (uint8_t) ReadBits( 8 );
-
-                assert( GetAlignBits() == 0 );
-
-                assert( headBytes + numWords * 4 + tailBytes == bytes );
-            }
+            assert( headBytes + numWords * 4 + tailBytes == bytes );
         }
 
         int GetAlignBits() const

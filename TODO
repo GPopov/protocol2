@@ -1,8 +1,13 @@
 DONE
 
+    Back to windows!
+
+    Broken VS2015 install. Repaired.
+
+    Rest of breakage was caused by #define min #define max fucking up the random_int and random_float functions
+
 TODO
 
-    Back to windows!
 
 
 
