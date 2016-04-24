@@ -27,6 +27,10 @@
 #ifndef NETWORK2_H
 #define NETWORK2_H
 
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <stdint.h>
 #include <assert.h>
 #include <math.h>
@@ -67,21 +71,23 @@ namespace network2
         ADDRESS_IPV6
     };
 
-    inline int random_int( int min, int max )
+    inline int random_int( int a, int b )
     {
-        assert( max > min );
-        int result = min + rand() % ( max - min + 1 );
-        assert( result >= min );
-        assert( result <= max );
+        assert( a < b );
+        int result = a + rand() % ( b - a + 1 );
+        assert( result >= a );
+        assert( result <= b );
         return result;
     }
 
-    inline float random_float( float min, float max )
+    inline float random_float( float a, float b )
     {
-        const int res = 10000000;
-        double scale = ( rand() % res ) / double( res - 1 );
-        return (float) ( min + (double) ( max - min ) * scale );
-    }
+        assert( a < b );
+		float random = ( (float) rand() ) / (float) RAND_MAX;
+		float diff = b - a;
+		float r = random * diff;
+		return a + r;
+	}
 
     class Address
     {
@@ -204,15 +210,27 @@ namespace network2
 
 #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
 
+	#define _WINSOCK_DEPRECATED_NO_WARNINGS
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#pragma comment( lib, "WS2_32.lib" )
+
+	#ifdef SetPort
+	#undef SetPort
+	#endif // #ifdef SetPort
+
+/*
 	#ifndef WIN32_LEAN_AND_MEAN
 	#define WIN32_LEAN_AND_MEAN
 	#endif
 
 	#include <winsock2.h>
-	#include <WS2tcpip.h>
-	#include <windows.h>
+	#include <ws2def.h>
+//	
+//	#include <windows.h>
 	
-	#pragma comment(lib, "Ws2_32.lib")
+	#pragma comment( lib, "Ws2_32.lib" )
+	*/
 
 #elif NETWORK2_PLATFORM == NETWORK2_PLATFORM_MAC || NETWORK2_PLATFORM == NETWORK2_PLATFORM_UNIX
 
@@ -501,13 +519,13 @@ namespace network2
         {
             if ( m_port == 0 )
             {
-                inet_ntop( AF_INET6, &m_address_ipv6, buffer, bufferSize );
+                inet_ntop( AF_INET6, (void*) &m_address_ipv6, buffer, bufferSize );
                 return buffer;
             }
             else
             {
                 char addressString[INET6_ADDRSTRLEN];
-                inet_ntop( AF_INET6, &m_address_ipv6, addressString, INET6_ADDRSTRLEN );
+                inet_ntop( AF_INET6, (void*) &m_address_ipv6, addressString, INET6_ADDRSTRLEN );
                 snprintf( buffer, bufferSize, "[%s]:%d", addressString, m_port );
                 return buffer;
             }
