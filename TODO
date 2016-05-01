@@ -2,21 +2,14 @@ DONE
 
 TODO
 
-    Is it worth adding more unit tests for basic serialization behavior at this point and cleaning up
 
-    Or should I save that for later? Probably later is OK.
+    Wrote introduction
 
-    So do I write the sending large blocks article today, or do I write more code?
+    Need to start sketching out structure.
 
-    What's the pros and cons.
+    Crack this egg open, get on it.
 
-        a) more articles = more support, writing unit tests or more code not likely to create more support
-
-        b) more code does create more *retention*, but retention is pretty good already I think.
-
-    So it seems that the best thing to do right now
-
-
+    It's an interesting subject, especially the tricky party about acks and getting stuck.
 
 
 

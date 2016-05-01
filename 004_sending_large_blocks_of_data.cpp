@@ -224,22 +224,13 @@ public:
         assert( packet );
 
         if ( !sending )
-        {
-//            printf( "can't process ack: not sending chunk\n" );
             return false;
-        }
 
         if ( packet->chunkId != chunkId )
-        {
-//            printf( "can't process ack: chunk id mismatch\n" );
             return false;
-        }
 
         if ( packet->numSlices != numSlices )
-        {
-//            printf( "can't process ack: num slices mismatch\n" );
             return false;
-        }
 
         for ( int i = 0; i < numSlices; ++i )
         {
@@ -288,7 +279,7 @@ public:
     {
         assert( packet );
 
-        // caller has read the chunk before we can receive the next one
+        // caller has to ead the chunk out of the recieve buffer before we can receive the next one
         if ( readyToRead )
             return false;
 
