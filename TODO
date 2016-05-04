@@ -2,14 +2,16 @@ DONE
 
 TODO
 
+    Implementation work todo on chunk sender:
 
-    Wrote introduction
+        a) if the receiver stalls out in a chunk receive, it should count as a timeout (set a reasonable time for them to receive the chunk),
+           otherwise the reciever can hang the protocol? or not. maybe for the blocks as part of the reliable message stream...
 
-    Need to start sketching out structure.
+        b) burst mode
 
-    Crack this egg open, get on it.
+        c) bandwidth limiting
 
-    It's an interesting subject, especially the tricky party about acks and getting stuck.
+    These things should be done for the pro version at the end of the article series, when everything is brought together into one protocol.
 
 
 
