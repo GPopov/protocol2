@@ -46,10 +46,10 @@ project "005_packet_aggregation"
     kind "ConsoleApp"
     files { "005_packet_aggregation.cpp", "protocol2.h", "network2.h" }
 
-project "006_reliable_packets"
+project "006_client_server"
     language "C++"
     kind "ConsoleApp"
-    files { "006_reliable_packets.cpp", "protocol2.h", "network2.h" }
+    files { "006_client_server.cpp", "protocol2.h", "network2.h" }
 
 if _ACTION == "clean" then
     os.rmdir "obj"
@@ -61,6 +61,13 @@ if _ACTION == "clean" then
         os.execute "rm -f network2"
         os.execute "rm -f *.zip"
         os.execute "rm -f *.make"
+        os.execute "rm -f test"
+        os.execute "rm -f 001_reading_and_writing_packets"
+        os.execute "rm -f 002_serialization_strategies"
+        os.execute "rm -f 003_packet_fragmentation_and_reassembly"
+        os.execute "rm -f 004_sending_large_blocks_of_data"
+        os.execute "rm -f 005_packet_aggregation"
+        os.execute "rm -f 006_client_server"
         os.execute "find . -name .DS_Store -delete"
     else
         os.rmdir "ipch"
@@ -185,14 +192,14 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "006",
-        description = "Build example source for reliable packets",
+        description = "Build example source for client/server",
         valid_kinds = premake.action.get("gmake").valid_kinds,
         valid_languages = premake.action.get("gmake").valid_languages,
         valid_tools = premake.action.get("gmake").valid_tools,
      
         execute = function ()
-            if os.execute "make -j4 006_reliable_packets" == 0 then
-                os.execute "./bin/006_reliable_packets"
+            if os.execute "make -j4 006_client_server" == 0 then
+                os.execute "./bin/006_client_server"
             end
         end
     }

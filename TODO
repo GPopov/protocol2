@@ -2,18 +2,11 @@ DONE
 
 TODO
 
-    Implementation work todo on chunk sender:
+    Work out how to sketch out the client/server
 
-        a) if the receiver stalls out in a chunk receive, it should count as a timeout (set a reasonable time for them to receive the chunk),
-           otherwise the reciever can hang the protocol? or not. maybe for the blocks as part of the reliable message stream...
+    I think I want to just do it straight up as an example program vs. a library initially.
 
-        b) burst mode
-
-        c) bandwidth limiting
-
-    These things should be done for the pro version at the end of the article series, when everything is brought together into one protocol.
-
-
+    Once it's sketched out, think how it can be made in a library, perhaps with the last article in this program being an example.
 
 
 
@@ -26,22 +19,6 @@ TODO
 
     The code has much more value if you can actually run it and play around!
 
+    Also, convert this code over to BSD 3.0 and premake5 at the same time
+
     =======================================    
-
-
-
-
-
-
-    =======================================
-           Reliable Packets over UDP
-    =======================================
-
-    Actually hook the example code up to the functions in node and make sure the interface matches what I expect.
-
-    Basically here I want to verify that all reliable packets are received reliably and in order, and to process (throw away)
-    the unreliable packets (make sure at least one gets through)
-
-    Need to setup the simulator.
-
-    Need to setup the function to serialize packet.

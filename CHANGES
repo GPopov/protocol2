@@ -1,4 +1,25 @@
 
+Tuesday May 10th, 2016
+======================
+
+Cut reliable packets over UDP
+
+Going direct to the client/server structure first.
+
+Some future notes for the chunk system:
+
+    Implementation work todo on chunk sender:
+
+        a) if the receiver stalls out in a chunk receive, it should count as a timeout (set a reasonable time for them to receive the chunk),
+           otherwise the reciever can hang the protocol? or not. maybe for the blocks as part of the reliable message stream...
+
+        b) burst mode
+
+        c) bandwidth limiting
+
+    These things should be done for the pro version at the end of the article series, when everything is brought together into one protocol.
+
+
 Sunday May 1st, 2016
 ====================
 
