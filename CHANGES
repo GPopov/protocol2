@@ -19,6 +19,92 @@ Some future notes for the chunk system:
 
     These things should be done for the pro version at the end of the article series, when everything is brought together into one protocol.
 
+    Work out how to sketch out the client/server
+
+    I think I want to just do it straight up as an example program vs. a library initially.
+
+    Once it's sketched out, think how it can be made in a library, perhaps with the last article in this program being an example.
+
+    I'm going to start with the simplest form, which is to keep it separate.
+
+    That way the client/server connection article can be focused on just that, and not on, for example, chunk slices or payload packets.
+
+    Key points, 
+
+    Make sure the client connect packet is much larger than the response (DDoS protection)
+
+    The challenge -> response makes sure the return address on the packet actually matches the sender.
+
+    Once the connection is established, use stream context to early reject packets that should have matching client/server guids pairs, but don't.
+
+    (perhaps for the main server connection packet, hash the two 64bit integers into a 32bit hash)
+
+    This avoids spoofing packets that cost a lot of time for you to process, if the client hasn't gone through the handshake process.
+
+    Hard to guess a random 32bit number that will work, but I guess, they could try to brute force that. But how would they know? Vast majority won't get through.
+
+    Next, is there any defense against a malicious botnet spawning connects?
+
+    Seems that the one defense is to keep POTENTIAL connections separate from slots, eg. when a connection request comes in,
+    put it in a separate hash of "INCOMING" eg: address and guid, but don't actually assign a slot yet. Of course, if all slots 
+    are full, reject it.
+
+    IMPORTANT: Don't actually walk over the incoming connections. Instead, when a packet comes in, reply immediately with the challenge,
+    if the challenge is new, or it hasn't been responded to within x seconds. This way no linear scan over the incoming connections
+    is ever required.
+
+    What this does is require the person to actually have a valid address in the connection request packet, but if they actually
+    do have a botnet, vs. one linux box spoofing addresses, they can still DDoS your server.
+
+    It seems that there is little point to a server guid, because if you wanted to botnet you could just sniff the server guid
+    once by sending a valid connection request with your own address, then once you have that server guid, just include it in
+    all spoof packets you send off. So it creates just a small amount of safety, which would be cracked quickly, and no real
+    protection.
+
+    What adds some actual protection would be a unique salt created per-each incoming connection, so we know 
+
+    What if somebody just DDoS lots of different ports from the same address? On one hand, this could be stopped
+    by checking if too many connections have come from the same address from different ports, on the other hand,
+    NAT issues could mean that lots of connections come through from the same effective IP address, on different ports.
+
+    Look into how OpenTNL does the client challenge/response. How does it work and what exactly does it solve?
+
+    If the challenge can be extended, then there needs to not be a timeout on the pending connections before they
+    can be promoted on challenge response to an actual connection.
+
+    This is another reason why the challenge/responses should most likely be a separate hash vs. the same # of slots.
+
+    Going to need a hash table implementation.
+
+    ... or do I?
+
+    Does the hash table really need anything complicated like quadratic probing?
+
+    What if instead the hash table was lossy, so it was overly large, but if a collision existed, that particular connection request would get whacked.
+
+    But the two people connecting at the same time would FIGHT and this could be bad, because neither will be able to actually connect.
+
+    It seems I do need a proper hash table.
+
+    So what to do when the hash table is 50% full (capacity)?
+
+    Reject additional connections until stuff comes through?
+
+    Weird.
+
+    No. A full hash table doesn't have the behavior that I want.
+
+    What if instead, if a connection request comes in first, it sticks around for some period, like 30 seconds max,
+    then if another person tries to connect with a hash collision they are just ignored, but then after the 30 seconds
+    they will not be ignored, and will take over the slot, and *they* get the next 30 seconds.
+
+    This would stop the fighting, and have better behavior if the hash table starts to get full, eg. collisions
+    naturally resolve themselves vs. probing.
+
+    This could work, and I think is much better behavior than I would get from a true closed hash table with probing.
+
+    I think I must implement it like this, but make a note in the article that the naive way has problems.
+
 
 Sunday May 1st, 2016
 ====================

@@ -32,7 +32,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-// todo: ProtocolId
+//const uint32_t ProtocolId = 0x12341651;
 
 const int MaxClients = 32;
 /*
@@ -42,30 +42,67 @@ const float TimeOutInSeconds = 5.0f;
 const float KeepAliveInSeconds = 1.0f;
 */
 
+uint64_t GenerateSalt()
+{
+    // IMPORTANT: You should probably use a better random number generator!
+    return ( ( (uint64_t) rand() <<  0 ) & 0x000000000000FFFFull ) | 
+           ( ( (uint64_t) rand() << 16 ) & 0x00000000FFFF0000ull ) | 
+           ( ( (uint64_t) rand() << 32 ) & 0x0000FFFF00000000ull ) |
+           ( ( (uint64_t) rand() << 48 ) & 0xFFFF000000000000ull );
+}
+
 enum PacketTypes
 {
-    PACKET_CONNECTION_REQUEST,                // client is requesting a connection.
-    PACKET_CONNECTION_DENIED,                 // server denies client connection request with reason, eg. "game is full" etc.
-    PACKET_CONNECTION_CHALLENGE,              // server response to client connection request.
-    PACKET_CONNECTION_CHALLENGE_RESPONSE,     // client response to server connection challenge.
-    PACKET_CONNECTION_KEEP_ALIVE,             // keep alive packet sent at some low rate (once per-second) to keep the connection alive
-    PACKET_CONNECTION_DISCONNECTED,           // courtesy packet to indicate that the client has been disconnected. better than a timeout
+    PACKET_CONNECTION_REQUEST,                      // client is requesting a connection.
+    PACKET_CONNECTION_DENIED,                       // server denies client connection request with reason, eg. "game is full" etc.
+    PACKET_CONNECTION_CHALLENGE,                    // server response to client connection request.
+    PACKET_CONNECTION_CHALLENGE_RESPONSE,           // client response to server connection challenge.
+    PACKET_CONNECTION_KEEP_ALIVE,                   // keep alive packet sent at some low rate (once per-second) to keep the connection alive
+    PACKET_CONNECTION_DISCONNECTED,                 // courtesy packet to indicate that the client has been disconnected. better than a timeout
     NUM_CLIENT_SERVER_NUM_PACKETS
 };
 
 enum ServerClientState
 {
-    SERVER_CLIENT_DISCONNECTED,               // client slot is not connected
-    SERVER_CLIENT_SENDING_CHALLENGE,          // sending challenge response to client
-    SERVER_CLIENT_CONNECTED,                  // server client slot is connected (keepalive is sent)
-    // etc...
+    SERVER_CLIENT_STATE_DISCONNECTED,               // client slot is not connected
+    SERVER_CLIENT_STATE_CHALLENGING,                // sending challenge response to client
+    SERVER_CLIENT_STATE_CONNECTED,                  // server client slot is connected (keepalive is sent)
 };
 
-struct Server
+struct ServerContext
 {
-    uint64_t server_guid;
-    uint64_t client_guid[MaxClients];
+    uint64_t
+    uint64_t client_salt[]
+};
+
+class Server
+{
+    uint64_t server_salt[MaxClients];               // per-client server-side generated salt to make it harder to spoof packets for other clients
+    uint64_t client_salt[MaxClients];
+    ServerClientState client_state[MaxClients];
     network2::Address client_address[MaxClients];
+    double client_last_packet_time[MaxClients];
+
+protected:
+
+    void ResetClientState( int clientIndex )
+    {
+        assert( clientIndex >= 0 );
+        assert( clientIndex < MaxClients );
+        client_guid[clientIndex] = 0;
+        client_state[clientIndex] = SERVER_CLIENT_STATE_DISCONNECTED;
+        client_address[clientIndex] = network2::Address();
+        client_last_packet_time[clientIndex] = 0.0;
+    }
+
+public:
+
+    Server()
+    {
+        server_guid = GenerateGuid();
+        for ( int i = 0; i < MaxClients; ++i )
+            ResetClientState( i );
+    }
 };
 
 enum ClientState
