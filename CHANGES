@@ -1,4 +1,197 @@
 
+Thursday May 12th, 2016
+=======================
+
+    Seems like we have settled on a solution.
+
+    1. Client connects to matchmaker over HTTPS, requests to be matched.
+
+    2. Server and all dedis share a private key. Dedis must be hosted outside of player control, eg. data center.
+
+    3. Matchmaker returns encrypted block of data with HMAC as signature using that private key to client.
+
+    4. Client passes in this block of data and HMAC in the connection request packet.
+
+    5. Server tests all connection request packets to see if valid via HMAC. If not valid, ignore and no response.
+
+    6. If valid, test the hash of that data vs. previously sent blocks and if a block with the same hash has already been consumed, ignore the connection request and no response.
+
+    7. Otherwise, send a challenge packet and assign a client slot to that particular connecting client (pending successful challenge response to avoid IP return address spoofing)
+
+    8. Block of data must contain either the specific dedi ip or a whitelist of dedi IPs, to avoid attack where client takes the same block, runs a botnet and goes wide throwing connection requests with that block to every dedi in your data center (once)
+
+    9. Block of data must also contain an expiry timestamp, this is useful because this timestamp can be used to expire old block entries in the blacklist.
+
+    10. The block can also contain a randomly generated key for symmetric encryption so client and server can communicate securly.
+
+    11. The matcher must also communicate the list of server IPs to try, and the key for communication with each dedi to the client.
+        This is necessary because the client cannot decrypt the block, but it's OK because matcher sends this data to the client over HTTPS
+
+
+Wednesday May 11th, 2016
+========================
+
+    Talking with no bugs today about security. Seems that 
+
+        a) I have a lot to learn
+
+        b) the crypto challenge/response *is* important to delay botnets sending you connection requests
+
+        c) the token idea is probably correct, but I'll have to run it through Shiring (done) and see what he says
+
+    Basically, it seems that bugs does it all at the protocol layer (all in one) which makes sense for oldschool,
+    but web tech seems to separate out the part, so I can see how he would not see this approach being valid.
+
+    But I think the split between the two, with web doing what it does the best, and dedis doing just their thing is better.
+
+    -------------
+
+    Basic implementation idea
+
+        1. Client sends connection request packet, it contains client id (globally unique uint64_t), client salt (random uint64_t, different one on each connection attempt),
+           address:port of the client. Also, a block of data added at the end (eg. 256 bytes) to make it so connection requests cannot be used to DDOS amplify.
+
+        2. Server looks at the client id, if the client id matches any clients which are currently connected to the server, the connection request is ignored.
+
+           This is important, because otherwise, you could nuke somebody's connection by crafting a fake connection request from their IP that nukes them back to 
+           starting a new connection *or* you can never have two connections coming from the same time from the same address:port combination.
+
+           But is there any value to the client salt? Like at all? Bottom line, connection requests should be ignored while there is a current connection
+           matching that address in the set of connected clients. (and I mean a match of both address and port)
+
+        2. Server hashes the client id, client salt and the client address:port into a 64bit integer (murmurhash2)
+
+        3. The modulo of this hash # is taken and it is the index into the challenge array
+
+        4. The server checks the entry in the challenge array. 
+
+                a) If the entry has a different address, client id or client salt, *and* the time the last challenge packet was sent is < ChallengeTimeOut seconds ago, 
+                   the client connection request is ignored.
+
+                b) If the entry has a different address, client id or client salt, *and* the time the last challenge packet was sent is >= ChallengeTimeOut seconds ago, 
+                   the challenge entry is replaced with the new client address/id/salt and server queues up a challenge response to that packet.
+
+                c) If the entry has a matching address, client id and client salt, but the time the last challenge packet was sent is < ChallengeResendTime seconds ago,
+                   the client connection request is ignored.
+
+                d) If the entry has a matching address, client id and client salt, *and* the time the last challenge packet was sent is >= ChallengeResendTime seconds ago,
+                   the server queues up a challenge response packet to be sent to the client.
+
+        5. At no point does the server ever allocate anything, do any work, or iterate over the set of pending challenges. Server only acts
+           in response to a connection request packet sent to it, and not in a 1-1 response, except when a new connection attempt comes in, 
+           after this the server only sends another packet in response to a client packet sent after a certain amount of time.
+
+        6. The challenge packet sent to client contains the client id, client salt, and server salt generated for that challenge (random).
+           This way the only way the client can respond correctly to the challenge, is if the client is a valid IP address, not a spoofed
+           return address, and the client processed the challenge packet, read it, got the server salt out of it, and responded back.
+
+        7. Does the client salt make it possible for one IP to initiate a bunch of connections on the same IP:port? Yes it does. This isn't cool. Why allow this? Stupid.
+
+           But does this really matter? The attacker can trivially create different clients on ports and easily fill a server that way...
+
+           The real protection only comes when there is a globally unique id that the server limits only one of those ids per-server via some sort of ticketing,
+           eg. encrypted block of data, that allows the client to get past the connection request gate on the dedi.
+
+    -------------------
+
+    What is the point of the client salt? So that if another player knows the IP of another player, they cannot spoof that particular player 
+    by forging packets with that player's IP address to try to disrupt connection. eg. whatever packets they send will likely have a different salt,
+    and thus will not interfere with the challenge/response.
+
+    The key is to both allow the salt, but also, to enforce only one client with a given client id on the server at a time.
+
+    I think the salt still has value.
+
+    -------------------
+
+    Another key point, if there are packet types the server doesn't handle, the server needs to discard those packets at an early stage, vs. wasting resources,
+    so I think there should be a bitfield for disabling packet types for receive on the packet factory level. That way we can have separate packet factories
+    for the client and server, and they can be configured to discard packet types not expected to be received on each side, removing a vector for attack.
+
+    -------------------
+
+    Next, when connection payload packets come in check their address vs. currently connected clients, and check that the hash matches.
+
+    Is it sufficient to just check the address? No, because spoofing allows other clients to make it looks like a post-connection packet is coming for that client.
+
+    A lot of this stuff may not make any sense once you start encrypting... Think about this.
+
+    -------------------
+
+    It seems to me unless I am willing to setup the client id so that it comes from a valid source (I'm not),
+    then there is very little point putting it in this protocol.
+
+    So lets start with the BEST we can do on our own, a server, which if the IP is discovered, can be DDoS'd
+    and potentially filled with zombie clients.
+
+    identify its weaknesses and then follow up with a second implementation that addresses them, 
+    maybe following up with a server backend or something like that with encryption.
+
+    Awesome idea. Make a server auth system so you have to sign in with facebook in order to play?
+
+    Hmmmmmmmm....
+
+    It's really starting to seem like the client/server implementation should be at the end,
+    not at the middle of the article series.
+
+    eg. that I should build up to it with reliable packets, reliable time critical messages with blocks and so on,
+    and then at the end, build up a naive client/server, a better client/server, and then finally a secure one with back end.
+    (and an actual game at that!)
+
+    This would be the best approach I think.
+
+    Plus, I kinda need to do this, in order to be able to support my customers. I have to have experience doing these things.
+
+    --------------------------
+
+    There is a bug in the murmur2 hash implementation I have. It's not generating different hashes for strings with a different last character. Ouch!
+
+    I broke it when I refactored it today. Idiot.
+
+    ---------------
+
+    If you know somebody elses IP address because of client salt, you can't hash collide with them. You don't know that salt.
+
+    But you can deny new connections by spamming the server trivially with connection requests.
+
+    I don't believe there is any way to stop this at the dedi level. Fundamentally, you have to let people attempt to connect.
+
+    Also, if people do connect, well, they connect. If they are connecting maliciously, eg. one user is able to take up more
+    resources on servers than they are entitled to, that is the real DDoS here from a dedicated server point of view.
+
+    It therefore follows that no matter what is done on the dedicated server, it cannot protect against this.
+
+    It seems another system for authentication, eg. to push it up to the web layer.
+
+    ---------------
+
+    At one suggestion from Jon, without ticketing, you can have a private key that the web auth knows, and the dedis know. Client does not know.
+
+    The matchmaker can recieve a block from the client (over SSL), and send it back to the client encrypted (such that it is opaque to that client)
+
+    The client then passes that block to the dedi in the connection request as a block of data.
+
+    The server can use this to determine the client *came* from the matchmaker, eg. decrypt it, check for a string that matches, and then
+    decode some data inside it like, uint64_t client_id, client name, etc.
+
+    Maybe even potentially the client IP that the client should be connecting from, but this maybe excessive.
+
+    Then this gives the client a secure way to communicate their connection request to the server.
+
+    Since a DDoS attacker does not know the private key, they cannot create a connection request that passes the test and it gets ignored (no response).
+
+    Also, since the clients should only be sent to a dedicated server from the matchmaker, which does rate limiting, DDoS should not be able to 
+    mount a protocol level zombie client and/or DDoS attack on connection requests filling up that hash.
+
+    In theory, this should allow the matchmaker to authenticate on that particular user id, and rate limit sessions that user can request through the matcher.
+
+    If a particular client user id requests too many matchmaker requests in quick succession, they can be throttled.
+
+    Also, through the matchmaker they can't really specify the *exact* server they want to land on, so any DDoS is distributed across multiple servers.
+
+    ----------------
+
+
 Tuesday May 10th, 2016
 ======================
 

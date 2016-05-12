@@ -266,6 +266,12 @@ namespace protocol2
 
     uint32_t calculate_crc32( const uint8_t *buffer, size_t length, uint32_t crc32 = 0 );
 
+    uint32_t hash_data( const uint8_t * data, uint32_t length, uint32_t hash );
+
+    uint32_t hash_string( const char string[], uint32_t hash );
+
+    uint64_t murmur_hash_64( const void * key, uint32_t length, uint64_t seed );
+
     class BitWriter
     {
     public:
@@ -1289,6 +1295,86 @@ namespace protocol2
         for ( size_t i = 0; i < length; ++i ) 
             crc32 = ( crc32 >> 8 ) ^ crc32_table[ ( crc32 ^ buffer[i] ) & 0xFF ];
         return crc32 ^ 0xFFFFFFFF;
+    }
+
+    uint32_t hash_data( const uint8_t * data, uint32_t length, uint32_t hash )
+    {
+        assert( data );
+        for ( uint32_t i = 0; i < length; ++i )
+        {
+            hash += data[i];
+            hash += (hash << 10);
+            hash ^= (hash >> 6);
+        }
+        return hash;
+    } 
+
+    uint32_t hash_string( const char string[], uint32_t hash )
+    {
+        assert( string );
+        while ( *string != '\0' )
+        {
+            char c = *string++;
+            if ( ( c >= 'a' ) && ( c <= 'z' ) ) 
+                c = ( c - 'a' ) + 'A';
+            hash += c;
+            hash += (hash << 10);
+            hash ^= (hash >> 6);
+        }
+        return hash;
+    }
+
+    uint64_t murmur_hash_64( const void * key, uint32_t length, uint64_t seed )
+    {
+        const uint64_t m = 0xc6a4a7935bd1e995ULL;
+        const uint32_t r = 47;
+
+        uint64_t h = seed ^ ( length * m );
+
+        const uint64_t * data = ( const uint64_t*) key;
+        const uint64_t * end = data + length / 8;
+
+        while ( data != end )
+        {
+#if PROTOCOL2_BIG_ENDIAN
+                uint64_t k = *data++;
+                uint8_t * p = (uint8_t*) &k;
+                uint8_t c;
+                c = p[0]; p[0] = p[7]; p[7] = c;
+                c = p[1]; p[1] = p[6]; p[6] = c;
+                c = p[2]; p[2] = p[5]; p[5] = c;
+                c = p[3]; p[3] = p[4]; p[4] = c;
+#else // #if PROTOCOL2_BIG_ENDIAN
+                uint64_t k = *data++;
+#endif // #if PROTOCOL2_BIG_ENDIAN
+
+            k *= m;
+            k ^= k >> r;
+            k *= m;
+            
+            h ^= k;
+            h *= m;
+        }
+
+        const uint8_t * data2 = (const uint8_t*) data;
+
+        switch ( length & 7 )
+        {
+            case 7: h ^= uint64_t( data2[6] ) << 48;
+            case 6: h ^= uint64_t( data2[5] ) << 40;
+            case 5: h ^= uint64_t( data2[4] ) << 32;
+            case 4: h ^= uint64_t( data2[3] ) << 24;
+            case 3: h ^= uint64_t( data2[2] ) << 16;
+            case 2: h ^= uint64_t( data2[1] ) << 8;
+            case 1: h ^= uint64_t( data2[0] );
+                    h *= m;
+        };
+        
+        h ^= h >> r;
+        h *= m;
+        h ^= h >> r;
+
+        return h;
     }
 
     inline int WritePacket( Packet *packet, int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header )
