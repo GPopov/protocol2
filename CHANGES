@@ -27,6 +27,33 @@ Thursday May 12th, 2016
     11. The matcher must also communicate the list of server IPs to try, and the key for communication with each dedi to the client.
         This is necessary because the client cannot decrypt the block, but it's OK because matcher sends this data to the client over HTTPS
 
+    ------------
+
+    To move forward with this solution it seems that:
+
+        1. The client/server connection should be the climax of the series, not in the middle.
+
+        2. I should implement a client/server connection for LAN, and then poke holes in it, how it can be attacked.
+
+        3. Then I should implement a backend and secure it with crypto.
+
+        4. I need to research HMAC
+
+        5. I need to pick a backend language for the web service (node.js? python? ruby?)
+
+        6. I need to pick a web server, nginx? Most likely.
+
+        7. Should the web server for this game be the same one that serves my videos. Probably not.
+
+        8. The final end result of this game should be an authoritative client/server networking of the cubes demo.
+
+        9. This is verify definitely an "eat your own dogfood" type exercise.
+
+        10. Should the authentication be done via facebook perhaps? Sign in with facebook. get a token to enter into the web service.
+
+        11. I need to integrate a secure HTTPS web service into my game client.
+
+    --------------
 
 Wednesday May 11th, 2016
 ========================

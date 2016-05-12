@@ -2,6 +2,23 @@ DONE
 
 TODO
 
+    Things to do to move forward:
+
+        Research HMAC.
+
+        Find a bcrypt implementation to use in C.
+
+        Also need a high quality random number implementation for the salt.
+
+        Need to pick a backend language.
+
+        Need to work out what HTTPS library I use for my dedis and client to communicate with the matcher service.
+
+        Implement a non-secure version of the client/server protocol as a starting point.
+
+        This is important for analysis, to show how it can be attacked at a protocol level (not even really DDoS)
+
+
 
 
 
