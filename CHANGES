@@ -1,4 +1,48 @@
 
+Saturday May 14th, 2016
+=======================
+
+    Now need to implement the network interface concept. protocol2.h?
+
+    Do I need to implement send queues? Yes I think so. The data structures for these send queues belong in protocol2.h
+
+    I should probably start getting a lot more of protocol2.h under functional test as well. eg. the send queues.
+
+    Can't put the network interface in protocol2.h because it relies on network2::Address
+
+    Can't put it in network2.h because it relies on protocol2::Packet and Read/WritePacket functions.
+
+    Seems that we need to have a header file that unifies the two. eg. NetworkInterface.h?
+
+    common.h? client.h? server.h?
+
+    why not have all these together in the same file? *yojimbo.h* (beats "client_server.h")
+
+    Yojimbo means bodyguard! This is awesome!
+
+    Need to implement network interface for BSD sockets.
+
+    Start here, and implement only this and get back to the client/server implementation.
+
+    Keep it lean. Don't turn everything into a giant framework!
+
+    Also, thinking a lot about hash tables, whatever hash table implementation you use, if
+    the attacker uses that implementatino they can implement the worst case for you, by crafting
+    nasty keys. It seems therefore that maybe it would even be preferrable to take worst case
+    behavior on something simple, like a linear search instead.
+
+    ---------
+
+    Seems you can actually do better.
+
+    What if the server has a cryptographically secure random number, and it never shares this number with clients,
+    but hashes this number when it hashes whatever client data maps to the key, so in effect, clients cannot predict
+    which connection requests correlate to which keys, negating attacks on hash table worst behavior with connection
+    request packets.
+
+    This is an important point to consider!
+
+
 Friday May 13th, 2016
 =====================
 
@@ -31,6 +75,25 @@ Friday May 13th, 2016
     How about just getting the basic BSD sockets implementation into the network2.h?
 
     Halfway through this.
+
+    Need to bring across the actual internel send and receive functions for the socket class.
+
+    Then once this is done, can bring across an actual send queue or something like that.
+
+    Key design goal here is to keep the protocol2 aspect of packets separate from the over the wire sending.
+
+    This probably means that packets and send queues *and* serialization need to belong in protocol2
+
+    While the actual gritty of sending that over the wire and receiving over the wire belongs in network2
+
+    Brought across the rest of the socket class, eg. 
+
+    Now I need to actually test the socket send/recv are working properly.
+
+    After this, hook up a network interface (protocol layer) that handles send and receive queues
+    and the stream and the context necessary for packet serialization.
+
+    Cleaned it up and verified that socket send and receive packet are functional.
 
 
 Thursday May 12th, 2016
