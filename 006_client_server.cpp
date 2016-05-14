@@ -40,9 +40,9 @@ const int MaxClients = 32;
 const int ClientPort = 60000;
 const int ChallengeHashSize = 1031;                 // keep this prime
 const float ChallengeSendRate = 0.1f;
+const float ChallengeTimeOut = 10.0f;
 /*
 const float ConnectionTimeOut = 5.0f;
-const float ChallengeTimeOut = 10.0f;
 const float KeepAliveRate = 1.0f;
 */
 
@@ -130,6 +130,7 @@ struct ServerChallengeHash
     uint8_t exists[ChallengeHashSize];
     uint64_t key[ChallengeHashSize];
     ServerChallengeEntry entries[ChallengeHashSize];
+
     ServerChallengeHash() { memset( this, 0, sizeof( ServerChallengeHash ) ); }
 };
 
@@ -198,9 +199,9 @@ protected:
         if ( m_challengeHash.num_entries >= ChallengeHashSize / 4 )         // be really conservative. we don't want any clustering
             return NULL;
 
-        uint64_t key = CalculateChallengeHashKey( address, clientSalt );
+        const uint64_t key = CalculateChallengeHashKey( address, clientSalt );
 
-        int startIndex = key % ChallengeHashSize;
+        const int startIndex = key % ChallengeHashSize;
         
         printf( "client salt = %llx\n", clientSalt );
         printf( "challenge hash key = %llx\n", key );
@@ -242,13 +243,20 @@ protected:
         return entry;
     }
 
-    void RemoveStaleChallenges( double time )
+    void RemoveChallengeEntry( const network2::Address & address, uint64_t clientSalt )
     {
-        // todo: walk across all challenge hash
+        const uint64_t key = CalculateChallengeHashKey( address, clientSalt );
 
-        // todo: if any entry has timed out, remove it.
+        const int startIndex = key % ChallengeHashSize;
 
-        // todo: make sure the walk is fast (hot/cold split)
+        // first find the index we want to remove
+
+        for ( int i = 0; i < ChallengeHashSize; ++i )
+        {
+//            const int index = startIndex + i;
+
+            //if ( )
+        }
     }
 
 public:
@@ -318,7 +326,7 @@ int main()
 
     printf( "client/server connection\n" );
 
-    const int NumIterations = 3;
+    const int NumIterations = 20;
 
     double time = 0.0;
 
@@ -331,11 +339,17 @@ int main()
     for ( int i = 0; i < NumIterations; ++i )
     {
         printf( "t = %f\n", time );
-        ConnectionRequestPacket packet;
-        packet.client_salt = client_salt;
-        network2::Address from( "::1", ClientPort );
 
-        server.ProcessConnectionRequest( packet, from, time );
+        if ( i <= 2 )
+        {
+            ConnectionRequestPacket packet;
+            packet.client_salt = client_salt;
+            network2::Address from( "::1", ClientPort );
+
+            server.ProcessConnectionRequest( packet, from, time );
+        }
+
+        server.RemoveStaleChallenges( time );
 
         time += 0.1f;
 
