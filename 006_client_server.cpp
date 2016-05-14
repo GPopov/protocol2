@@ -314,8 +314,8 @@ int main()
 
     if ( clientSocket.GetError() != network2::SOCKET_ERROR_NONE || serverSocket.GetError() != network2::SOCKET_ERROR_NONE )
         return 1;
-
-    const int NumIterations = 3;
+    
+    const int NumIterations = 30;
 
     double time = 0.0;
 
@@ -335,6 +335,17 @@ int main()
             packet.client_salt = client_salt;
 
             server.ProcessConnectionRequest( packet, clientAddress, time );
+        }
+
+        char send_data[256];
+        memset( send_data, 0, sizeof( send_data ) );
+        clientSocket.SendPacket( serverAddress, send_data, sizeof( send_data ) );
+
+        network2::Address from;
+        char recv_data[256];
+        while ( int read_bytes = serverSocket.ReceivePacket( from, recv_data, sizeof( recv_data ) ) )
+        {
+            printf( "received packet: %d bytes\n", read_bytes );
         }
 
         time += 0.1f;

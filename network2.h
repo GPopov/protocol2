@@ -152,8 +152,8 @@ namespace network2
 
     enum SocketType
     {
-        SOCKET_TYPE_IPv4,
-        SOCKET_TYPE_IPv6
+        SOCKET_TYPE_IPV4,
+        SOCKET_TYPE_IPV6
     };
 
     enum SocketError
@@ -170,7 +170,7 @@ namespace network2
     {
     public:
 
-        Socket( uint16_t port, SocketType type = SOCKET_TYPE_IPv6 );
+        Socket( uint16_t port, SocketType type = SOCKET_TYPE_IPV6 );
 
         ~Socket();
 
@@ -178,9 +178,9 @@ namespace network2
 
         int GetError() const;
 
-        bool SendPacket( const Address & address, const uint8_t * data, size_t bytes );
+        bool SendPacket( const Address & address, const void * packetData, size_t packetBytes );
     
-        int ReceivePacket( Address & sender, void * data, int size );
+        int ReceivePacket( Address & from, void * packetData, int maxPacketSize );
 
     private:
 
@@ -594,7 +594,7 @@ namespace network2
 
         // create socket
 
-        m_socket = socket( ( type == SOCKET_TYPE_IPv6 ) ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP );
+        m_socket = socket( ( type == SOCKET_TYPE_IPV6 ) ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP );
 
         if ( m_socket <= 0 )
         {
@@ -605,7 +605,7 @@ namespace network2
 
         // force IPv6 only if necessary
 
-        if ( type == SOCKET_TYPE_IPv6 )
+        if ( type == SOCKET_TYPE_IPV6 )
         {
             int yes = 1;
             if ( setsockopt( m_socket, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&yes, sizeof(yes) ) != 0 )
@@ -618,7 +618,7 @@ namespace network2
 
         // bind to port
 
-        if ( type == SOCKET_TYPE_IPv6 )
+        if ( type == SOCKET_TYPE_IPV6 )
         {
             sockaddr_in6 sock_address;
             memset( &sock_address, 0, sizeof( sockaddr_in6 ) );
@@ -704,6 +704,79 @@ namespace network2
     int Socket::GetError() const
     {
         return m_error;
+    }
+
+    bool Socket::SendPacket( const Address & address, const void * packetData, size_t packetBytes )
+    {
+        assert( packetData );
+        assert( packetBytes > 0 );
+        assert( address.IsValid() );
+        assert( m_socket );
+        assert( !IsError() );
+
+        bool result = false;
+
+        if ( address.GetType() == ADDRESS_IPV6 )
+        {
+            sockaddr_in6 s_addr;
+            memset( &s_addr, 0, sizeof( s_addr ) );
+            s_addr.sin6_family = AF_INET6;
+            s_addr.sin6_port = htons( address.GetPort() );
+            memcpy( &s_addr.sin6_addr, address.GetAddress6(), sizeof( s_addr.sin6_addr ) );
+            const int sent_bytes = sendto( m_socket, (const char*)packetData, packetBytes, 0, (sockaddr*)&s_addr, sizeof(sockaddr_in6) );
+            result = sent_bytes == packetBytes;
+        }
+        else if ( address.GetType() == ADDRESS_IPV4 )
+        {
+            sockaddr_in s_addr;
+            memset( &s_addr, 0, sizeof( s_addr ) );
+            s_addr.sin_family = AF_INET;
+            s_addr.sin_addr.s_addr = address.GetAddress4();
+            s_addr.sin_port = htons( (unsigned short) address.GetPort() );
+            const int sent_bytes = sendto( m_socket, (const char*)packetData, packetBytes, 0, (sockaddr*)&s_addr, sizeof(sockaddr_in) );
+            result = sent_bytes == packetBytes;
+        }
+
+        if ( !result )
+        {
+            printf( "sendto failed: %s\n", strerror( errno ) );
+        }
+
+        return result;
+    }
+
+    int Socket::ReceivePacket( Address & from, void * packetData, int maxPacketSize )
+    {
+        assert( m_socket );
+        assert( packetData );
+        assert( maxPacketSize > 0 );
+
+        #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
+        typedef int socklen_t;
+        #endif
+        
+        sockaddr_storage sockaddr_from;
+        socklen_t fromLength = sizeof( sockaddr_from );
+
+        int result = recvfrom( m_socket, (char*)packetData, maxPacketSize, 0, (sockaddr*)&sockaddr_from, &fromLength );
+
+        if ( result <= 0 )
+        {
+            if ( errno == EAGAIN )
+                return 0;
+
+            printf( "recvfrom failed: %s\n", strerror( errno ) );
+
+            return 0;
+        }
+
+        from = Address( sockaddr_from );
+
+        assert( result >= 0 );
+
+        const int bytesRead = result;
+
+        return bytesRead;
     }
 
 #if NETWORK2_SIMULATOR

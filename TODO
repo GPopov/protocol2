@@ -1,19 +1,5 @@
 DONE
 
-    Now I really need to get a network interface going, some way to send and receive packets.
-
-    In my previous implementation the actual serialization of the messages was performed later,
-    eg. they were added to a queue.
-
-    How about implementing a network interface implementation inside the example program first,
-    and then seeing how it can be generalized into the library? (this is a good general pattern...)
-
-    How about just getting the basic BSD sockets implementation into the network2.h?
-
-    Halfway through this.
-
-TODO
-
     Need to bring across the actual internel send and receive functions for the socket class.
 
     Then once this is done, can bring across an actual send queue or something like that.
@@ -23,3 +9,20 @@ TODO
     This probably means that packets and send queues *and* serialization need to belong in protocol2
 
     While the actual gritty of sending that over the wire and receiving over the wire belongs in network2
+
+    Brought across the rest of the socket class, eg. 
+
+    Now I need to actually test the socket send/recv are working properly.
+
+    After this, hook up a network interface (protocol layer) that handles send and receive queues
+    and the stream and the context necessary for packet serialization.
+
+    Cleaned it up and verified that socket send and receive packet are functional.
+
+TODO
+
+    Now need to implement the network interface concept. protocol2.h?
+
+    Do I need to implement send queues? Yes I think so. The data structures for these send queues belong in protocol2.h
+
+    I should probably start getting a lot more of protocol2.h under functional test as well. eg. the send queues.
