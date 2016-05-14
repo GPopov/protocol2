@@ -1347,7 +1347,9 @@ namespace protocol2
 
         while ( data != end )
         {
-#if PROTOCOL2_BIG_ENDIAN
+#if PROTOCOL2_LITTLE_ENDIAN
+                uint64_t k = *data++;
+#else // #if PROTOCOL2_LITTLE_ENDIAN
                 uint64_t k = *data++;
                 uint8_t * p = (uint8_t*) &k;
                 uint8_t c;
@@ -1355,9 +1357,7 @@ namespace protocol2
                 c = p[1]; p[1] = p[6]; p[6] = c;
                 c = p[2]; p[2] = p[5]; p[5] = c;
                 c = p[3]; p[3] = p[4]; p[4] = c;
-#else // #if PROTOCOL2_BIG_ENDIAN
-                uint64_t k = *data++;
-#endif // #if PROTOCOL2_BIG_ENDIAN
+#endif // #if PROTOCOL2_LITTLE_ENDIAN
 
             k *= m;
             k ^= k >> r;

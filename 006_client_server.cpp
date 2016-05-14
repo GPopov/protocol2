@@ -38,7 +38,7 @@
 const int MaxClients = 32;
 //const int ServerPort = 50000;
 const int ClientPort = 60000;
-const int ChallengeHashSize = 1031;                 // this must remain prime
+const int ChallengeHashSize = 1031;                 // keep this prime
 const float ChallengeSendRate = 0.1f;
 /*
 const float ConnectionTimeOut = 5.0f;
@@ -124,7 +124,16 @@ struct ServerChallengeEntry
     network2::Address address;                      // address the connection request came from
 };
 
-uint64_t CalculateChallengeHash( const network2::Address & address, uint64_t clientSalt )
+struct ServerChallengeHash
+{
+    int num_entries;
+    uint8_t exists[ChallengeHashSize];
+    uint64_t key[ChallengeHashSize];
+    ServerChallengeEntry entries[ChallengeHashSize];
+    ServerChallengeHash() { memset( this, 0, sizeof( ServerChallengeHash ) ); }
+};
+
+uint64_t CalculateChallengeHashKey( const network2::Address & address, uint64_t clientSalt )
 {
     char buffer[256];
     const char * addressString = address.ToString( buffer, sizeof( buffer ) );
@@ -146,7 +155,7 @@ struct Server
     
     double m_clientLastPacketReceiveTime[MaxClients];                   // last time a packet was received from a client (used for timeouts)
 
-    ServerChallengeEntry m_challengeHash[ChallengeHashSize];            // challenge hash entries. stores client challenge/response data
+    ServerChallengeHash m_challengeHash;                                // challenge hash entries. stores client challenge/response data
 
 protected:
 
@@ -184,33 +193,53 @@ protected:
         return false;
     }
 
-    ServerChallengeEntry * FindOrInsertChallengeEntry( const network2::Address & address, uint64_t clientSalt, double time )
+    ServerChallengeEntry * FindOrInsertChallenge( const network2::Address & address, uint64_t clientSalt, double time )
     {
-        // todo: if we are greater than 1/2 full, STOP and return NULL
+        if ( m_challengeHash.num_entries >= ChallengeHashSize / 4 )         // be really conservative. we don't want any clustering
+            return NULL;
 
-        const uint64_t challengeHash = CalculateChallengeHash( address, clientSalt );
+        uint64_t key = CalculateChallengeHashKey( address, clientSalt );
 
-        const int challengeIndex = challengeHash % ChallengeHashSize;
+        int startIndex = key % ChallengeHashSize;
         
         printf( "client salt = %llx\n", clientSalt );
-        printf( "challenge hash = %llx\n", challengeHash );
-        printf( "challenge index = %d\n", challengeIndex );
+        printf( "challenge hash key = %llx\n", key );
+        printf( "challenge hash start index = %d\n", startIndex );
 
-        // todo: linear probing. if the entry is found, stop and use it. 
+        ServerChallengeEntry * entry = NULL;
 
-        // todo: if we don't find it, keep going until we hit an empty entry and use that (and fill it with new server salt etc)
+        for ( int i = 0; i < ChallengeHashSize; ++i )
+        {
+            const int index = startIndex + i;
 
-        // todo: if the entry is empty, allocate it in there, increment
+            if ( !m_challengeHash.exists[index] )
+            {
+                printf( "found empty entry in challenge hash at index %d\n", index );
+                entry = &m_challengeHash.entries[index];
+                entry->client_salt = clientSalt;
+                entry->server_salt = GenerateSalt();
+                entry->last_packet_send_time = time - ChallengeSendRate * 2;
+                entry->address = address;
+                m_challengeHash.exists[index] = 1;
+                m_challengeHash.key[index] = key;
+                m_challengeHash.num_entries++;
+                break;
+            }
 
-        assert( challengeIndex >= 0 );
-        assert( challengeIndex <= ChallengeHashSize );
+            if ( m_challengeHash.exists[index] && 
+                 m_challengeHash.key[index] == key &&
+                 m_challengeHash.entries[index].client_salt == clientSalt && 
+                 m_challengeHash.entries[index].address == address )
+            {
+                printf( "found existing challenge hash entry at index %d\n", index );
+                entry = &m_challengeHash.entries[index];
+                break;
+            }
+        }
 
-        m_challengeHash[challengeIndex].client_salt = clientSalt;
-        m_challengeHash[challengeIndex].server_salt = GenerateSalt();
-        m_challengeHash[challengeIndex].last_packet_send_time = time - ChallengeSendRate * 2;
-        m_challengeHash[challengeIndex].address = address;
+        assert( entry );
 
-        return &m_challengeHash[challengeIndex];
+        return entry;
     }
 
     void RemoveStaleChallenges( double time )
@@ -229,7 +258,6 @@ public:
         m_numConnectedClients = 0;
         for ( int i = 0; i < MaxClients; ++i )
             ResetClientState( i );
-        memset( m_challengeHash, 0, sizeof( m_challengeHash ) );
     }
 
     void ProcessConnectionRequest( const ConnectionRequestPacket & packet, const network2::Address & address, double time )
@@ -252,7 +280,7 @@ public:
             return;
         }
 
-        ServerChallengeEntry * entry = FindOrInsertChallengeEntry( address, packet.client_salt, time );
+        ServerChallengeEntry * entry = FindOrInsertChallenge( address, packet.client_salt, time );
         if ( !entry )
             return;
 
@@ -264,6 +292,7 @@ public:
         {
             printf( "sending connection challenge to %s (server salt = %llx)\n", addressString, entry->server_salt );
             // todo: send connection challenge packet
+            entry->last_packet_send_time = time;
         }
     }
 };
@@ -289,20 +318,28 @@ int main()
 
     printf( "client/server connection\n" );
 
-    const int NumIterations = 1;
+    const int NumIterations = 3;
 
     double time = 0.0;
 
+    const uint64_t client_salt = GenerateSalt();
+
+    Server server;
+
+    printf( "----------------------------------------------------------\n" );
+
     for ( int i = 0; i < NumIterations; ++i )
     {
+        printf( "t = %f\n", time );
         ConnectionRequestPacket packet;
-        packet.client_salt = GenerateSalt();
-        network2::Address from( "::1", ClientPort + i );
+        packet.client_salt = client_salt;
+        network2::Address from( "::1", ClientPort );
 
-        Server server;
         server.ProcessConnectionRequest( packet, from, time );
 
         time += 0.1f;
+
+        printf( "----------------------------------------------------------\n" );
     }
 
     return 0;

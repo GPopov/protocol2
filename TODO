@@ -1,9 +1,12 @@
 DONE
 
-TODO
-
-    Plan:
-
     Implement LAN version (unsecured) of client/server in code
 
     Move on to implement locked down secured version before it leaves my head!
+
+    Implemented basic logic for server challenge.
+
+    Need to continue and get hash table working, 
+
+TODO
+
