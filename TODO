@@ -1,12 +1,25 @@
 DONE
 
-    Implement LAN version (unsecured) of client/server in code
+    Now I really need to get a network interface going, some way to send and receive packets.
 
-    Move on to implement locked down secured version before it leaves my head!
+    In my previous implementation the actual serialization of the messages was performed later,
+    eg. they were added to a queue.
 
-    Implemented basic logic for server challenge.
+    How about implementing a network interface implementation inside the example program first,
+    and then seeing how it can be generalized into the library? (this is a good general pattern...)
 
-    Need to continue and get hash table working, 
+    How about just getting the basic BSD sockets implementation into the network2.h?
+
+    Halfway through this.
 
 TODO
 
+    Need to bring across the actual internel send and receive functions for the socket class.
+
+    Then once this is done, can bring across an actual send queue or something like that.
+
+    Key design goal here is to keep the protocol2 aspect of packets separate from the over the wire sending.
+
+    This probably means that packets and send queues *and* serialization need to belong in protocol2
+
+    While the actual gritty of sending that over the wire and receiving over the wire belongs in network2

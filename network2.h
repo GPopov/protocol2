@@ -150,6 +150,45 @@ namespace network2
         void Parse( const char * address );
     };
 
+    enum SocketType
+    {
+        SOCKET_TYPE_IPv4,
+        SOCKET_TYPE_IPv6
+    };
+
+    enum SocketError
+    {
+        SOCKET_ERROR_NONE,
+        SOCKET_ERROR_CREATE_FAILED,
+        SOCKET_ERROR_SET_NON_BLOCKING_FAILED,
+        SOCKET_ERROR_SOCKOPT_IPV6_ONLY_FAILED,
+        SOCKET_ERROR_BIND_IPV4_FAILED,
+        SOCKET_ERROR_BIND_IPV6_FAILED
+    };
+
+    class Socket
+    {
+    public:
+
+        Socket( uint16_t port, SocketType type = SOCKET_TYPE_IPv6 );
+
+        ~Socket();
+
+        bool IsError() const;
+
+        int GetError() const;
+
+        bool SendPacket( const Address & address, const uint8_t * data, size_t bytes );
+    
+        int ReceivePacket( Address & sender, void * data, int size );
+
+    private:
+
+        int m_error;
+        int m_socket;
+        uint16_t m_port;
+    };
+
 #if NETWORK2_SIMULATOR
 
     class Simulator
@@ -545,6 +584,126 @@ namespace network2
     bool Address::operator !=( const Address & other ) const
     {
         return !( *this == other );
+    }
+
+    Socket::Socket( uint16_t port, SocketType type )
+    {
+        assert( IsNetworkInitialized() );
+
+        m_error = SOCKET_ERROR_NONE;
+
+        // create socket
+
+        m_socket = socket( ( type == SOCKET_TYPE_IPv6 ) ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP );
+
+        if ( m_socket <= 0 )
+        {
+            printf( "create socket failed: %s\n", strerror( errno ) );
+            m_error = SOCKET_ERROR_CREATE_FAILED;
+            return;
+        }
+
+        // force IPv6 only if necessary
+
+        if ( type == SOCKET_TYPE_IPv6 )
+        {
+            int yes = 1;
+            if ( setsockopt( m_socket, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&yes, sizeof(yes) ) != 0 )
+            {
+                printf( "failed to set ipv6 only sockopt\n" );
+                m_error = SOCKET_ERROR_SOCKOPT_IPV6_ONLY_FAILED;
+                return;
+            }
+        }
+
+        // bind to port
+
+        if ( type == SOCKET_TYPE_IPv6 )
+        {
+            sockaddr_in6 sock_address;
+            memset( &sock_address, 0, sizeof( sockaddr_in6 ) );
+            sock_address.sin6_family = AF_INET6;
+            sock_address.sin6_addr = in6addr_any;
+            sock_address.sin6_port = htons( port );
+
+            if ( ::bind( m_socket, (const sockaddr*) &sock_address, sizeof(sock_address) ) < 0 )
+            {
+                printf( "bind socket failed (ipv6) - %s\n", strerror( errno ) );
+                m_socket = SOCKET_ERROR_BIND_IPV6_FAILED;
+                return;
+            }
+        }
+        else
+        {
+            sockaddr_in sock_address;
+            sock_address.sin_family = AF_INET;
+            sock_address.sin_addr.s_addr = INADDR_ANY;
+            sock_address.sin_port = htons( port );
+
+            if ( ::bind( m_socket, (const sockaddr*) &sock_address, sizeof(sock_address) ) < 0 )
+            {
+                printf( "bind socket failed (ipv4) - %s\n", strerror( errno ) );
+                m_error = SOCKET_ERROR_BIND_IPV4_FAILED;
+                return;
+            }
+        }
+
+        // todo: get the actual port we bound to in the case of passing in port 0 we must ask the OS
+
+        m_port = port;
+
+        // set non-blocking io
+
+        #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_MAC || NETWORK2_PLATFORM == NETWORK2_PLATFORM_UNIX
+    
+            int nonBlocking = 1;
+            if ( fcntl( m_socket, F_SETFL, O_NONBLOCK, nonBlocking ) == -1 )
+            {
+                printf( "failed to make socket non-blocking\n" );
+                m_error = SOCKET_ERROR_SET_NON_BLOCKING_FAILED;
+                return;
+            }
+        
+        #elif NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
+    
+            DWORD nonBlocking = 1;
+            if ( ioctlsocket( m_socket, FIONBIO, &nonBlocking ) != 0 )
+            {
+                printf( "failed to make socket non-blocking\n" );
+                m_error = SOCKET_ERROR_SET_NON_BLOCKING_FAILED;
+                return;
+            }
+
+        #else
+
+            #error unsupported platform
+
+        #endif
+    }
+
+    Socket::~Socket()
+    {
+        if ( m_socket != 0 )
+        {
+            #if CORE_PLATFORM == CORE_PLATFORM_MAC || CORE_PLATFORM == CORE_PLATFORM_UNIX
+            close( m_socket );
+            #elif CORE_PLATFORM == CORE_PLATFORM_WINDOWS
+            closesocket( m_socket );
+            #else
+            #error unsupported platform
+            #endif
+            m_socket = 0;
+        }
+    }
+
+    bool Socket::IsError() const
+    {
+        return m_error != SOCKET_ERROR_NONE;
+    }
+
+    int Socket::GetError() const
+    {
+        return m_error;
     }
 
 #if NETWORK2_SIMULATOR

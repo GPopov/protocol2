@@ -1,4 +1,26 @@
 
+Friday May 13th, 2016
+=====================
+
+    Implement LAN version (unsecured) of client/server in code
+
+    Move on to implement locked down secured version before it leaves my head!
+
+    Implemented basic logic for server challenge.
+
+    Don't want to go with a complicated hash delete. Annoying. Hard to test. Stupid waste of time. Easy to fuck up!
+
+    How to make it robust on collisions?
+
+    Idea: client rolls a new salt if it gets no response within 1 second?
+
+    This will give it another slot, so if somebody else is using that slot, client is unblocked.
+
+    This is a really smart approach, and easy to test. Keep it simple!
+
+    Done! Sold. Easy.
+
+
 Thursday May 12th, 2016
 =======================
 
@@ -54,6 +76,7 @@ Thursday May 12th, 2016
         11. I need to integrate a secure HTTPS web service into my game client.
 
     --------------
+
 
 Wednesday May 11th, 2016
 ========================
