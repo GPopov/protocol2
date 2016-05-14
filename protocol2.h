@@ -965,6 +965,17 @@ namespace protocol2
 				value = uint32_bool_value ? true : false;				\
 		} while (0)
 
+    #define serialize_enum( stream, value, type, num_entries )          \
+        do                                                              \
+        {                                                               \
+            uint32_t int_value;                                         \
+            if ( Stream::IsWriting )                                    \
+                int_value = value;                                      \
+            serialize_int( stream, int_value, 0, num_entries - 1 );     \
+            if ( Stream::IsReading )                                    \
+                value = (type) value;                                   \
+        } while (0) 
+
     template <typename Stream> bool serialize_float_internal( Stream & stream, float & value )
     {
         union FloatInt

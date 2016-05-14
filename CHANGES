@@ -218,6 +218,55 @@ Wednesday May 11th, 2016
 
     ----------------
 
+    Things to do to move forward:
+
+    Research HMAC.
+
+    Find a bcrypt implementation to use in C.
+
+    Also need a high quality random number implementation for the salt.
+
+    Need to pick a backend language.
+
+    Need to work out what HTTPS library I use for my dedis and client to communicate with the matcher service.
+
+    Implement a non-secure version of the client/server protocol as a starting point.
+
+    This is important for analysis, to show how it can be attacked at a protocol level (not even really DDoS)
+
+    ------------------
+
+    Bonus: looks like "libsodium" should do the trick https://labs.opendns.com/2013/03/06/announcing-sodium-a-new-cryptographic-library/
+
+    ------------------
+
+    Key thing here that I am doing is known as this:
+
+    https://en.wikipedia.org/wiki/Authenticated_encryption
+
+    ------------------
+
+    Looks like this library does exactly what I need, and provide a primitive for *exactly* what I want.
+
+    http://www.daemonology.net/blog/2009-06-24-encrypt-then-mac.html
+
+    ------------------
+
+    Another option to consider, but I'm leaning towards lib sodium at this point.
+
+    ------------------
+
+    One more option to consider, perhaps as a replacement for OpenSSL for the web part:
+
+    https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS
+
+    ------------------
+
+    This will be useful for the SSL certs
+
+    ------------------
+
+
 
 Tuesday May 10th, 2016
 ======================
