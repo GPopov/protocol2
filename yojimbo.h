@@ -61,6 +61,9 @@ namespace yojimbo
     class SocketInterface : public NetworkInterface
     {
         int m_maxPacketSize;
+        int m_sendQueueSize;
+        int m_receiveQueueSize;
+        
         uint8_t * m_receiveBuffer;
         Allocator * m_allocator;
         network2::Socket * m_socket;
