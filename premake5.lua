@@ -21,6 +21,11 @@ project "test"
     kind "ConsoleApp"
     files { "test.cpp", "protocol2.h", "network2.h" }
 
+project "yojimbo"
+    language "C++"
+    kind "StaticLib"
+    files { "yojimbo.cpp", "yojimbo_*.h", "yojimbo_*.cpp" }
+
 project "001_reading_and_writing_packets"
     language "C++"
     kind "ConsoleApp"
@@ -50,6 +55,7 @@ project "006_client_server"
     language "C++"
     kind "ConsoleApp"
     files { "006_client_server.cpp", "protocol2.h", "network2.h" }
+    links { "yojimbo" }
 
 if _ACTION == "clean" then
     os.rmdir "obj"
@@ -111,6 +117,19 @@ if not os.is "windows" then
             if os.execute "make -j4 test" == 0 then
                 os.execute "./bin/test"
             end
+        end
+    }
+
+    newaction
+    {
+        trigger     = "yojimbo",
+        description = "Build yojimbo client/server protocol library",
+        valid_kinds = premake.action.get("gmake").valid_kinds,
+        valid_languages = premake.action.get("gmake").valid_languages,
+        valid_tools = premake.action.get("gmake").valid_tools,
+     
+        execute = function ()
+            os.execute "make -j4 yojimbo"
         end
     }
 

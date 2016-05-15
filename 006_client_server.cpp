@@ -24,7 +24,8 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define YOJIMBO_IMPLEMENTATION
+#define NETWORK2_IMPLEMENTATION
+#define PROTOCOL2_IMPLEMENTATION
 
 #include "yojimbo.h"
 #include <stdio.h>
@@ -239,7 +240,7 @@ protected:
         m_clientLastPacketReceiveTime[clientIndex] = -1000.0;           // IMPORTANT: avoid bad behavior near t=0.0
     }
 
-    void AddClient( int clientIndex, const Address & address, uint64_t clientSalt, uint64_t challengeSalt )
+    void ConnectClient( int clientIndex, const Address & address, uint64_t clientSalt, uint64_t challengeSalt )
     {
         assert( m_numConnectedClients >= 0 );
         assert( m_numConnectedClients < MaxClients - 1 );
@@ -248,6 +249,12 @@ protected:
         m_clientConnected[clientIndex] = true;
         m_clientSalt[clientIndex] = clientSalt;
         m_challengeSalt[clientIndex] = challengeSalt;
+        m_clientAddress[clientIndex] = address;
+    }
+
+    void DisconnectClient( int /*clientIndex*/ )
+    {
+        // todo: implement
     }
 
     bool IsConnected( const Address & address ) const
@@ -271,6 +278,10 @@ protected:
         printf( "client salt = %llx\n", clientSalt );
         printf( "challenge hash key = %llx\n", key );
         printf( "challenge hash index = %d\n", index );
+
+        // todo: check if it's timed out...
+        if ( time < 0 )
+            return NULL;
 
         if ( m_challengeHash.exists[index] && 
              m_challengeHash.entries[index].client_salt == clientSalt && 
@@ -411,6 +422,9 @@ public:
             return;
         }
 
+        // todo: implement FindFreeClientSlot and ConnectClient
+
+        /*
         const int clientIndex = FindFreeClientSlot();
 
         assert( clientIndex != -1 );
@@ -419,6 +433,7 @@ public:
             return;
 
         ConnectClient( address, packet.client_salt, packet.challenge_salt, time );
+        */
     }
 };
 

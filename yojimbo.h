@@ -27,11 +27,6 @@
 #ifndef YOJIMBO_H
 #define YOJIMBO_H
 
-#ifdef YOJIMBO_IMPLEMENTATION
-    #define NETWORK2_IMPLEMENTATION
-    #define PROTOCOL2_IMPLEMENTATION
-#endif // #ifdef YOJIMBO_IMPLEMENTATION
-
 #include "network2.h"
 #include "protocol2.h"
 
@@ -96,84 +91,3 @@ namespace yojimbo
 }
 
 #endif // #ifndef YOJIMBO_H
-
-// ======================================================================================================
-
-#ifdef YOJIMBO_IMPLEMENTATION
-
-namespace yojimbo
-{
-    SocketInterface::SocketInterface( protocol2::PacketFactory & packetFactory, uint16_t socketPort, network2::SocketType socketType, int maxPacketSize )
-    {
-        m_socket = new network2::Socket( socketPort, socketType );
-        m_maxPacketSize = maxPacketSize;
-        m_receiveBuffer = new uint8_t[maxPacketSize];
-        m_packetFactory = &packetFactory;
-    }
-
-    SocketInterface::~SocketInterface()
-    {
-        assert( m_socket );
-        assert( m_receiveBuffer );
-        assert( m_packetFactory );
-        delete m_socket;
-        delete [] m_receiveBuffer;
-        m_socket = NULL;
-        m_receiveBuffer = NULL;
-        m_packetFactory = NULL;
-    }
-
-    bool SocketInterface::IsError() const
-    {
-        assert( m_socket );
-        return m_socket->IsError();
-    }
-
-    int SocketInterface::GetError() const
-    {
-        assert( m_socket );
-        return m_socket->GetError();
-    }
-
-    protocol2::Packet * SocketInterface::CreatePacket( int type )
-    {
-        return m_packetFactory->CreatePacket( type );
-    }
-
-    void SocketInterface::DestroyPacket( protocol2::Packet * packet )
-    {
-        m_packetFactory->DestroyPacket( packet );
-    }
-
-    void SocketInterface::SendPacket( const network2::Address & address, protocol2::Packet * packet )
-    {
-        // ...
-    }
-
-    protocol2::Packet * SocketInterface::ReceivePacket( network2::Address & from )
-    {
-        return NULL;
-    }
-
-    void SocketInterface::SendPackets( double time )
-    {
-        // actually send the packets over the wire
-    }
-
-    void SocketInterface::ReceivePackets( double time )
-    {
-        // actually receive the packets and queue them up in a receive queue
-    }
-
-    uint32_t SocketInterface::GetMaxPacketSize() const 
-    {
-        return m_maxPacketSize;
-    }
-
-    void SocketInterface::SetContext( const void * context )
-    {
-        // ...
-    }
-}
-
-#endif // #ifdef YOJIMBO_IMPLEMENTATION

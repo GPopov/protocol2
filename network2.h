@@ -723,7 +723,7 @@ namespace network2
             s_addr.sin6_family = AF_INET6;
             s_addr.sin6_port = htons( address.GetPort() );
             memcpy( &s_addr.sin6_addr, address.GetAddress6(), sizeof( s_addr.sin6_addr ) );
-            const int sent_bytes = sendto( m_socket, (const char*)packetData, packetBytes, 0, (sockaddr*)&s_addr, sizeof(sockaddr_in6) );
+            const size_t sent_bytes = sendto( m_socket, (const char*)packetData, packetBytes, 0, (sockaddr*)&s_addr, sizeof(sockaddr_in6) );
             result = sent_bytes == packetBytes;
         }
         else if ( address.GetType() == ADDRESS_IPV4 )
@@ -733,7 +733,7 @@ namespace network2
             s_addr.sin_family = AF_INET;
             s_addr.sin_addr.s_addr = address.GetAddress4();
             s_addr.sin_port = htons( (unsigned short) address.GetPort() );
-            const int sent_bytes = sendto( m_socket, (const char*)packetData, packetBytes, 0, (sockaddr*)&s_addr, sizeof(sockaddr_in) );
+            const size_t sent_bytes = sendto( m_socket, (const char*)packetData, packetBytes, 0, (sockaddr*)&s_addr, sizeof(sockaddr_in) );
             result = sent_bytes == packetBytes;
         }
 
