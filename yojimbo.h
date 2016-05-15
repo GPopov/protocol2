@@ -43,6 +43,10 @@ namespace yojimbo
 
         virtual ~NetworkInterface() {}
 
+        virtual protocol2::Packet * CreatePacket( int type ) = 0;
+
+        virtual void DestroyPacket( protocol2::Packet * packet ) = 0;
+
         virtual void SendPacket( const network2::Address & address, protocol2::Packet * packet ) = 0;
 
         virtual protocol2::Packet * ReceivePacket( network2::Address & from ) = 0;
@@ -53,14 +57,13 @@ namespace yojimbo
 
         virtual uint32_t GetMaxPacketSize() const = 0;
 
-        virtual protocol2::PacketFactory & GetPacketFactory() const = 0;
-
         virtual void SetContext( const void * context ) = 0;
     };
 
     class SocketInterface : public NetworkInterface
     {
         int m_maxPacketSize;
+        uint8_t * m_receiveBuffer;
         network2::Socket * m_socket;
         protocol2::PacketFactory * m_packetFactory;
 
@@ -74,6 +77,10 @@ namespace yojimbo
 
         int GetError() const;
 
+        protocol2::Packet * CreatePacket( int type );
+
+        void DestroyPacket( protocol2::Packet * packet );
+
         void SendPacket( const network2::Address & address, protocol2::Packet * packet );
 
         protocol2::Packet * ReceivePacket( network2::Address & from );
@@ -83,8 +90,6 @@ namespace yojimbo
         void ReceivePackets( double time );
 
         uint32_t GetMaxPacketSize() const;
-
-        protocol2::PacketFactory & GetPacketFactory() const;
 
         void SetContext( const void * context );
     };
@@ -102,14 +107,20 @@ namespace yojimbo
     {
         m_socket = new network2::Socket( socketPort, socketType );
         m_maxPacketSize = maxPacketSize;
-        // todo: allocate packet buffer for receive
+        m_receiveBuffer = new uint8_t[maxPacketSize];
+        m_packetFactory = &packetFactory;
     }
 
     SocketInterface::~SocketInterface()
     {
         assert( m_socket );
+        assert( m_receiveBuffer );
+        assert( m_packetFactory );
         delete m_socket;
+        delete [] m_receiveBuffer;
         m_socket = NULL;
+        m_receiveBuffer = NULL;
+        m_packetFactory = NULL;
     }
 
     bool SocketInterface::IsError() const
@@ -122,6 +133,16 @@ namespace yojimbo
     {
         assert( m_socket );
         return m_socket->GetError();
+    }
+
+    protocol2::Packet * SocketInterface::CreatePacket( int type )
+    {
+        return m_packetFactory->CreatePacket( type );
+    }
+
+    void SocketInterface::DestroyPacket( protocol2::Packet * packet )
+    {
+        m_packetFactory->DestroyPacket( packet );
     }
 
     void SocketInterface::SendPacket( const network2::Address & address, protocol2::Packet * packet )
@@ -147,12 +168,6 @@ namespace yojimbo
     uint32_t SocketInterface::GetMaxPacketSize() const 
     {
         return m_maxPacketSize;
-    }
-
-    protocol2::PacketFactory & SocketInterface::GetPacketFactory() const
-    {
-        assert( m_packetFactory );
-        return *m_packetFactory;
     }
 
     void SocketInterface::SetContext( const void * context )
