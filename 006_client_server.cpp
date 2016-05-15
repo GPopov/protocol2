@@ -454,6 +454,8 @@ struct Client
 
 int main()
 {
+    yojimbo::memory::initialize();
+
     srand( (unsigned int) time( NULL ) );
 
     printf( "client/server connection\n" );
@@ -466,8 +468,8 @@ int main()
     ClientServerPacketFactory clientPacketFactory;
     ClientServerPacketFactory serverPacketFactory;
 
-    SocketInterface clientInterface( clientPacketFactory, ClientPort );
-    SocketInterface serverInterface( serverPacketFactory, ServerPort );
+    SocketInterface clientInterface( yojimbo::memory::default_allocator(), clientPacketFactory, ClientPort );
+    SocketInterface serverInterface( yojimbo::memory::default_allocator(), serverPacketFactory, ServerPort );
 
     if ( clientInterface.GetError() != SOCKET_ERROR_NONE || serverInterface.GetError() != SOCKET_ERROR_NONE )
         return 1;
@@ -513,6 +515,8 @@ int main()
     }
 
     ShutdownNetwork();
+
+    yojimbo::memory::shutdown();
 
     return 0;
 }

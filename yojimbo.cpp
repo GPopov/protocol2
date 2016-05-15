@@ -25,18 +25,32 @@
 */
 
 #include "yojimbo.h"
-
-#define NETWORK2_IMPLEMENTATION
-#define PROTOCOL2_IMPLEMENTATION
+#include "yojimbo_allocator.h"
+#include "yojimbo_memory.h"    
+#include "yojimbo_types.h"
+#include "yojimbo_array.h"
+#include "yojimbo_hash.h"
+#include "yojimbo_queue.h"
 
 namespace yojimbo
 {
-    SocketInterface::SocketInterface( protocol2::PacketFactory & packetFactory, uint16_t socketPort, network2::SocketType socketType, int maxPacketSize )
+    SocketInterface::SocketInterface( Allocator & allocator, 
+                                      protocol2::PacketFactory & packetFactory, 
+                                      uint16_t socketPort, 
+                                      network2::SocketType socketType, 
+                                      int maxPacketSize, 
+                                      int sendQueueSize, 
+                                      int receiveQueueSize )
+        : m_sendQueue( allocator ),
+          m_receiveQueue( allocator )
     {
-        m_socket = new network2::Socket( socketPort, socketType );
+        m_allocator = &allocator;
+        m_socket = new network2::Socket( socketPort, socketType );          // todo: create using allocator
         m_maxPacketSize = maxPacketSize;
         m_receiveBuffer = new uint8_t[maxPacketSize];
         m_packetFactory = &packetFactory;
+        queue::reserve( m_sendQueue, sendQueueSize );
+        queue::reserve( m_receiveQueue, receiveQueueSize );
     }
 
     SocketInterface::~SocketInterface()
@@ -93,7 +107,7 @@ namespace yojimbo
         // actually receive the packets and queue them up in a receive queue
     }
 
-    uint32_t SocketInterface::GetMaxPacketSize() const 
+    int SocketInterface::GetMaxPacketSize() const 
     {
         return m_maxPacketSize;
     }

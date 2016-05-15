@@ -685,9 +685,9 @@ namespace network2
     {
         if ( m_socket != 0 )
         {
-            #if CORE_PLATFORM == CORE_PLATFORM_MAC || CORE_PLATFORM == CORE_PLATFORM_UNIX
+            #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_MAC || NETWORK2_PLATFORM == NETWORK2_PLATFORM_UNIX
             close( m_socket );
-            #elif CORE_PLATFORM == CORE_PLATFORM_WINDOWS
+            #elif NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
             closesocket( m_socket );
             #else
             #error unsupported platform

@@ -29,6 +29,9 @@
 
 #include "network2.h"
 #include "protocol2.h"
+#include "yojimbo_types.h"
+#include "yojimbo_memory.h"
+#include "yojimbo_allocator.h"
 
 namespace yojimbo
 {
@@ -50,7 +53,7 @@ namespace yojimbo
 
         virtual void ReceivePackets( double time ) = 0;
 
-        virtual uint32_t GetMaxPacketSize() const = 0;
+        virtual int GetMaxPacketSize() const = 0;
 
         virtual void SetContext( const void * context ) = 0;
     };
@@ -59,12 +62,28 @@ namespace yojimbo
     {
         int m_maxPacketSize;
         uint8_t * m_receiveBuffer;
+        Allocator * m_allocator;
         network2::Socket * m_socket;
         protocol2::PacketFactory * m_packetFactory;
 
+        struct PacketEntry
+        {
+            network2::Address address;
+            protocol2::Packet *packet;
+        };
+
+        Queue<PacketEntry> m_sendQueue;
+        Queue<PacketEntry> m_receiveQueue;
+
     public:
 
-        SocketInterface( protocol2::PacketFactory & packetFactory, uint16_t socketPort, network2::SocketType socketType = network2::SOCKET_TYPE_IPV6, int maxPacketSize = 4 * 1024 );
+        SocketInterface( Allocator & allocator,
+                         protocol2::PacketFactory & packetFactory, 
+                         uint16_t socketPort, 
+                         network2::SocketType socketType = network2::SOCKET_TYPE_IPV6, 
+                         int maxPacketSize = 4 * 1024,
+                         int sendQueueSize = 1024,
+                         int receiveQueueSize = 1024 );
 
         ~SocketInterface();
 
@@ -84,7 +103,7 @@ namespace yojimbo
 
         void ReceivePackets( double time );
 
-        uint32_t GetMaxPacketSize() const;
+        int GetMaxPacketSize() const;
 
         void SetContext( const void * context );
     };

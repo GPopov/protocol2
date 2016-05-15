@@ -1,18 +1,42 @@
-// Core Library - Copyright (c) 2008-2015, The Network Protocol Company, Inc.
+/*
+    Yojimbo Client/Server Network Library.
 
-#ifndef CORE_MEMORY_H
-#define CORE_MEMORY_H
+    Copyright © 2016, The Network Protocol Company, Inc.
+    
+    All rights reserved.
 
-#include "core/Core.h"
-#include "core/Allocator.h"
+    Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+        1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+        2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer 
+           in the documentation and/or other materials provided with the distribution.
+
+        3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived 
+           from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
+    INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+    SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+    USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+#ifndef YOJIMBO_MEMORY_H
+#define YOJIMBO_MEMORY_H
+
+#include "yojimbo_allocator.h"
+#include <assert.h>
+#include <stdio.h>
 #include <new>
 
-namespace core
+namespace yojimbo
 {
-	// memory interface
-
 	class Allocator;
 
+	// todo: remove this nested namespace crap. InitializeMemory/ShutdownMemory etc.
 	namespace memory
 	{
 		void initialize( uint32_t scratch_buffer_size = 8 * 1024 * 1024 );
@@ -23,8 +47,6 @@ namespace core
 		
 		void shutdown();
 	}
-
-	// helper functions used by allocator
 
     inline void * align_forward( void * p, uint32_t align )
     {
@@ -54,8 +76,6 @@ namespace core
     {
         return (const void*) ( (const char*)p - bytes );
     }
-
-	// temporary allocator
 
 	template <int BUFFER_SIZE> class TempAllocator : public Allocator
 	{
@@ -192,9 +212,9 @@ namespace core
 			if ( m_total_allocated != 0 )
 			{
 				printf( "you leaked memory! %d bytes still allocated\n", m_total_allocated );
-				CORE_ASSERT( !"leaked memory" );
+				assert( !"leaked memory" );
 			}
-			CORE_ASSERT( m_total_allocated == 0 );
+			assert( m_total_allocated == 0 );
 		}
 
 		void * Allocate( uint32_t size, uint32_t align )
@@ -216,12 +236,12 @@ namespace core
 				return;
 #if CORE_DEBUG_MEMORY_LEAKS
 			auto itor = m_alloc_map.find( p );
-			CORE_ASSERT( itor != m_alloc_map.end() );
+			assert( itor != m_alloc_map.end() );
 			m_alloc_map.erase( p );
 #endif
 			Header * h = header( p );
 			m_total_allocated -= h->size;
-			CORE_ASSERT( m_total_allocated >= 0 );
+			assert( m_total_allocated >= 0 );
 			free( h );
 		}
 
@@ -258,7 +278,7 @@ namespace core
 
 		~ScratchAllocator() 
 		{
-			CORE_ASSERT( m_free == m_allocate );			// You leaked memory!
+			assert( m_free == m_allocate );			// You leaked memory!
 
 			m_backing.Free( m_begin );
 		}
@@ -275,7 +295,7 @@ namespace core
 
 		void * Allocate( uint32_t size, uint32_t align ) 
 		{
-			CORE_ASSERT( align % 4 == 0 );
+			assert( align % 4 == 0 );
 
 			size = ( ( size + 3 ) / 4 ) * 4;
 
@@ -317,7 +337,7 @@ namespace core
 
 			// Mark this slot as free
 			Header * h = header( p );
-			CORE_ASSERT( (h->size & 0x80000000u ) == 0 );
+			assert( (h->size & 0x80000000u ) == 0 );
 			h->size = h->size | 0x80000000u;
 
 			// Advance the free pointer past all free slots.
@@ -358,10 +378,10 @@ namespace core
 	#define alignof(x) __alignof(x)
 #endif
 
-	#define CORE_NEW( a, T, ... ) ( new ((a).Allocate(sizeof(T), alignof(T))) T(__VA_ARGS__) )
-	#define CORE_DELETE( a, T, p ) do { if (p) { (p)->~T(); (a).Free(p); } } while (0)	
+	#define YOJIMBO_NEW( a, T, ... ) ( new ((a).Allocate(sizeof(T), alignof(T))) T(__VA_ARGS__) )
+	#define YOJIMBO_DELETE( a, T, p ) do { if (p) { (p)->~T(); (a).Free(p); } } while (0)	
 
-	template <typename T> T * AllocateArray( Allocator & allocator, int arraySize, T * dummy )
+	template <typename T> T * AllocateArray( Allocator & allocator, int arraySize, T * /*dummy*/ )
 	{
 		T * array = (T*) allocator.Allocate( sizeof(T) * arraySize, alignof(T) );
 		for ( int i = 0; i < arraySize; ++i )
@@ -376,9 +396,8 @@ namespace core
 		allocator.Free( array );
 	}
 
-	#define CORE_NEW_ARRAY( a, T, count ) AllocateArray( a, count, (T*)nullptr )
-	#define CORE_DELETE_ARRAY( a, array, count ) DeleteArray( a, array, count )
-
+	#define YOJIMBO_NEW_ARRAY( a, T, count ) AllocateArray( a, count, (T*)nullptr )
+	#define YOJIMBO_DELETE_ARRAY( a, array, count ) DeleteArray( a, array, count )
 }
 
 #endif

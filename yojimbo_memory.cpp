@@ -24,40 +24,64 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef YOJIMBO_ALLOCATOR_H
-#define YOJIMBO_ALLOCATOR_H
-
-#include <stdint.h>
+#include "yojimbo_memory.h"
 
 namespace yojimbo
 {
-	// allocator base class
-
-	class Allocator
+	struct MemoryGlobals 
 	{
-	public:
+		static const int ALLOCATOR_MEMORY = sizeof( MallocAllocator ) + sizeof( ScratchAllocator );
 
-		static const uint32_t DEFAULT_ALIGN = 16;
-		static const uint32_t SIZE_NOT_TRACKED = 0xffffffff;
+		uint8_t buffer[ALLOCATOR_MEMORY];
 
-		Allocator() {}
+		MallocAllocator * default_allocator;
 
-		virtual ~Allocator() {}
-		
-		virtual void * Allocate( uint32_t size, uint32_t align = DEFAULT_ALIGN ) = 0;
-
-		virtual void Free( void * p ) = 0;
-
-		virtual uint32_t GetAllocatedSize( void * p ) = 0;
-
-		virtual uint32_t GetTotalAllocated() = 0;
-
-	private:
-
-	    Allocator( const Allocator & other );
-
-	    Allocator & operator = ( const Allocator & other );
-	};
-}
-
+#if USE_SCRATCH_ALLOCATOR
+		ScratchAllocator * scratch_allocator;
+#else
+		MallocAllocator * scratch_allocator;
 #endif
+
+		MemoryGlobals() : default_allocator( nullptr ), scratch_allocator( nullptr ) {}
+	};
+
+	MemoryGlobals memory_globals;
+
+	namespace memory
+	{
+		void initialize( uint32_t temporary_memory ) 
+		{
+			uint8_t * p = memory_globals.buffer;
+			memory_globals.default_allocator = new (p) MallocAllocator();
+			p += sizeof( MallocAllocator );
+#if USE_SCRATCH_ALLOCATOR
+			memory_globals.scratch_allocator = new (p) ScratchAllocator( *memory_globals.default_allocator, temporary_memory );
+#else
+			memory_globals.scratch_allocator = new (p) MallocAllocator();
+#endif
+		}
+
+		Allocator & default_allocator() 
+		{
+			assert( memory_globals.default_allocator );
+			return *memory_globals.default_allocator;
+		}
+
+		Allocator & scratch_allocator() 
+		{
+			assert( memory_globals.scratch_allocator );
+			return *memory_globals.scratch_allocator;
+		}
+
+		void shutdown() 
+		{
+#if USE_SCRATCH_ALLOCATOR
+			memory_globals.scratch_allocator->~ScratchAllocator();
+#else
+			memory_globals.scratch_allocator->~MallocAllocator();
+#endif
+			memory_globals.default_allocator->~MallocAllocator();
+			memory_globals = MemoryGlobals();
+		}
+	}
+}
