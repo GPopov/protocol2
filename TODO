@@ -4,10 +4,16 @@ TODO
 
     Now I need to actually implement the send and receive queues for the socket interface.
 
-    What data structures do I need for this? I may need to bring more data structures across, eg. queue, array, hash, sliding window etc.
+    Need to bring across the various data structures I was relying on
 
-    To be fair, I probably need to do this ANYWAY
+    eg. queue at minimum, array, also hash. Should switch over the challenge has to use that.
 
-    Yes, definitely needs queue, so bring across all the data structures.
+    Also may need to bring across allocators.
 
-    Looks like we're moving away from header style libraries... =p
+    I think the only allocation performed in protocol2 or network2 is in the packet factory,
+    and this can easily be overridden with a virtual allocate function possibly?
+
+    Don't put a heavyweight allocator system inside the protocol2, but instead simple callbacks
+    and/or virtual functions to override to perform allocation for packets?
+    
+

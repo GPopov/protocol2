@@ -141,6 +141,27 @@ struct ConnectionChallengePacket : public Packet
     PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
 
+struct ConnectionResponsePacket : public Packet
+{
+    uint64_t client_salt;
+    uint64_t challenge_salt;
+
+    ConnectionResponsePacket() : Packet( PACKET_CONNECTION_RESPONSE )
+    {
+        client_salt = 0;
+        challenge_salt = 0;
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_uint64( stream, client_salt );
+        serialize_uint64( stream, challenge_salt );
+        return true;
+    }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
+};
+
 struct ClientServerPacketFactory : public PacketFactory
 {
     ClientServerPacketFactory() : PacketFactory( NUM_CLIENT_SERVER_NUM_PACKETS ) {}
@@ -152,6 +173,7 @@ struct ClientServerPacketFactory : public PacketFactory
             case PACKET_CONNECTION_REQUEST:         return new ConnectionRequestPacket();
             case PACKET_CONNECTION_DENIED:          return new ConnectionDeniedPacket();
             case PACKET_CONNECTION_CHALLENGE:       return new ConnectionChallengePacket();
+            case PACKET_CONNECTION_RESPONSE:        return new ConnectionResponsePacket();
             default:
                 return NULL;
         }
@@ -186,7 +208,7 @@ uint64_t CalculateChallengeHashKey( const Address & address, uint64_t clientSalt
 
 struct Server
 {
-    NetworkInterface * m_networkInterface;                              // the network interface used to send and receive packets.
+    NetworkInterface * m_networkInterface;                              // network interface for sending and receiving packets.
 
     uint64_t m_serverSalt;                                              // server salt. randomizes hash keys to eliminate challenge/response hash worst case attack.
 
@@ -214,7 +236,7 @@ protected:
         m_clientSalt[clientIndex] = 0;
         m_challengeSalt[clientIndex] = 0;
         m_clientAddress[clientIndex] = Address();
-        m_clientLastPacketReceiveTime[clientIndex] = -1000.0;            // IMPORTANT: avoid bad behavior near t=0.0
+        m_clientLastPacketReceiveTime[clientIndex] = -1000.0;           // IMPORTANT: avoid bad behavior near t=0.0
     }
 
     void AddClient( int clientIndex, const Address & address, uint64_t clientSalt, uint64_t challengeSalt )
@@ -240,14 +262,33 @@ protected:
         return false;
     }
 
-    ServerChallengeEntry * FindOrInsertChallenge( const Address & address, uint64_t clientSalt, double time, int & index )
+    ServerChallengeEntry * FindChallenge( const Address & address, uint64_t clientSalt, double time )
     {
-        if ( m_challengeHash.num_entries >= ChallengeHashSize / 4 )         // be really conservative. we don't want any clustering
-            return NULL;
-
         const uint64_t key = CalculateChallengeHashKey( address, clientSalt, m_serverSalt );
 
-        index = key % ChallengeHashSize;
+        int index = key % ChallengeHashSize;
+        
+        printf( "client salt = %llx\n", clientSalt );
+        printf( "challenge hash key = %llx\n", key );
+        printf( "challenge hash index = %d\n", index );
+
+        if ( m_challengeHash.exists[index] && 
+             m_challengeHash.entries[index].client_salt == clientSalt && 
+             m_challengeHash.entries[index].address == address )
+        {
+            printf( "found challenge entry at index %d\n", index );
+
+            return &m_challengeHash.entries[index];
+        }
+
+        return NULL;
+    }
+
+    ServerChallengeEntry * FindOrInsertChallenge( const Address & address, uint64_t clientSalt, double time )
+    {
+        const uint64_t key = CalculateChallengeHashKey( address, clientSalt, m_serverSalt );
+
+        int index = key % ChallengeHashSize;
         
         printf( "client salt = %llx\n", clientSalt );
         printf( "challenge hash key = %llx\n", key );
@@ -307,20 +348,25 @@ public:
 
         if ( m_numConnectedClients == MaxClients )
         {
-            printf( "denied: server is full\n" );
-            // todo: respond with connection denied packet (reason: full)
+            printf( "connection denied: server is full\n" );
+            ConnectionDeniedPacket * connectionDeniedPacket = (ConnectionDeniedPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DENIED );
+            connectionDeniedPacket->client_salt = packet.client_salt;
+            connectionDeniedPacket->reason = CONNECTION_DENIED_SERVER_FULL;
+            m_networkInterface->SendPacket( address, connectionDeniedPacket );
             return;
         }
 
         if ( IsConnected( address ) )
         {
-            printf( "denied: already connected\n" );
-            // todo: respond with connection denied packet (reason: already connected)
+            printf( "connection denied: already connected\n" );
+            ConnectionDeniedPacket * connectionDeniedPacket = (ConnectionDeniedPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DENIED );
+            connectionDeniedPacket->client_salt = packet.client_salt;
+            connectionDeniedPacket->reason = CONNECTION_DENIED_ALREADY_CONNECTED;
+            m_networkInterface->SendPacket( address, connectionDeniedPacket );
             return;
         }
 
-        int index;
-        ServerChallengeEntry * entry = FindOrInsertChallenge( address, packet.client_salt, time, index );
+        ServerChallengeEntry * entry = FindOrInsertChallenge( address, packet.client_salt, time );
         if ( !entry )
             return;
 
@@ -331,9 +377,48 @@ public:
         if ( entry->last_packet_send_time + ChallengeSendRate < time )
         {
             printf( "sending connection challenge to %s (challenge salt = %llx)\n", addressString, entry->challenge_salt );
-            // todo: send connection challenge packet
+            ConnectionChallengePacket * connectionChallengePacket = (ConnectionChallengePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DENIED );
+            connectionChallengePacket->client_salt = packet.client_salt;
+            connectionChallengePacket->challenge_salt = entry->challenge_salt;
+            m_networkInterface->SendPacket( address, connectionChallengePacket );
             entry->last_packet_send_time = time;
         }
+    }
+
+    void ProcessConnectionResponse( const ConnectionResponsePacket & packet, const Address & address, double time )
+    {
+        if ( m_numConnectedClients == MaxClients )
+        {
+            printf( "connection denied: server is full\n" );
+            ConnectionDeniedPacket * connectionDeniedPacket = (ConnectionDeniedPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DENIED );
+            connectionDeniedPacket->client_salt = packet.client_salt;
+            connectionDeniedPacket->reason = CONNECTION_DENIED_SERVER_FULL;
+            m_networkInterface->SendPacket( address, connectionDeniedPacket );
+            return;
+        }
+
+        ServerChallengeEntry * entry = FindOrInsertChallenge( address, packet.client_salt, time );
+        if ( !entry )
+            return;
+
+        assert( entry );
+        assert( entry->address == address );
+        assert( entry->client_salt == packet.client_salt );
+
+        if ( entry->challenge_salt != packet.challenge_salt )
+        {
+            printf( "challenge mismatch: expected %llx, got %llx\n", entry->challenge_salt, packet.challenge_salt );
+            return;
+        }
+
+        const int clientIndex = FindFreeClientSlot();
+
+        assert( clientIndex != -1 );
+
+        if ( clientIndex == -1 )
+            return;
+
+        ConnectClient( address, packet.client_salt, packet.challenge_salt, time );
     }
 };
 
