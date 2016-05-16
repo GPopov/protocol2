@@ -4,13 +4,21 @@ DONE
 
     Implement client-side timeouts
 
-TODO
-
     Implement client re-rolls the client salt if no response to connection request within one second.
+
+    Implement challenge response send rate.
 
     Implement server-side timeout of a client
 
+    Extend client states to include all error states
+
     Implement disconnect packets
+
+TODO
+    
+    Server-side handle disconnect packets.
+
+    Implement code on client that handles connection request denied.
 
     Pass over remaining todos and actually implement them.
 

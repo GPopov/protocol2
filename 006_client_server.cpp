@@ -42,14 +42,14 @@ const int ChallengeHashSize = 1024;
 const float ChallengeSendRate = 0.1f;
 const float ChallengeTimeOut = 10.0f;
 const float ConnectionRequestSendRate = 0.1f;
-// todo: implement
-//const float ConnectionChallengeSendRate = 0.1f;
+const float ConnectionChallengeSendRate = 0.1f;
 const float ConnectionResponseSendRate = 0.1f;
 const float ConnectionConfirmSendRate = 0.1f;
 const float ConnectionKeepAliveSendRate = 1.0f;
 const float ConnectionRequestTimeOut = 5.0f;
 const float ChallengeResponseTimeOut = 5.0f;
 const float KeepAliveTimeOut = 10.0f;
+const float ClientSaltTimeout = 1.0f;
 
 uint64_t GenerateSalt()
 {
@@ -66,9 +66,7 @@ enum PacketTypes
     PACKET_CONNECTION_CHALLENGE,                    // server response to client connection request.
     PACKET_CONNECTION_RESPONSE,                     // client response to server connection challenge.
     PACKET_CONNECTION_KEEP_ALIVE,                   // keep alive packet sent at some low rate (once per-second) to keep the connection alive
-    /*
-    PACKET_CONNECTION_DISCONNECTED,                 // courtesy packet to indicate that the client has been disconnected. better than a timeout
-    */
+    PACKET_CONNECTION_DISCONNECT,                   // courtesy packet to indicate that the other side has disconnected. better than a timeout
     CLIENT_SERVER_NUM_PACKETS
 };
 
@@ -186,6 +184,27 @@ struct ConnectionKeepAlivePacket : public Packet
     PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
 
+struct ConnectionDisconnectPacket : public Packet
+{
+    uint64_t client_salt;
+    uint64_t challenge_salt;
+
+    ConnectionDisconnectPacket() : Packet( PACKET_CONNECTION_DISCONNECT )
+    {
+        client_salt = 0;
+        challenge_salt = 0;
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_uint64( stream, client_salt );
+        serialize_uint64( stream, challenge_salt );
+        return true;
+    }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
+};
+
 struct ClientServerPacketFactory : public PacketFactory
 {
     ClientServerPacketFactory() : PacketFactory( CLIENT_SERVER_NUM_PACKETS ) {}
@@ -199,6 +218,7 @@ struct ClientServerPacketFactory : public PacketFactory
             case PACKET_CONNECTION_CHALLENGE:       return new ConnectionChallengePacket();
             case PACKET_CONNECTION_RESPONSE:        return new ConnectionResponsePacket();
             case PACKET_CONNECTION_KEEP_ALIVE:      return new ConnectionKeepAlivePacket();
+            case PACKET_CONNECTION_DISCONNECT:      return new ConnectionDisconnectPacket();
             default:
                 return NULL;
         }
@@ -328,11 +348,32 @@ public:
                     ProcessConnectionKeepAlive( *(ConnectionKeepAlivePacket*)packet, address, time );
                     break;
 
+                case PACKET_CONNECTION_DISCONNECT:
+                    ProcessConnectionDisconnect( *(ConnectionDisconnectPacket*)packet, address, time );
+                    break;
+
                 default:
                     break;
             }
 
             m_networkInterface->DestroyPacket( packet );
+        }
+    }
+
+    void CheckForTimeOut( double time )
+    {
+        for ( int i = 0; i < MaxClients; ++i )
+        {
+            if ( !m_clientConnected[i] )
+                continue;
+
+            if ( m_clientData[i].lastPacketReceiveTime + KeepAliveTimeOut < time )
+            {
+                char buffer[256];
+                const char *addressString = m_clientAddress[i].ToString( buffer, sizeof( buffer ) );
+                printf( "client %d timed out (client address = %s, client salt = %llx, challenge salt = %llx)\n", i, addressString, m_clientSalt[i], m_challengeSalt[i] );
+                DisconnectClient( i, time );
+            }
         }
     }
 
@@ -391,13 +432,35 @@ protected:
 
         char buffer[256];
         const char *addressString = address.ToString( buffer, sizeof( buffer ) );
-        printf( "client connected at client index %d (client address = %s, client salt = %llx, challenge salt = %llx)\n", clientIndex, addressString, clientSalt, challengeSalt );
+        printf( "client %d connected (client address = %s, client salt = %llx, challenge salt = %llx)\n", clientIndex, addressString, clientSalt, challengeSalt );
+
+        ConnectionKeepAlivePacket * connectionKeepAlivePacket = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
+        connectionKeepAlivePacket->client_salt = m_clientSalt[clientIndex];
+        connectionKeepAlivePacket->challenge_salt = m_challengeSalt[clientIndex];
+
+        SendPacketToConnectedClient( clientIndex, connectionKeepAlivePacket, time );
     }
 
-    void DisconnectClient( int /*clientIndex*/ )
+    void DisconnectClient( int clientIndex, double time )
     {
-        // todo: implement
-        assert( false );
+        assert( clientIndex >= 0 );
+        assert( clientIndex < MaxClients );
+        assert( m_numConnectedClients > 0 );
+        assert( m_clientConnected[clientIndex] );
+
+        char buffer[256];
+        const char *addressString = m_clientAddress[clientIndex].ToString( buffer, sizeof( buffer ) );
+        printf( "client %d disconnected: (client address = %s, client salt = %llx, challenge salt = %llx)\n", clientIndex, addressString, m_clientSalt[clientIndex], m_challengeSalt[clientIndex] );
+
+        ConnectionDisconnectPacket * packet = (ConnectionDisconnectPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DISCONNECT );
+        packet->client_salt = m_clientSalt[clientIndex];
+        packet->challenge_salt = m_challengeSalt[clientIndex];
+
+        SendPacketToConnectedClient( clientIndex, packet, time );
+
+        ResetClientState( clientIndex );
+
+        m_numConnectedClients--;
     }
 
     bool IsConnected( const Address & address, uint64_t clientSalt ) const
@@ -422,13 +485,10 @@ protected:
         printf( "challenge hash key = %llx\n", key );
         printf( "challenge hash index = %d\n", index );
 
-        // todo: check if it's timed out...
-        if ( time < 0 )
-            return NULL;
-
         if ( m_challengeHash.exists[index] && 
              m_challengeHash.entries[index].client_salt == clientSalt && 
-             m_challengeHash.entries[index].address == address )
+             m_challengeHash.entries[index].address == address && 
+             m_challengeHash.entries[index].create_time + ChallengeTimeOut >= time )
         {
             printf( "found challenge entry at index %d\n", index );
 
@@ -537,6 +597,9 @@ protected:
         const int existingClientIndex = FindExistingClientIndex( address, packet.client_salt, packet.challenge_salt );
         if ( existingClientIndex != -1 )
         {
+            assert( existingClientIndex >= 0 );
+            assert( existingClientIndex < MaxClients );
+
             if ( m_clientData[existingClientIndex].lastPacketSendTime + ConnectionConfirmSendRate < time )
             {
                 ConnectionKeepAlivePacket * connectionKeepAlivePacket = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
@@ -544,6 +607,7 @@ protected:
                 connectionKeepAlivePacket->challenge_salt = m_challengeSalt[existingClientIndex];
                 SendPacketToConnectedClient( existingClientIndex, connectionKeepAlivePacket, time );
             }
+
             return;
         }
 
@@ -567,12 +631,15 @@ protected:
 
         if ( m_numConnectedClients == MaxClients )
         {
-            // todo: should have a rate limiter for this based on the entry
-            printf( "connection denied: server is full\n" );
-            ConnectionDeniedPacket * connectionDeniedPacket = (ConnectionDeniedPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DENIED );
-            connectionDeniedPacket->client_salt = packet.client_salt;
-            connectionDeniedPacket->reason = CONNECTION_DENIED_SERVER_FULL;
-            m_networkInterface->SendPacket( address, connectionDeniedPacket );
+            if ( entry->last_packet_send_time + ConnectionChallengeSendRate < time )
+            {
+                printf( "connection denied: server is full\n" );
+                ConnectionDeniedPacket * connectionDeniedPacket = (ConnectionDeniedPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DENIED );
+                connectionDeniedPacket->client_salt = packet.client_salt;
+                connectionDeniedPacket->reason = CONNECTION_DENIED_SERVER_FULL;
+                m_networkInterface->SendPacket( address, connectionDeniedPacket );
+                entry->last_packet_send_time = time;
+            }
             return;
         }
 
@@ -583,23 +650,30 @@ protected:
             return;
 
         ConnectClient( clientIndex, address, packet.client_salt, packet.challenge_salt, time );
-
-        ConnectionKeepAlivePacket * connectionKeepAlivePacket = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
-        connectionKeepAlivePacket->client_salt = m_clientSalt[clientIndex];
-        connectionKeepAlivePacket->challenge_salt = m_challengeSalt[clientIndex];
-        SendPacketToConnectedClient( clientIndex, connectionKeepAlivePacket, time );
     }
 
     void ProcessConnectionKeepAlive( const ConnectionKeepAlivePacket & packet, const Address & address, double time )
     {
         const int clientIndex = FindExistingClientIndex( address, packet.client_salt, packet.challenge_salt );
-        if ( clientIndex != -1 )
+        if ( clientIndex == -1 )
             return;
 
         assert( clientIndex >= 0 );
         assert( clientIndex < MaxClients );
 
         m_clientData[clientIndex].lastPacketReceiveTime = time;
+    }
+
+    void ProcessConnectionDisconnect( const ConnectionDisconnectPacket & packet, const Address & address, double time )
+    {
+        const int clientIndex = FindExistingClientIndex( address, packet.client_salt, packet.challenge_salt );
+        if ( clientIndex == -1 )
+            return;
+
+        assert( clientIndex >= 0 );
+        assert( clientIndex < MaxClients );
+
+        DisconnectClient( clientIndex, time );
     }
 };
 
@@ -609,6 +683,11 @@ enum ClientState
     CLIENT_STATE_SENDING_CONNECTION_REQUEST,
     CLIENT_STATE_SENDING_CHALLENGE_RESPONSE,
     CLIENT_STATE_CONNECTED,
+    CLIENT_STATE_CONNECTION_REQUEST_TIMED_OUT,
+    CLIENT_STATE_CHALLENGE_RESPONSE_TIMED_OUT,
+    CLIENT_STATE_KEEP_ALIVE_TIMED_OUT,
+    CLIENT_STATE_CONNECTION_DENIED_FULL,
+    CLIENT_STATE_CONNECTION_DENIED_ALREADY_CONNECTED
 };
 
 class Client
@@ -640,20 +719,41 @@ public:
         m_networkInterface = NULL;
     }
 
-    void Connect( const Address & address )
+    void Connect( const Address & address, double time )
     {
-        Disconnect();
+        Disconnect( time );
         m_clientSalt = GenerateSalt();
         m_challengeSalt = 0;
         m_serverAddress = address;
         m_clientState = CLIENT_STATE_SENDING_CONNECTION_REQUEST;
+        m_lastPacketSendTime = time - 1.0f;
+        m_lastPacketReceiveTime = time;
     }
 
-    void Disconnect()
+    bool IsConnecting() const
     {
-        if ( m_clientState != CLIENT_STATE_DISCONNECTED )
+        return m_clientState == CLIENT_STATE_SENDING_CONNECTION_REQUEST || m_clientState == CLIENT_STATE_SENDING_CHALLENGE_RESPONSE;
+    }
+
+    bool IsConnected() const
+    {
+        return m_clientState == CLIENT_STATE_CONNECTED;
+    }
+
+    bool ConnectionFailed() const
+    {
+        return m_clientState > CLIENT_STATE_CONNECTED;
+    }
+
+    void Disconnect( double time )
+    {
+        if ( m_clientState == CLIENT_STATE_CONNECTED )
         {
-            // todo: send one disconnect packet to server to be nice
+            printf( "client-side disconnect: (client salt = %llx, challenge salt = %llx)\n", m_clientSalt, m_challengeSalt );
+            ConnectionDisconnectPacket * packet = (ConnectionDisconnectPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DISCONNECT );
+            packet->client_salt = m_clientSalt;
+            packet->challenge_salt = m_challengeSalt;
+            SendPacketToServer( packet, time );
         }
 
         ResetConnectionData();
@@ -674,7 +774,8 @@ public:
 
                 ConnectionRequestPacket * packet = (ConnectionRequestPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_REQUEST );
                 packet->client_salt = m_clientSalt;
-                m_networkInterface->SendPacket( m_serverAddress, packet );
+
+                SendPacketToServer( packet, time );
             }
             break;
 
@@ -732,6 +833,10 @@ public:
                     ProcessConnectionKeepAlive( *(ConnectionKeepAlivePacket*)packet, address, time );
                     break;
 
+                case PACKET_CONNECTION_DISCONNECT:
+                    ProcessConnectionDisconnect( *(ConnectionDisconnectPacket*)packet, address, time );
+                    break;
+
                 default:
                     break;
             }
@@ -746,13 +851,17 @@ public:
         {
             case CLIENT_STATE_SENDING_CONNECTION_REQUEST:
             {
-                // todo: re-roll client salt timeout
-
                 if ( m_lastPacketReceiveTime + ConnectionRequestTimeOut < time )
                 {
                     printf( "connection request to server timed out\n" );
-                    Disconnect();
+                    m_clientState = CLIENT_STATE_CONNECTION_REQUEST_TIMED_OUT;
                     return;
+                }
+
+                if ( m_lastPacketReceiveTime + ClientSaltTimeout < time )
+                {
+                    m_clientSalt = GenerateSalt();
+                    printf( "client salt timed out. new client salt is %llx\n", m_clientSalt );
                 }
             }
             break;
@@ -762,7 +871,7 @@ public:
                 if ( m_lastPacketReceiveTime + ChallengeResponseTimeOut < time )
                 {
                     printf( "challenge response to server timed out\n" );
-                    Disconnect();
+                    m_clientState = CLIENT_STATE_CHALLENGE_RESPONSE_TIMED_OUT;
                     return;
                 }
             }
@@ -772,8 +881,9 @@ public:
             {
                 if ( m_lastPacketReceiveTime + KeepAliveTimeOut < time )
                 {
-                    printf( "connection to server timed out\n" );
-                    Disconnect();
+                    printf( "keep alive timed out\n" );
+                    m_clientState = CLIENT_STATE_KEEP_ALIVE_TIMED_OUT;
+                    Disconnect( time );
                     return;
                 }
             }
@@ -814,6 +924,9 @@ protected:
         if ( packet.client_salt != m_clientSalt )
             return;
 
+        if ( address != m_serverAddress )
+            return;
+
         char buffer[256];
         const char * addressString = address.ToString( buffer, sizeof( buffer ) );
         printf( "client received connection challenge from server: %s (challenge salt = %llx)\n", addressString, packet.challenge_salt );
@@ -833,6 +946,12 @@ protected:
         if ( packet.client_salt != m_clientSalt )
             return;
 
+        if ( packet.challenge_salt != m_challengeSalt )
+            return;
+
+        if ( address != m_serverAddress )
+            return;
+
         if ( m_clientState == CLIENT_STATE_SENDING_CHALLENGE_RESPONSE )
         {
             char buffer[256];
@@ -842,6 +961,23 @@ protected:
         }
 
         m_lastPacketReceiveTime = time;
+    }
+
+    void ProcessConnectionDisconnect( const ConnectionDisconnectPacket & packet, const Address & address, double time )
+    {
+        if ( m_clientState != CLIENT_STATE_CONNECTED )
+            return;
+
+        if ( packet.client_salt != m_clientSalt )
+            return;
+
+        if ( packet.challenge_salt != m_challengeSalt )
+            return;
+
+        if ( address != m_serverAddress )
+            return;
+
+        Disconnect( time );
     }
 };
 
@@ -875,7 +1011,7 @@ int main()
 
         Server server( serverInterface );
         
-        client.Connect( serverAddress );
+        client.Connect( serverAddress, time );
 
         printf( "----------------------------------------------------------\n" );
 
@@ -894,6 +1030,18 @@ int main()
 
             client.ReceivePackets( time );
             server.ReceivePackets( time );
+
+            client.CheckForTimeOut( time );
+            server.CheckForTimeOut( time );
+
+            if ( client.ConnectionFailed() )
+            {
+                printf( "error: client connect failed!\n" );
+                break;
+            }
+
+            if ( client.IsConnected() )
+                client.Disconnect( time );
 
             time += 0.1f;
 
