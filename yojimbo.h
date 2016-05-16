@@ -63,6 +63,7 @@ namespace yojimbo
     {
         const void * m_context;
 
+        uint32_t m_protocolId;
         int m_maxPacketSize;
         int m_sendQueueSize;
         int m_receiveQueueSize;
@@ -85,6 +86,7 @@ namespace yojimbo
 
         SocketInterface( Allocator & allocator,
                          protocol2::PacketFactory & packetFactory, 
+                         uint32_t protocolId,
                          uint16_t socketPort, 
                          network2::SocketType socketType = network2::SOCKET_TYPE_IPV6, 
                          int maxPacketSize = 4 * 1024,

@@ -24,9 +24,6 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define NETWORK2_IMPLEMENTATION
-#define PROTOCOL2_IMPLEMENTATION
-
 #include "yojimbo.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,7 +33,7 @@ using namespace yojimbo;
 using namespace protocol2;
 using namespace network2;
 
-//const uint32_t ProtocolId = 0x12341651;
+const uint32_t ProtocolId = 0x12341651;
 
 const int MaxClients = 32;
 const int ServerPort = 50000;
@@ -207,7 +204,7 @@ uint64_t CalculateChallengeHashKey( const Address & address, uint64_t clientSalt
     return murmur_hash_64( &serverSeed, 8, murmur_hash_64( &clientSalt, 8, murmur_hash_64( addressString, addressLength, 0 ) ) );
 }
 
-struct Server
+class Server
 {
     NetworkInterface * m_networkInterface;                              // network interface for sending and receiving packets.
 
@@ -226,6 +223,33 @@ struct Server
     double m_clientLastPacketReceiveTime[MaxClients];                   // last time a packet was received from a client (used for timeouts)
 
     ServerChallengeHash m_challengeHash;                                // challenge hash entries. stores client challenge/response data
+
+public:
+
+    Server( NetworkInterface & networkInterface )
+    {
+        m_networkInterface = &networkInterface;
+        m_serverSalt = GenerateSalt();
+        m_numConnectedClients = 0;
+        for ( int i = 0; i < MaxClients; ++i )
+            ResetClientState( i );
+    }
+
+    ~Server()
+    {
+        assert( m_networkInterface );
+        m_networkInterface = NULL;
+    }
+
+    void SendPackets( double /*time*/ )
+    {
+        // ...
+    }
+
+    void ReceivePackets( double /*time*/ )
+    {
+        // ...
+    }
 
 protected:
 
@@ -334,23 +358,6 @@ protected:
         return NULL;
     }
 
-public:
-
-    Server( NetworkInterface & networkInterface )
-    {
-        m_networkInterface = &networkInterface;
-        m_serverSalt = GenerateSalt();
-        m_numConnectedClients = 0;
-        for ( int i = 0; i < MaxClients; ++i )
-            ResetClientState( i );
-    }
-
-    ~Server()
-    {
-        assert( m_networkInterface );
-        m_networkInterface = NULL;
-    }
-
     void ProcessConnectionRequest( const ConnectionRequestPacket & packet, const Address & address, double time )
     {
         char buffer[256];
@@ -445,18 +452,46 @@ enum ClientState
     CLIENT_STATE_CONNECTED,
 };
 
-struct Client
+class Client
 {
-    Address server_address;
-    uint64_t server_guid;
-    uint64_t client_guid;
+    /*
+    Address m_serverAddress;
+
+    uint64_t m_clientSalt;
+
+    uint64_t m_challengeSalt;
+    */
+
+    NetworkInterface * m_networkInterface;
+
+public:
+
+    Client( NetworkInterface & networkInterface )
+    {
+        m_networkInterface = &networkInterface;
+    }
+
+    ~Client()
+    {
+        m_networkInterface = NULL;
+    }
+
+    void SendPackets( double /*time*/ )
+    {
+        // ...
+    }
+
+    void ReceivePackets( double /*time*/ )
+    {
+        // ...
+    }
 };
 
 int main()
 {
     printf( "client/server connection\n" );
 
-    yojimbo::memory::initialize();
+    memory::initialize();
     {
         srand( (unsigned int) time( NULL ) );
 
@@ -468,8 +503,8 @@ int main()
         ClientServerPacketFactory clientPacketFactory;
         ClientServerPacketFactory serverPacketFactory;
 
-        SocketInterface clientInterface( yojimbo::memory::default_allocator(), clientPacketFactory, ClientPort );
-        SocketInterface serverInterface( yojimbo::memory::default_allocator(), serverPacketFactory, ServerPort );
+        SocketInterface clientInterface( memory::default_allocator(), clientPacketFactory, ProtocolId, ClientPort );
+        SocketInterface serverInterface( memory::default_allocator(), serverPacketFactory, ProtocolId, ServerPort );
 
         if ( clientInterface.GetError() != SOCKET_ERROR_NONE || serverInterface.GetError() != SOCKET_ERROR_NONE )
             return 1;
@@ -478,7 +513,7 @@ int main()
 
         double time = 0.0;
 
-        const uint64_t client_salt = GenerateSalt();
+        Client client( clientInterface );
 
         Server server( serverInterface );
 
@@ -488,19 +523,17 @@ int main()
         {
             printf( "t = %f\n", time );
 
-            if ( i <= 2 )
-            {
-                ConnectionRequestPacket packet;
-                packet.client_salt = client_salt;
-
-                server.ProcessConnectionRequest( packet, clientAddress, time );
-            }
+            client.SendPackets( time );
+            server.SendPackets( time );
 
             clientInterface.SendPackets( time );
             serverInterface.SendPackets( time );
 
             clientInterface.ReceivePackets( time );
             serverInterface.ReceivePackets( time );
+
+            client.ReceivePackets( time );
+            server.ReceivePackets( time );
 
             time += 0.1f;
 
@@ -510,7 +543,7 @@ int main()
         ShutdownNetwork();
     }
 
-    yojimbo::memory::shutdown();
+    memory::shutdown();
 
     return 0;
 }

@@ -32,10 +32,17 @@
 #include "yojimbo_hash.h"
 #include "yojimbo_queue.h"
 
+#define NETWORK2_IMPLEMENTATION
+#define PROTOCOL2_IMPLEMENTATION
+
+#include "network2.h"
+#include "protocol2.h"
+
 namespace yojimbo
 {
     SocketInterface::SocketInterface( Allocator & allocator, 
                                       protocol2::PacketFactory & packetFactory, 
+                                      uint32_t protocolId,
                                       uint16_t socketPort, 
                                       network2::SocketType socketType, 
                                       int maxPacketSize, 
@@ -44,6 +51,7 @@ namespace yojimbo
         : m_sendQueue( allocator ),
           m_receiveQueue( allocator )
     {
+        assert( protocolId != 0 );
         assert( maxPacketSize > 0 );
         assert( sendQueueSize > 0 );
         assert( receiveQueueSize > 0 );
@@ -54,6 +62,7 @@ namespace yojimbo
         
         m_socket = new network2::Socket( socketPort, socketType );          // todo: create using allocator
         
+        m_protocolId = protocolId;
         m_maxPacketSize = maxPacketSize;
         m_sendQueueSize = sendQueueSize;
         m_receiveQueueSize = receiveQueueSize;
@@ -143,6 +152,7 @@ namespace yojimbo
 
         if ( (int) queue::size( m_sendQueue ) >= m_sendQueueSize )
         {
+            // todo: counter for packet send queue overflow
             m_packetFactory->DestroyPacket( packet );
             return;
         }
@@ -169,7 +179,7 @@ namespace yojimbo
         assert( entry.address.IsValid() );
 
         from = entry.address;
-        
+
         return entry.packet;
     }
 
@@ -177,6 +187,10 @@ namespace yojimbo
     {
         assert( m_allocator );
         assert( m_packetFactory );
+
+        // todo: implement bandwidth limits here, eg. choke. can't send packets because no bandwidth available
+
+        // todo: packet choke counter
 
         while ( queue::size( m_sendQueue ) )
         {
@@ -187,7 +201,22 @@ namespace yojimbo
 
             queue::consume( m_sendQueue, 1 );
 
-            // ...
+            bool error = false;
+
+            const int bytesWritten = protocol2::WritePacket( entry.packet, m_packetFactory->GetNumTypes(), m_packetBuffer, m_maxPacketSize, m_protocolId );
+
+            if ( bytesWritten > 0 )
+            {
+                printf( "wrote packet type %d (%d bytes)\n", entry.packet->GetType(), bytesWritten );
+                // todo: increase counter for packet written
+            }
+            else
+            {
+                printf( "write packet error\n" );
+                m_packetFactory->DestroyPacket( entry.packet );
+                // todo: increase counter for packet write failures
+                error = true;
+            }
 
             /*
             uint8_t buffer[m_config.maxPacketSize];
@@ -215,7 +244,7 @@ namespace yojimbo
 
             stream.Flush();
 
-            CORE_ASSERT( !stream.IsOverflow() );
+            assert( !stream.IsOverflow() );
 
             if ( stream.IsOverflow() )
             {
@@ -227,7 +256,7 @@ namespace yojimbo
             const int bytes = stream.GetBytesProcessed();
             const uint8_t * data = stream.GetData();
 
-            CORE_ASSERT( bytes <= m_config.maxPacketSize );
+            assert( bytes <= m_config.maxPacketSize );
             if ( bytes > m_config.maxPacketSize )
             {
                 m_counters[BSD_SOCKET_COUNTER_PACKET_TOO_LARGE_TO_SEND]++;
@@ -244,6 +273,21 @@ namespace yojimbo
 
     void SocketInterface::ReceivePackets( double /*time*/ )
     {
+        // todo: counter for receive queue overflows
+
+        // todo: extend the packet factory to provide custom allocation of packets (eg. through allocator), but don't put allocator in protocol2!
+
+        // todo: put encryption inside protocol2 layer (PROTOCOL2_SECURE)
+
+        // todo: must be able to discard unsupported packet types quickly, at this layer, before going further
+        // (eg. on server, mark packet types expected to be received, and discard any other types...)
+
+        // todo: encryption must be in the packet serialization layer (protocol2)
+
+        // todo: but each client has a different private key... how to distinguish? context? something else?
+
+        // urgh... client/server stuff spilling into protocol level.
+
         // actually receive the packets and queue them up in a receive queue
     }
 

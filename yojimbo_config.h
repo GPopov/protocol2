@@ -28,6 +28,7 @@
 #define YOJIMBO_CONFIG_H
 
 #define YOJIMBO_DEBUG_MEMORY_LEAKS 1
+    
 #define YOJIMBO_SCRATCH_ALLOCATOR 0
 
 #endif // #ifndef YOJIMBO_CONFIG_H
