@@ -1,25 +1,7 @@
 DONE
 
-    Implement rate limiting for various packets sent
-
-    Implement client-side timeouts
-
-    Implement client re-rolls the client salt if no response to connection request within one second.
-
-    Implement challenge response send rate.
-
-    Implement server-side timeout of a client
-
-    Extend client states to include all error states
-
-    Implement disconnect packets
-
 TODO
     
-    Server-side handle disconnect packets.
-
-    Implement code on client that handles connection request denied.
-
-    Pass over remaining todos and actually implement them.
+    Pass over remaining todos in yojimbo and actually implement them!
 
     Implement counters for socket interface.

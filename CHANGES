@@ -1,4 +1,34 @@
 
+Monday May 16th, 2016
+=====================
+
+    Implement rate limiting for various packets sent
+
+    Implement client-side timeouts
+
+    Implement client re-rolls the client salt if no response to connection request within one second.
+
+    Implement challenge response send rate.
+
+    Implement server-side timeout of a client
+
+    Extend client states to include all error states
+
+    Implement disconnect packets
+
+    Server-side handle disconnect packets.
+
+    Implement code on client that handles connection request denied, both reasons.
+
+
+Sunday May 15th, 2016
+=====================
+
+    Bunch of planning and work implementing the client/server.
+
+    Network interface setup and client/server logic for packet exchange working.
+
+
 Saturday May 14th, 2016
 =======================
 

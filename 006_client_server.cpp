@@ -825,6 +825,10 @@ public:
             
             switch ( packet->GetType() )
             {
+                case PACKET_CONNECTION_DENIED:
+                    ProcessConnectionDenied( *(ConnectionDeniedPacket*)packet, address, time );
+                    break;
+
                 case PACKET_CONNECTION_CHALLENGE:
                     ProcessConnectionChallenge( *(ConnectionChallengePacket*)packet, address, time );
                     break;
@@ -914,6 +918,31 @@ protected:
         m_networkInterface->SendPacket( m_serverAddress, packet );
 
         m_lastPacketSendTime = time;
+    }
+
+    void ProcessConnectionDenied( const ConnectionDeniedPacket & packet, const Address & address, double time )
+    {
+        if ( m_clientState != CLIENT_STATE_SENDING_CONNECTION_REQUEST )
+            return;
+
+        if ( packet.client_salt != m_clientSalt )
+            return;
+
+        if ( address != m_serverAddress )
+            return;
+
+        char buffer[256];
+        const char * addressString = address.ToString( buffer, sizeof( buffer ) );
+        if ( packet.reason == CONNECTION_DENIED_SERVER_FULL )
+        {
+            printf( "client received connection denied from server: %s (server is full)\n", addressString );
+            m_clientState = CLIENT_STATE_CONNECTION_DENIED_FULL;
+        }
+        else if ( packet.reason == CONNECTION_DENIED_ALREADY_CONNECTED )
+        {
+            printf( "client received connection denied from server: %s (already connected)\n", addressString );
+            m_clientState = CLIENT_STATE_CONNECTION_DENIED_ALREADY_CONNECTED;
+        }
     }
 
     void ProcessConnectionChallenge( const ConnectionChallengePacket & packet, const Address & address, double time )
