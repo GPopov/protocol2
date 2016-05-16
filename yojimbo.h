@@ -50,9 +50,9 @@ namespace yojimbo
 
         virtual protocol2::Packet * ReceivePacket( network2::Address & from ) = 0;
 
-        virtual void SendPackets( double time ) = 0;
+        virtual void WritePackets( double time ) = 0;
 
-        virtual void ReceivePackets( double time ) = 0;
+        virtual void ReadPackets( double time ) = 0;
 
         virtual int GetMaxPacketSize() const = 0;
 
@@ -107,9 +107,9 @@ namespace yojimbo
 
         protocol2::Packet * ReceivePacket( network2::Address & from );
 
-        void SendPackets( double time );
+        void WritePackets( double time );
 
-        void ReceivePackets( double time );
+        void ReadPackets( double time );
 
         int GetMaxPacketSize() const;
 

@@ -64,7 +64,7 @@ enum PacketTypes
     PACKET_CONNECTION_KEEP_ALIVE,                   // keep alive packet sent at some low rate (once per-second) to keep the connection alive
     PACKET_CONNECTION_DISCONNECTED,                 // courtesy packet to indicate that the client has been disconnected. better than a timeout
     */
-    NUM_CLIENT_SERVER_NUM_PACKETS
+    CLIENT_SERVER_NUM_PACKETS
 };
 
 struct ConnectionRequestPacket : public Packet
@@ -162,7 +162,7 @@ struct ConnectionResponsePacket : public Packet
 
 struct ClientServerPacketFactory : public PacketFactory
 {
-    ClientServerPacketFactory() : PacketFactory( NUM_CLIENT_SERVER_NUM_PACKETS ) {}
+    ClientServerPacketFactory() : PacketFactory( CLIENT_SERVER_NUM_PACKETS ) {}
 
     Packet* CreateInternal( int type )
     {
@@ -241,14 +241,35 @@ public:
         m_networkInterface = NULL;
     }
 
+    // todo: probably want a concept of opening and closing the server. eg. having a server state where all connections are closed
+    // and no new connections are accepted. closed by default? open by default? don't know yet.
+
     void SendPackets( double /*time*/ )
     {
         // ...
     }
 
-    void ReceivePackets( double /*time*/ )
+    void ReceivePackets( double time )
     {
-        // ...
+        while ( true )
+        {
+            Address address;
+            Packet *packet = m_networkInterface->ReceivePacket( address );
+            if ( !packet )
+                break;
+            
+            switch ( packet->GetType() )
+            {
+                case PACKET_CONNECTION_REQUEST:
+                    ProcessConnectionRequest( *(ConnectionRequestPacket*)packet, address, time );
+                    break;
+
+                default:
+                    break;
+            }
+
+            m_networkInterface->DestroyPacket( packet );
+        }
     }
 
 protected:
@@ -395,7 +416,7 @@ protected:
         if ( entry->last_packet_send_time + ChallengeSendRate < time )
         {
             printf( "sending connection challenge to %s (challenge salt = %llx)\n", addressString, entry->challenge_salt );
-            ConnectionChallengePacket * connectionChallengePacket = (ConnectionChallengePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DENIED );
+            ConnectionChallengePacket * connectionChallengePacket = (ConnectionChallengePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_CHALLENGE );
             connectionChallengePacket->client_salt = packet.client_salt;
             connectionChallengePacket->challenge_salt = entry->challenge_salt;
             m_networkInterface->SendPacket( address, connectionChallengePacket );
@@ -454,13 +475,13 @@ enum ClientState
 
 class Client
 {
-    /*
-    Address m_serverAddress;
+    ClientState m_clientState;                                          // current client state
 
-    uint64_t m_clientSalt;
+    Address m_serverAddress;                                            // server address we are connecting or connected to.
 
-    uint64_t m_challengeSalt;
-    */
+    uint64_t m_clientSalt;                                              // client salt. randomly generated on each call to connect.
+
+//    uint64_t m_challengeSalt;
 
     NetworkInterface * m_networkInterface;
 
@@ -476,9 +497,33 @@ public:
         m_networkInterface = NULL;
     }
 
+    void Connect( const Address & address )
+    {
+        Disconnect();
+        m_clientSalt = GenerateSalt();
+        m_serverAddress = address;
+        m_clientState = CLIENT_STATE_SENDING_CONNECTION_REQUEST;
+    }
+
+    void Disconnect()
+    {
+        // todo: if connected, add pending connection to disconnect entries for clean shutdown
+
+        m_clientSalt = 0;
+        m_serverAddress = Address();
+        m_clientState = CLIENT_STATE_DISCONNECTED;
+    }
+
     void SendPackets( double /*time*/ )
     {
-        // ...
+        if ( m_clientState == CLIENT_STATE_SENDING_CONNECTION_REQUEST )
+        {
+            // todo: throttle send request rate
+
+            ConnectionRequestPacket * packet = (ConnectionRequestPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_REQUEST );
+            packet->client_salt = m_clientSalt;
+            m_networkInterface->SendPacket( m_serverAddress, packet );
+        }
     }
 
     void ReceivePackets( double /*time*/ )
@@ -516,6 +561,8 @@ int main()
         Client client( clientInterface );
 
         Server server( serverInterface );
+        
+        client.Connect( serverAddress );
 
         printf( "----------------------------------------------------------\n" );
 
@@ -526,11 +573,11 @@ int main()
             client.SendPackets( time );
             server.SendPackets( time );
 
-            clientInterface.SendPackets( time );
-            serverInterface.SendPackets( time );
+            clientInterface.WritePackets( time );
+            serverInterface.WritePackets( time );
 
-            clientInterface.ReceivePackets( time );
-            serverInterface.ReceivePackets( time );
+            clientInterface.ReadPackets( time );
+            serverInterface.ReadPackets( time );
 
             client.ReceivePackets( time );
             server.ReceivePackets( time );

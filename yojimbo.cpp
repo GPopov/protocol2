@@ -183,7 +183,7 @@ namespace yojimbo
         return entry.packet;
     }
 
-    void SocketInterface::SendPackets( double /*time*/ )
+    void SocketInterface::WritePackets( double /*time*/ )
     {
         assert( m_allocator );
         assert( m_socket );
@@ -211,6 +211,7 @@ namespace yojimbo
 
             if ( bytesWritten > 0 )
             {
+                // todo: get the packet type name here
                 printf( "wrote packet type %d (%d bytes)\n", entry.packet->GetType(), bytesWritten );
                 // todo: increase counter for packet written
             }
@@ -231,7 +232,7 @@ namespace yojimbo
         }
     }
 
-    void SocketInterface::ReceivePackets( double /*time*/ )
+    void SocketInterface::ReadPackets( double /*time*/ )
     {
         assert( m_allocator );
         assert( m_socket );
@@ -274,6 +275,7 @@ namespace yojimbo
             protocol2::Packet *packet = protocol2::ReadPacket( *m_packetFactory, m_packetBuffer, packetBytes, m_protocolId, NULL, &readError );
             if ( packet )
             {
+                // todo: get the packet type name here
                 printf( "read packet type %d (%d bytes)\n", packet->GetType(), packetBytes );
                 // todo: counter
             }
