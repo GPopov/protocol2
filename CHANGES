@@ -46,6 +46,12 @@ Saturday May 14th, 2016
 
     Added a bunch of extra logic for packet creates
 
+    -----------
+
+    Finish the actual client/server and setup a basic test bed with some simple tests showing connect, disconnect, reconnect, keep-alives, etc.
+
+    Actual client connects now, looks good!
+
 
 Friday May 13th, 2016
 =====================

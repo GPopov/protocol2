@@ -212,7 +212,7 @@ namespace yojimbo
             if ( bytesWritten > 0 )
             {
                 // todo: get the packet type name here
-                printf( "wrote packet type %d (%d bytes)\n", entry.packet->GetType(), bytesWritten );
+//                printf( "wrote packet type %d (%d bytes)\n", entry.packet->GetType(), bytesWritten );
                 // todo: increase counter for packet written
             }
             else
@@ -276,7 +276,7 @@ namespace yojimbo
             if ( packet )
             {
                 // todo: get the packet type name here
-                printf( "read packet type %d (%d bytes)\n", packet->GetType(), packetBytes );
+//                printf( "read packet type %d (%d bytes)\n", packet->GetType(), packetBytes );
                 // todo: counter
             }
             else
