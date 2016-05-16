@@ -1,9 +1,15 @@
 DONE
 
-TODO
-
     Almost finished with converting network interface across.
 
     It's going well. I like the new library idea, and it adds a lot of value for clients vs. a bunch of sample code.
 
     Need to track down some memory leaks. I'm really not sure why I'm getting them...
+
+    Fixed. Just needed to keep local.
+
+TODO
+
+    Now need to finishing bringing across network interface and then flesh out the actual client/server.
+
+    // ...

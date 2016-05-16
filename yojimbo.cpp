@@ -63,7 +63,7 @@ namespace yojimbo
         m_socket = new network2::Socket( socketPort, socketType );          // todo: create using allocator
         
         m_protocolId = protocolId;
-        m_maxPacketSize = maxPacketSize;
+        m_maxPacketSize = maxPacketSize;                            // todo: make sure multiple of dwords. round up.
         m_sendQueueSize = sendQueueSize;
         m_receiveQueueSize = receiveQueueSize;
         
@@ -150,7 +150,7 @@ namespace yojimbo
         entry.address = address;
         entry.packet = packet;
 
-        if ( (int) queue::size( m_sendQueue ) >= m_sendQueueSize )
+        if ( queue::size( m_sendQueue ) >= (size_t)m_sendQueueSize )
         {
             // todo: counter for packet send queue overflow
             m_packetFactory->DestroyPacket( packet );
@@ -186,6 +186,8 @@ namespace yojimbo
     void SocketInterface::SendPackets( double /*time*/ )
     {
         assert( m_allocator );
+        assert( m_socket );
+        assert( m_packetBuffer );
         assert( m_packetFactory );
 
         // todo: implement bandwidth limits here, eg. choke. can't send packets because no bandwidth available
@@ -203,6 +205,8 @@ namespace yojimbo
 
             bool error = false;
 
+            // todo: need a way to pass in context to write packet
+
             const int bytesWritten = protocol2::WritePacket( entry.packet, m_packetFactory->GetNumTypes(), m_packetBuffer, m_maxPacketSize, m_protocolId );
 
             if ( bytesWritten > 0 )
@@ -218,54 +222,10 @@ namespace yojimbo
                 error = true;
             }
 
-            /*
-            uint8_t buffer[m_config.maxPacketSize];
+            assert( bytesWritten > 0 );
+            assert( bytesWritten <= m_maxPacketSize );
 
-            typedef protocol::WriteStream Stream;
-
-            Stream stream( buffer, m_config.maxPacketSize );
-
-            stream.SetContext( m_context );
-
-            uint64_t protocolId = m_config.protocolId;
-            serialize_uint64( stream, protocolId );
-
-            const int maxPacketType = m_config.packetFactory->GetNumTypes() - 1;
-            
-            int packetType = packet->GetType();
-            
-            serialize_int( stream, packetType, 0, maxPacketType );
-            
-            stream.Align();
-
-            packet->SerializeWrite( stream );
-
-            stream.Check( 0x51246234 );
-
-            stream.Flush();
-
-            assert( !stream.IsOverflow() );
-
-            if ( stream.IsOverflow() )
-            {
-                m_counters[BSD_SOCKET_COUNTER_SERIALIZE_WRITE_OVERFLOW]++;
-                m_config.packetFactory->Destroy( packet );
-                continue;
-            }
-
-            const int bytes = stream.GetBytesProcessed();
-            const uint8_t * data = stream.GetData();
-
-            assert( bytes <= m_config.maxPacketSize );
-            if ( bytes > m_config.maxPacketSize )
-            {
-                m_counters[BSD_SOCKET_COUNTER_PACKET_TOO_LARGE_TO_SEND]++;
-                m_config.packetFactory->Destroy( packet );
-                continue;
-            }
-
-            SendPacketInternal( packet->GetAddress(), data, bytes );
-            */
+            m_socket->SendPacket( entry.address, m_packetBuffer, bytesWritten );
 
             m_packetFactory->DestroyPacket( entry.packet );
         }
@@ -273,7 +233,10 @@ namespace yojimbo
 
     void SocketInterface::ReceivePackets( double /*time*/ )
     {
-        // todo: counter for receive queue overflows
+        assert( m_allocator );
+        assert( m_socket );
+        assert( m_packetBuffer );
+        assert( m_packetFactory );
 
         // todo: extend the packet factory to provide custom allocation of packets (eg. through allocator), but don't put allocator in protocol2!
 
@@ -284,11 +247,48 @@ namespace yojimbo
 
         // todo: encryption must be in the packet serialization layer (protocol2)
 
-        // todo: but each client has a different private key... how to distinguish? context? something else?
+        // todo: but each client has a different private key... how to distinguish?
+
+        // todo: seems like we need to pass a bunch of address/private key pairs to the packet factory for encrypted packets
+
+        // wow. crazy.
 
         // urgh... client/server stuff spilling into protocol level.
 
-        // actually receive the packets and queue them up in a receive queue
+        while ( true )
+        {
+            network2::Address address;
+            int packetBytes = m_socket->ReceivePacket( address, m_packetBuffer, m_maxPacketSize );
+            if ( !packetBytes )
+                break;
+
+            if ( queue::size( m_receiveQueue ) == (size_t) m_receiveQueueSize )
+            {
+                // todo: counter for receive queue overflow
+                break;
+            }
+
+            // todo: need a way to pass in context to read packet
+
+            int readError;
+            protocol2::Packet *packet = protocol2::ReadPacket( *m_packetFactory, m_packetBuffer, packetBytes, m_protocolId, NULL, &readError );
+            if ( packet )
+            {
+                printf( "read packet type %d (%d bytes)\n", packet->GetType(), packetBytes );
+                // todo: counter
+            }
+            else
+            {
+                printf( "read packet error: %s\n", protocol2::GetErrorString( readError ) );
+                // todo: counter
+                continue;
+            }
+
+            PacketEntry entry;
+            entry.packet = packet;
+            entry.address = address;
+            queue::push_back( m_receiveQueue, entry );
+        }
     }
 
     int SocketInterface::GetMaxPacketSize() const 
