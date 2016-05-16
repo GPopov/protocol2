@@ -1,43 +1,9 @@
 DONE
 
-    Now I need to actually implement the send and receive queues for the socket interface.
-
-    Need to bring across the various data structures I was relying on
-
-    eg. queue at minimum, array, also hash. Should switch over the challenge has to use that.
-
-    Also may need to bring across allocators.
-
-    I think the only allocation performed in protocol2 or network2 is in the packet factory,
-    and this can easily be overridden with a virtual allocate function possibly?
-
-    Don't put a heavyweight allocator system inside the protocol2, but instead simple callbacks
-    and/or virtual functions to override to perform allocation for packets?
-
-    Put all the stuff inside "yojimbo"
-
-    So far I think that this is the best approach, and Yojimbo will grow to be my BSD 3.0 network library.
-
-    Now, implement the socket network interface so it can be used by the client/server.
-
-    This will unblock me to finish implementing 006.
-
-    Try to avoid relying on too much data structures etc, from yojimbo within the 006 example
-
-    For the moment, probably best to keep the client/server inside the example programs...
-
-    Once the examples are finished, convert them all to open source library code, eg. Yojimbo!
-
-    This is because the example code will likely evolve and change while I work on it.
-
-    It should be, like the other aspects of the protocol, finalized into Yojimbo vs. being developed
-    *in* Yojimbo!. I think also, as code is finalized into Yojimbo, this is the time for it to be
-    brought under test.
-    
-    Should the separation of protocol2 and network2 and yojimbo remain, or should they be folded in?
-
-    Undecided.
-
 TODO
 
-    ...
+    Almost finished with converting network interface across.
+
+    It's going well. I like the new library idea, and it adds a lot of value for clients vs. a bunch of sample code.
+
+    Need to track down some memory leaks. I'm really not sure why I'm getting them...

@@ -48,6 +48,8 @@ namespace yojimbo
         assert( sendQueueSize > 0 );
         assert( receiveQueueSize > 0 );
 
+        m_context = NULL;
+
         m_allocator = &allocator;
         
         m_socket = new network2::Socket( socketPort, socketType );          // todo: create using allocator
@@ -56,7 +58,7 @@ namespace yojimbo
         m_sendQueueSize = sendQueueSize;
         m_receiveQueueSize = receiveQueueSize;
         
-        m_receiveBuffer = new uint8_t[maxPacketSize];               // todo: use allocator
+        m_packetBuffer = new uint8_t[maxPacketSize];               // todo: use allocator
         
         m_packetFactory = &packetFactory;
         
@@ -67,14 +69,33 @@ namespace yojimbo
     SocketInterface::~SocketInterface()
     {
         assert( m_socket );
-        assert( m_receiveBuffer );
+        assert( m_packetBuffer );
         assert( m_packetFactory );
 
+        for ( size_t i = 0; i < queue::size( m_sendQueue ); ++i )
+        {
+            PacketEntry & entry = m_sendQueue[i];
+            assert( entry.packet );
+            assert( entry.address.IsValid() );
+            m_packetFactory->DestroyPacket( entry.packet );
+        }
+
+        for ( size_t i = 0; i < queue::size( m_receiveQueue ); ++i )
+        {
+            PacketEntry & entry = m_receiveQueue[i];
+            assert( entry.packet );
+            assert( entry.address.IsValid() );
+            m_packetFactory->DestroyPacket( entry.packet );
+        }
+
+        queue::clear( m_sendQueue );
+        queue::clear( m_receiveQueue );
+
         delete m_socket;
-        delete [] m_receiveBuffer;              // todo: use allocator
+        delete [] m_packetBuffer;              // todo: use allocator
         
         m_socket = NULL;
-        m_receiveBuffer = NULL;
+        m_packetBuffer = NULL;
         m_packetFactory = NULL;
     }
 
@@ -120,7 +141,7 @@ namespace yojimbo
         entry.address = address;
         entry.packet = packet;
 
-        if ( queue::size( m_sendQueue ) >= m_sendQueueSize )
+        if ( (int) queue::size( m_sendQueue ) >= m_sendQueueSize )
         {
             m_packetFactory->DestroyPacket( packet );
             return;
@@ -147,6 +168,8 @@ namespace yojimbo
         assert( entry.packet );
         assert( entry.address.IsValid() );
 
+        from = entry.address;
+        
         return entry.packet;
     }
 
@@ -163,6 +186,8 @@ namespace yojimbo
             assert( entry.address.IsValid() );
 
             queue::consume( m_sendQueue, 1 );
+
+            // ...
 
             /*
             uint8_t buffer[m_config.maxPacketSize];
@@ -227,8 +252,8 @@ namespace yojimbo
         return m_maxPacketSize;
     }
 
-    void SocketInterface::SetContext( const void * /*context*/ )
+    void SocketInterface::SetContext( const void * context )
     {
-        // ...
+        m_context = context;
     }
 }

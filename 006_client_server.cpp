@@ -454,67 +454,61 @@ struct Client
 
 int main()
 {
-    yojimbo::memory::initialize();
-
-    srand( (unsigned int) time( NULL ) );
-
     printf( "client/server connection\n" );
 
-    InitializeNetwork();
-
-    Address clientAddress( "::1", ClientPort );
-    Address serverAddress( "::1", ServerPort );
-
-    ClientServerPacketFactory clientPacketFactory;
-    ClientServerPacketFactory serverPacketFactory;
-
-    SocketInterface clientInterface( yojimbo::memory::default_allocator(), clientPacketFactory, ClientPort );
-    SocketInterface serverInterface( yojimbo::memory::default_allocator(), serverPacketFactory, ServerPort );
-
-    if ( clientInterface.GetError() != SOCKET_ERROR_NONE || serverInterface.GetError() != SOCKET_ERROR_NONE )
-        return 1;
-    
-    const int NumIterations = 30;
-
-    double time = 0.0;
-
-    const uint64_t client_salt = GenerateSalt();
-
-    Server server( serverInterface );
-
-    printf( "----------------------------------------------------------\n" );
-
-    for ( int i = 0; i < NumIterations; ++i )
+    yojimbo::memory::initialize();
     {
-        printf( "t = %f\n", time );
+        srand( (unsigned int) time( NULL ) );
 
-        if ( i <= 2 )
-        {
-            ConnectionRequestPacket packet;
-            packet.client_salt = client_salt;
+        InitializeNetwork();
 
-            server.ProcessConnectionRequest( packet, clientAddress, time );
-        }
+        Address clientAddress( "::1", ClientPort );
+        Address serverAddress( "::1", ServerPort );
 
-        /*
-        char send_data[256];
-        memset( send_data, 0, sizeof( send_data ) );
-        clientSocket.SendPacket( serverAddress, send_data, sizeof( send_data ) );
+        ClientServerPacketFactory clientPacketFactory;
+        ClientServerPacketFactory serverPacketFactory;
 
-        Address from;
-        char recv_data[256];
-        while ( int read_bytes = serverSocket.ReceivePacket( from, recv_data, sizeof( recv_data ) ) )
-        {
-            printf( "received packet: %d bytes\n", read_bytes );
-        }
-        */
+        SocketInterface clientInterface( yojimbo::memory::default_allocator(), clientPacketFactory, ClientPort );
+        SocketInterface serverInterface( yojimbo::memory::default_allocator(), serverPacketFactory, ServerPort );
 
-        time += 0.1f;
+        if ( clientInterface.GetError() != SOCKET_ERROR_NONE || serverInterface.GetError() != SOCKET_ERROR_NONE )
+            return 1;
+        
+        const int NumIterations = 4;
+
+        double time = 0.0;
+
+        const uint64_t client_salt = GenerateSalt();
+
+        Server server( serverInterface );
 
         printf( "----------------------------------------------------------\n" );
-    }
 
-    ShutdownNetwork();
+        for ( int i = 0; i < NumIterations; ++i )
+        {
+            printf( "t = %f\n", time );
+
+            if ( i <= 2 )
+            {
+                ConnectionRequestPacket packet;
+                packet.client_salt = client_salt;
+
+                server.ProcessConnectionRequest( packet, clientAddress, time );
+            }
+
+            clientInterface.SendPackets( time );
+            serverInterface.SendPackets( time );
+
+            clientInterface.ReceivePackets( time );
+            serverInterface.ReceivePackets( time );
+
+            time += 0.1f;
+
+            printf( "----------------------------------------------------------\n" );
+        }
+
+        ShutdownNetwork();
+    }
 
     yojimbo::memory::shutdown();
 

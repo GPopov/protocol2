@@ -36,29 +36,33 @@ namespace yojimbo
 
 		MallocAllocator * default_allocator;
 
-#if USE_SCRATCH_ALLOCATOR
+#if YOJIMBO_SCRATCH_ALLOCATOR
 		ScratchAllocator * scratch_allocator;
-#else
+#else // #if YOJIMBO_SCRATCH_ALLOCATOR
 		MallocAllocator * scratch_allocator;
-#endif
+#endif // #if YOJIMBO_SCRATCH_ALLOCATOR
 
-		MemoryGlobals() : default_allocator( nullptr ), scratch_allocator( nullptr ) {}
+		MemoryGlobals() : default_allocator( NULL ), scratch_allocator( NULL ) {}
 	};
 
 	MemoryGlobals memory_globals;
 
 	namespace memory
 	{
+#if YOJIMBO_SCRATCH_ALLOCATOR
 		void initialize( uint32_t temporary_memory ) 
+#else // #if YOJIMBO_SCRATCH_ALLOCATOR
+        void initialize( uint32_t /*temporary_memory*/ ) 
+#endif // #if YOJIMBO_SCRATCH_ALLOCATOR
 		{
 			uint8_t * p = memory_globals.buffer;
 			memory_globals.default_allocator = new (p) MallocAllocator();
 			p += sizeof( MallocAllocator );
-#if USE_SCRATCH_ALLOCATOR
+#if YOJIMBO_SCRATCH_ALLOCATOR
 			memory_globals.scratch_allocator = new (p) ScratchAllocator( *memory_globals.default_allocator, temporary_memory );
-#else
+#else // #if YOJIMBO_SCRATCH_ALLOCATOR
 			memory_globals.scratch_allocator = new (p) MallocAllocator();
-#endif
+#endif // #if YOJIMBO_SCRATCH_ALLOCATOR
 		}
 
 		Allocator & default_allocator() 
@@ -75,11 +79,11 @@ namespace yojimbo
 
 		void shutdown() 
 		{
-#if USE_SCRATCH_ALLOCATOR
+#if YOJIMBO_SCRATCH_ALLOCATOR
 			memory_globals.scratch_allocator->~ScratchAllocator();
-#else
+#else // #if YOJIMBO_SCRATCH_ALLOCATOR
 			memory_globals.scratch_allocator->~MallocAllocator();
-#endif
+#endif // #if YOJIMBO_SCRATCH_ALLOCATOR
 			memory_globals.default_allocator->~MallocAllocator();
 			memory_globals = MemoryGlobals();
 		}

@@ -29,6 +29,7 @@
 
 #include "network2.h"
 #include "protocol2.h"
+#include "yojimbo_config.h"
 #include "yojimbo_types.h"
 #include "yojimbo_memory.h"
 #include "yojimbo_allocator.h"
@@ -60,11 +61,13 @@ namespace yojimbo
 
     class SocketInterface : public NetworkInterface
     {
+        const void * m_context;
+
         int m_maxPacketSize;
         int m_sendQueueSize;
         int m_receiveQueueSize;
-        
-        uint8_t * m_receiveBuffer;
+
+        uint8_t * m_packetBuffer;
         Allocator * m_allocator;
         network2::Socket * m_socket;
         protocol2::PacketFactory * m_packetFactory;

@@ -85,7 +85,7 @@ namespace yojimbo
 			if ( new_capacity < a.m_size )
 				resize( a, new_capacity );
 
-			T * new_data = nullptr;
+			T * new_data = NULL;
 
 			if ( new_capacity > 0 )
 			{

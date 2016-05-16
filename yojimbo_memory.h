@@ -27,10 +27,15 @@
 #ifndef YOJIMBO_MEMORY_H
 #define YOJIMBO_MEMORY_H
 
+#include "yojimbo_config.h"
 #include "yojimbo_allocator.h"
 #include <assert.h>
 #include <stdio.h>
 #include <new>
+
+#if YOJIMBO_DEBUG_MEMORY_LEAKS
+#include <map>
+#endif // #if YOJIMBO_DEBUG_MEMORY_LEAKS
 
 namespace yojimbo
 {
@@ -114,7 +119,7 @@ namespace yojimbo
 				*(void**) m_start = p;
 				m_p = m_start = (uint8_t*)p;
 				m_end = m_start + to_allocate;
-				*(void**) m_start = nullptr;
+				*(void**) m_start = NULL;
 				m_p += sizeof(void*);
 				m_p = (uint8_t*) align_forward( m_p, align );
 			}
@@ -180,9 +185,9 @@ namespace yojimbo
 	{
 		uint32_t m_total_allocated;
 
-#if CORE_DEBUG_MEMORY_LEAKS
+#if YOJIMBO_DEBUG_MEMORY_LEAKS
 		std::map<void*,int> m_alloc_map;
-#endif
+#endif // #if YOJIMBO_DEBUG_MEMORY_LEAKS
 
 		static inline uint32_t size_with_padding( uint32_t size, uint32_t align ) 
 		{
@@ -195,25 +200,28 @@ namespace yojimbo
 
 		~MallocAllocator()
 		{
-#if CORE_DEBUG_MEMORY_LEAKS
+#if YOJIMBO_DEBUG_MEMORY_LEAKS
 			if ( m_alloc_map.size() )
 			{
 				printf( "you leaked memory!\n" );
 				printf( "%d blocks still allocated\n", (int) m_alloc_map.size() );
 				printf( "%d bytes still allocated\n", m_total_allocated );
-				for ( auto itor : m_alloc_map )
+				typedef std::map<void*,int>::iterator itor_type;
+				for ( itor_type i = m_alloc_map.begin(); i != m_alloc_map.end(); ++i ) 
 				{
-					auto p = itor.first;
+					void *p = i->first;
 					printf( "leaked block %p\n", p );
 				}
 				exit(1);
 			}
-#endif
+#endif // #if YOJIMBO_DEBUG_MEMORY_LEAKS
+
 			if ( m_total_allocated != 0 )
 			{
 				printf( "you leaked memory! %d bytes still allocated\n", m_total_allocated );
 				assert( !"leaked memory" );
 			}
+
 			assert( m_total_allocated == 0 );
 		}
 
@@ -224,9 +232,9 @@ namespace yojimbo
 			void * p = data_pointer( h, align );
 			fill( h, p, ts );
 			m_total_allocated += ts;
-#if CORE_DEBUG_MEMORY_LEAKS
+#if YOJIMBO_DEBUG_MEMORY_LEAKS
 			m_alloc_map[p] = 1;
-#endif
+#endif // #if YOJIMBO_DEBUG_MEMORY_LEAKS
 			return p;
 		}
 
@@ -234,11 +242,12 @@ namespace yojimbo
 		{
 			if ( !p )
 				return;
-#if CORE_DEBUG_MEMORY_LEAKS
-			auto itor = m_alloc_map.find( p );
+#if YOJIMBO_DEBUG_MEMORY_LEAKS
+			typedef std::map<void*,int>::iterator itor_type;
+			itor_type itor = m_alloc_map.find( p );
 			assert( itor != m_alloc_map.end() );
 			m_alloc_map.erase( p );
-#endif
+#endif // #if YOJIMBO_DEBUG_MEMORY_LEAKS
 			Header * h = header( p );
 			m_total_allocated -= h->size;
 			assert( m_total_allocated >= 0 );
@@ -372,11 +381,11 @@ namespace yojimbo
 
 #if defined( _MSC_VER )
 	#define _ALLOW_KEYWORD_MACROS
-#endif
+#endif // #if defined( _MSC_VER )
 	
 #if !defined( alignof )
 	#define alignof(x) __alignof(x)
-#endif
+#endif // #if !defined( alignof )
 
 	#define YOJIMBO_NEW( a, T, ... ) ( new ((a).Allocate(sizeof(T), alignof(T))) T(__VA_ARGS__) )
 	#define YOJIMBO_DELETE( a, T, p ) do { if (p) { (p)->~T(); (a).Free(p); } } while (0)	
@@ -396,7 +405,7 @@ namespace yojimbo
 		allocator.Free( array );
 	}
 
-	#define YOJIMBO_NEW_ARRAY( a, T, count ) AllocateArray( a, count, (T*)nullptr )
+	#define YOJIMBO_NEW_ARRAY( a, T, count ) AllocateArray( a, count, (T*)NULL )
 	#define YOJIMBO_DELETE_ARRAY( a, array, count ) DeleteArray( a, array, count )
 }
 
