@@ -14,8 +14,6 @@ TODO
 
     Implement connection request timeout (10 seconds, while connection timeout may be shorter...)
 
-    Implement server open/close.
-
     Pass over remaining todos and actually implement them.
 
     Implement counters for socket interface.

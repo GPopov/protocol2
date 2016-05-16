@@ -38,9 +38,10 @@ const uint32_t ProtocolId = 0x12341651;
 const int MaxClients = 32;
 const int ServerPort = 50000;
 const int ClientPort = 60000;
-const int ChallengeHashSize = 1031;                 // keep this prime
+const int ChallengeHashSize = 1024;
 const float ChallengeSendRate = 0.1f;
 const float ChallengeTimeOut = 10.0f;
+const float ClientSendRate = 0.1f;
 /*
 const float ConnectionTimeOut = 5.0f;
 const float KeepAliveRate = 1.0f;
@@ -163,15 +164,18 @@ struct ConnectionResponsePacket : public Packet
 struct ConnectionKeepAlivePacket : public Packet
 {
     uint64_t client_salt;
+    uint64_t challenge_salt;
 
     ConnectionKeepAlivePacket() : Packet( PACKET_CONNECTION_KEEP_ALIVE )
     {
         client_salt = 0;
+        challenge_salt = 0;
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_uint64( stream, client_salt );
+        serialize_uint64( stream, challenge_salt );
         return true;
     }
 
@@ -223,6 +227,25 @@ uint64_t CalculateChallengeHashKey( const Address & address, uint64_t clientSalt
     return murmur_hash_64( &serverSeed, 8, murmur_hash_64( &clientSalt, 8, murmur_hash_64( addressString, addressLength, 0 ) ) );
 }
 
+struct ServerClientData
+{
+    Address address;
+    uint64_t clientSalt;
+    uint64_t challengeSalt;
+    double connectTime;
+    double lastPacketSendTime;
+    double lastPacketReceiveTime;
+
+    ServerClientData()
+    {
+        clientSalt = 0;
+        challengeSalt = 0;
+        connectTime = 0.0;
+        lastPacketSendTime = 0.0;
+        lastPacketReceiveTime = 0.0;
+    }
+};
+
 class Server
 {
     NetworkInterface * m_networkInterface;                              // network interface for sending and receiving packets.
@@ -234,12 +257,12 @@ class Server
     bool m_clientConnected[MaxClients];                                 // true if client n is connected
     
     uint64_t m_clientSalt[MaxClients];                                  // array of client salt values per-client
-    
+
     uint64_t m_challengeSalt[MaxClients];                               // array of challenge salt values per-client
     
     Address m_clientAddress[MaxClients];                                // array of client address values per-client
     
-    double m_clientLastPacketReceiveTime[MaxClients];                   // last time a packet was received from a client (used for timeouts)
+    ServerClientData m_clientData[MaxClients];                          // heavier weight data per-client, eg. not for fast lookup
 
     ServerChallengeHash m_challengeHash;                                // challenge hash entries. stores client challenge/response data
 
@@ -260,9 +283,6 @@ public:
         m_networkInterface = NULL;
     }
 
-    // todo: probably want a concept of opening and closing the server. eg. having a server state where all connections are closed
-    // and no new connections are accepted. closed by default? open by default? don't know yet.
-
     void SendPackets( double /*time*/ )
     {
         for ( int i = 0; i < MaxClients; ++i )
@@ -274,6 +294,7 @@ public:
 
             ConnectionKeepAlivePacket * packet = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
             packet->client_salt = m_clientSalt[i];
+            packet->challenge_salt = m_challengeSalt[i];
             m_networkInterface->SendPacket( m_clientAddress[i], packet );
         }
     }
@@ -315,7 +336,7 @@ protected:
         m_clientSalt[clientIndex] = 0;
         m_challengeSalt[clientIndex] = 0;
         m_clientAddress[clientIndex] = Address();
-        m_clientLastPacketReceiveTime[clientIndex] = -1000.0;           // IMPORTANT: avoid bad behavior near t=0.0
+        m_clientData[clientIndex] = ServerClientData();
     }
 
     int FindFreeClientIndex() const
@@ -338,17 +359,26 @@ protected:
         return -1;
     }
 
-    void ConnectClient( int clientIndex, const Address & address, uint64_t clientSalt, uint64_t challengeSalt, double /*time*/ )
+    void ConnectClient( int clientIndex, const Address & address, uint64_t clientSalt, uint64_t challengeSalt, double time )
     {
         assert( m_numConnectedClients >= 0 );
         assert( m_numConnectedClients < MaxClients - 1 );
         assert( !m_clientConnected[clientIndex] );
+
         m_numConnectedClients++;
+
         m_clientConnected[clientIndex] = true;
         m_clientSalt[clientIndex] = clientSalt;
         m_challengeSalt[clientIndex] = challengeSalt;
         m_clientAddress[clientIndex] = address;
-        // todo: set client connect time and last packet recieve time
+
+        m_clientData[clientIndex].address = address;
+        m_clientData[clientIndex].clientSalt = clientSalt;
+        m_clientData[clientIndex].challengeSalt = challengeSalt;
+        m_clientData[clientIndex].connectTime = time;
+        m_clientData[clientIndex].lastPacketSendTime = time;
+        m_clientData[clientIndex].lastPacketReceiveTime = time;
+
         char buffer[256];
         const char *addressString = address.ToString( buffer, sizeof( buffer ) );
         printf( "client connected at client index %d (client address = %s, client salt = %llx, challenge salt = %llx)\n", clientIndex, addressString, clientSalt, challengeSalt );
@@ -484,6 +514,11 @@ protected:
 
     void ProcessConnectionResponse( const ConnectionResponsePacket & packet, const Address & address, double time )
     {
+        // todo: if the particular client is already connected, reply back with keep-alive, but no faster than some connection ack rate
+        // this will speed up connects while allowing keep-alives to be sent only once per-second in normal rate.
+        // also, only allow this within the first few seconds of connect for that client, or cancel it once the server has received
+        // a keep-alive back from the client.
+
         if ( m_numConnectedClients == MaxClients )
         {
             printf( "connection denied: server is full\n" );
@@ -523,6 +558,10 @@ protected:
             return;
 
         ConnectClient( clientIndex, address, packet.client_salt, packet.challenge_salt, time );
+
+        ConnectionKeepAlivePacket * connectionKeepAlivePacket = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
+        connectionKeepAlivePacket->client_salt = packet.client_salt;
+        m_networkInterface->SendPacket( address, connectionKeepAlivePacket );
     }
 };
 
@@ -542,15 +581,20 @@ class Client
 
     uint64_t m_clientSalt;                                              // client salt. randomly generated on each call to connect.
 
-    uint64_t m_challengeSalt;
+    uint64_t m_challengeSalt;                                           // challenge salt sent back from server in connection challenge.
 
-    NetworkInterface * m_networkInterface;
+    double m_lastPacketSendTime;                                        // time we last sent a packet to the server.
+
+    double m_lastPacketReceiveTime;                                     // time we last received a packet from the server (used for timeouts).
+
+    NetworkInterface * m_networkInterface;                              // network interface the client uses to send and receive packets.
 
 public:
 
     Client( NetworkInterface & networkInterface )
     {
         m_networkInterface = &networkInterface;
+        ResetConnectionData();
     }
 
     ~Client()
@@ -571,19 +615,18 @@ public:
     {
         // todo: if connected, add pending connection to disconnect entries for clean shutdown
 
-        m_clientSalt = 0;
-        m_serverAddress = Address();
-        m_clientState = CLIENT_STATE_DISCONNECTED;
+        ResetConnectionData();
     }
 
-    void SendPackets( double /*time*/ )
+    void SendPackets( double time )
     {
+        if ( m_lastPacketSendTime + ClientSendRate > time )
+            return;
+
         switch ( m_clientState )
         {
             case CLIENT_STATE_SENDING_CONNECTION_REQUEST:
             {
-                // todo: throttle send request rate
-
                 char buffer[256];
                 const char *addressString = m_serverAddress.ToString( buffer, sizeof( buffer ) );
                 printf( "client sending connection request to server: %s\n", addressString );
@@ -596,8 +639,6 @@ public:
 
             case CLIENT_STATE_SENDING_CHALLENGE_RESPONSE:
             {
-                // todo: throttle send request rate
-
                 char buffer[256];
                 const char *addressString = m_serverAddress.ToString( buffer, sizeof( buffer ) );
                 printf( "client sending challenge response to server: %s\n", addressString );
@@ -611,7 +652,10 @@ public:
 
             case CLIENT_STATE_CONNECTED:
             {
-                // todo: send keep-alives
+                ConnectionKeepAlivePacket * packet = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
+                packet->client_salt = m_clientSalt;
+                packet->challenge_salt = m_challengeSalt;
+                m_networkInterface->SendPacket( m_serverAddress, packet );
             }
             break;
 
@@ -648,6 +692,16 @@ public:
     }
 
 protected:
+
+    void ResetConnectionData()
+    {
+        m_serverAddress = Address();
+        m_clientState = CLIENT_STATE_DISCONNECTED;
+        m_clientSalt = 0;
+        m_challengeSalt = 0;
+        m_lastPacketSendTime = -1000.0;
+        m_lastPacketReceiveTime = -1000.0;
+    }
 
     void ProcessConnectionChallenge( const ConnectionChallengePacket & packet, const Address & address, double /*time*/ )
     {
