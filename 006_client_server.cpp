@@ -42,13 +42,14 @@ const int ChallengeHashSize = 1024;
 const float ChallengeSendRate = 0.1f;
 const float ChallengeTimeOut = 10.0f;
 const float ConnectionRequestSendRate = 0.1f;
+// todo: implement
 //const float ConnectionChallengeSendRate = 0.1f;
 const float ConnectionResponseSendRate = 0.1f;
 const float ConnectionConfirmSendRate = 0.1f;
 const float ConnectionKeepAliveSendRate = 1.0f;
-/*
-const float ConnectionTimeOut = 5.0f;
-*/
+const float ConnectionRequestTimeOut = 5.0f;
+const float ChallengeResponseTimeOut = 5.0f;
+const float KeepAliveTimeOut = 10.0f;
 
 uint64_t GenerateSalt()
 {
@@ -323,7 +324,9 @@ public:
                     ProcessConnectionResponse( *(ConnectionResponsePacket*)packet, address, time );
                     break;
 
-                // todo: process keepalive and use it update last received time from client
+                case PACKET_CONNECTION_KEEP_ALIVE:
+                    ProcessConnectionKeepAlive( *(ConnectionKeepAlivePacket*)packet, address, time );
+                    break;
 
                 default:
                     break;
@@ -351,16 +354,6 @@ protected:
         for ( int i = 0; i < MaxClients; ++i )
         {
             if ( !m_clientConnected[i] )
-                return i;
-        }
-        return -1;
-    }
-
-    int FindExistingClientIndex( const Address & address, uint64_t clientSalt ) const
-    {
-        for ( int i = 0; i < MaxClients; ++i )
-        {
-            if ( m_clientConnected[i] && m_clientAddress[i] == address && m_clientSalt[i] == clientSalt )
                 return i;
         }
         return -1;
@@ -658,7 +651,10 @@ public:
 
     void Disconnect()
     {
-        // todo: if connected, add pending connection to disconnect entries for clean shutdown
+        if ( m_clientState != CLIENT_STATE_DISCONNECTED )
+        {
+            // todo: send one disconnect packet to server to be nice
+        }
 
         ResetConnectionData();
     }
@@ -744,6 +740,50 @@ public:
         }
     }
 
+    void CheckForTimeOut( double time )
+    {
+        switch ( m_clientState )
+        {
+            case CLIENT_STATE_SENDING_CONNECTION_REQUEST:
+            {
+                // todo: re-roll client salt timeout
+
+                if ( m_lastPacketReceiveTime + ConnectionRequestTimeOut < time )
+                {
+                    printf( "connection request to server timed out\n" );
+                    Disconnect();
+                    return;
+                }
+            }
+            break;
+
+            case CLIENT_STATE_SENDING_CHALLENGE_RESPONSE:
+            {
+                if ( m_lastPacketReceiveTime + ChallengeResponseTimeOut < time )
+                {
+                    printf( "challenge response to server timed out\n" );
+                    Disconnect();
+                    return;
+                }
+            }
+            break;
+
+            case CLIENT_STATE_CONNECTED:
+            {
+                if ( m_lastPacketReceiveTime + KeepAliveTimeOut < time )
+                {
+                    printf( "connection to server timed out\n" );
+                    Disconnect();
+                    return;
+                }
+            }
+            break;
+
+            default:
+                break;
+        }
+    }
+
 protected:
 
     void ResetConnectionData()
@@ -766,7 +806,7 @@ protected:
         m_lastPacketSendTime = time;
     }
 
-    void ProcessConnectionChallenge( const ConnectionChallengePacket & packet, const Address & address, double /*time*/ )
+    void ProcessConnectionChallenge( const ConnectionChallengePacket & packet, const Address & address, double time )
     {
         if ( m_clientState != CLIENT_STATE_SENDING_CONNECTION_REQUEST )
             return;
@@ -782,10 +822,10 @@ protected:
 
         m_clientState = CLIENT_STATE_SENDING_CHALLENGE_RESPONSE;
 
-        // todo: set time last packet received (for timeout)
+        m_lastPacketReceiveTime = time;
     }
 
-    void ProcessConnectionKeepAlive( const ConnectionKeepAlivePacket & packet, const Address & address, double /*time*/ )
+    void ProcessConnectionKeepAlive( const ConnectionKeepAlivePacket & packet, const Address & address, double time )
     {
         if ( m_clientState < CLIENT_STATE_SENDING_CHALLENGE_RESPONSE )
             return;
@@ -801,7 +841,7 @@ protected:
             m_clientState = CLIENT_STATE_CONNECTED;
         }
 
-        // todo: set time last packet received (for timeout)
+        m_lastPacketReceiveTime = time;
     }
 };
 

@@ -2,17 +2,15 @@ DONE
 
     Implement rate limiting for various packets sent
 
+    Implement client-side timeouts
+
 TODO
+
+    Implement client re-rolls the client salt if no response to connection request within one second.
 
     Implement server-side timeout of a client
 
-    Implement client-side timeout of server connection
-
-    Implement disconnect packets, and client-side and server-side 'nice' disconnect list.
-
-    Implement the thing where the client re-rolls the client salt if no response within one second.
-
-    Implement connection request timeout (10 seconds, while connection timeout may be shorter...)
+    Implement disconnect packets
 
     Pass over remaining todos and actually implement them.
 
