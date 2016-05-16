@@ -1,8 +1,8 @@
 DONE
 
-TODO
-
     Implement rate limiting for various packets sent
+
+TODO
 
     Implement server-side timeout of a client
 

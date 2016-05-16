@@ -41,10 +41,13 @@ const int ClientPort = 60000;
 const int ChallengeHashSize = 1024;
 const float ChallengeSendRate = 0.1f;
 const float ChallengeTimeOut = 10.0f;
-const float ClientSendRate = 0.1f;
+const float ConnectionRequestSendRate = 0.1f;
+//const float ConnectionChallengeSendRate = 0.1f;
+const float ConnectionResponseSendRate = 0.1f;
+const float ConnectionConfirmSendRate = 0.1f;
+const float ConnectionKeepAliveSendRate = 1.0f;
 /*
 const float ConnectionTimeOut = 5.0f;
-const float KeepAliveRate = 1.0f;
 */
 
 uint64_t GenerateSalt()
@@ -283,19 +286,21 @@ public:
         m_networkInterface = NULL;
     }
 
-    void SendPackets( double /*time*/ )
+    void SendPackets( double time )
     {
         for ( int i = 0; i < MaxClients; ++i )
         {
             if ( !m_clientConnected[i] )
                 continue;
 
-            // todo: rate limiting for keep-alive packets
+            if ( m_clientData[i].lastPacketSendTime + ConnectionKeepAliveSendRate > time )
+                return;
 
             ConnectionKeepAlivePacket * packet = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
             packet->client_salt = m_clientSalt[i];
             packet->challenge_salt = m_challengeSalt[i];
-            m_networkInterface->SendPacket( m_clientAddress[i], packet );
+
+            SendPacketToConnectedClient( i, packet, time );
         }
     }
 
@@ -317,6 +322,8 @@ public:
                 case PACKET_CONNECTION_RESPONSE:
                     ProcessConnectionResponse( *(ConnectionResponsePacket*)packet, address, time );
                     break;
+
+                // todo: process keepalive and use it update last received time from client
 
                 default:
                     break;
@@ -354,6 +361,16 @@ protected:
         for ( int i = 0; i < MaxClients; ++i )
         {
             if ( m_clientConnected[i] && m_clientAddress[i] == address && m_clientSalt[i] == clientSalt )
+                return i;
+        }
+        return -1;
+    }
+
+    int FindExistingClientIndex( const Address & address, uint64_t clientSalt, uint64_t challengeSalt ) const
+    {
+        for ( int i = 0; i < MaxClients; ++i )
+        {
+            if ( m_clientConnected[i] && m_clientAddress[i] == address && m_clientSalt[i] == clientSalt && m_challengeSalt[i] == challengeSalt )
                 return i;
         }
         return -1;
@@ -467,6 +484,16 @@ protected:
         return NULL;
     }
 
+    void SendPacketToConnectedClient( int clientIndex, Packet * packet, double time )
+    {
+        assert( packet );
+        assert( clientIndex >= 0 );
+        assert( clientIndex < MaxClients );
+        assert( m_clientConnected[clientIndex] );
+        m_clientData[clientIndex].lastPacketSendTime = time;
+        m_networkInterface->SendPacket( m_clientAddress[clientIndex], packet );
+    }
+
     void ProcessConnectionRequest( const ConnectionRequestPacket & packet, const Address & address, double time )
     {
         char buffer[256];
@@ -514,32 +541,26 @@ protected:
 
     void ProcessConnectionResponse( const ConnectionResponsePacket & packet, const Address & address, double time )
     {
-        // todo: if the particular client is already connected, reply back with keep-alive, but no faster than some connection ack rate
-        // this will speed up connects while allowing keep-alives to be sent only once per-second in normal rate.
-        // also, only allow this within the first few seconds of connect for that client, or cancel it once the server has received
-        // a keep-alive back from the client.
-
-        if ( m_numConnectedClients == MaxClients )
+        const int existingClientIndex = FindExistingClientIndex( address, packet.client_salt, packet.challenge_salt );
+        if ( existingClientIndex != -1 )
         {
-            printf( "connection denied: server is full\n" );
-            ConnectionDeniedPacket * connectionDeniedPacket = (ConnectionDeniedPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DENIED );
-            connectionDeniedPacket->client_salt = packet.client_salt;
-            connectionDeniedPacket->reason = CONNECTION_DENIED_SERVER_FULL;
-            m_networkInterface->SendPacket( address, connectionDeniedPacket );
+            if ( m_clientData[existingClientIndex].lastPacketSendTime + ConnectionConfirmSendRate < time )
+            {
+                ConnectionKeepAlivePacket * connectionKeepAlivePacket = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
+                connectionKeepAlivePacket->client_salt = m_clientSalt[existingClientIndex];
+                connectionKeepAlivePacket->challenge_salt = m_challengeSalt[existingClientIndex];
+                SendPacketToConnectedClient( existingClientIndex, connectionKeepAlivePacket, time );
+            }
             return;
         }
-
-        const int existingClientIndex = FindExistingClientIndex( address, packet.client_salt );
-        if ( existingClientIndex != -1 )
-            return;
-
-        ServerChallengeEntry * entry = FindChallenge( address, packet.client_salt, time );
-        if ( !entry )
-            return;
 
         char buffer[256];
         const char * addressString = address.ToString( buffer, sizeof( buffer ) );
         printf( "processing connection response from client %s (client salt = %llx, challenge salt = %llx)\n", addressString, packet.client_salt, packet.challenge_salt );
+
+        ServerChallengeEntry * entry = FindChallenge( address, packet.client_salt, time );
+        if ( !entry )
+            return;
 
         assert( entry );
         assert( entry->address == address );
@@ -548,6 +569,17 @@ protected:
         if ( entry->challenge_salt != packet.challenge_salt )
         {
             printf( "connection challenge mismatch: expected %llx, got %llx\n", entry->challenge_salt, packet.challenge_salt );
+            return;
+        }
+
+        if ( m_numConnectedClients == MaxClients )
+        {
+            // todo: should have a rate limiter for this based on the entry
+            printf( "connection denied: server is full\n" );
+            ConnectionDeniedPacket * connectionDeniedPacket = (ConnectionDeniedPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DENIED );
+            connectionDeniedPacket->client_salt = packet.client_salt;
+            connectionDeniedPacket->reason = CONNECTION_DENIED_SERVER_FULL;
+            m_networkInterface->SendPacket( address, connectionDeniedPacket );
             return;
         }
 
@@ -560,8 +592,21 @@ protected:
         ConnectClient( clientIndex, address, packet.client_salt, packet.challenge_salt, time );
 
         ConnectionKeepAlivePacket * connectionKeepAlivePacket = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
-        connectionKeepAlivePacket->client_salt = packet.client_salt;
-        m_networkInterface->SendPacket( address, connectionKeepAlivePacket );
+        connectionKeepAlivePacket->client_salt = m_clientSalt[clientIndex];
+        connectionKeepAlivePacket->challenge_salt = m_challengeSalt[clientIndex];
+        SendPacketToConnectedClient( clientIndex, connectionKeepAlivePacket, time );
+    }
+
+    void ProcessConnectionKeepAlive( const ConnectionKeepAlivePacket & packet, const Address & address, double time )
+    {
+        const int clientIndex = FindExistingClientIndex( address, packet.client_salt, packet.challenge_salt );
+        if ( clientIndex != -1 )
+            return;
+
+        assert( clientIndex >= 0 );
+        assert( clientIndex < MaxClients );
+
+        m_clientData[clientIndex].lastPacketReceiveTime = time;
     }
 };
 
@@ -620,13 +665,13 @@ public:
 
     void SendPackets( double time )
     {
-        if ( m_lastPacketSendTime + ClientSendRate > time )
-            return;
-
         switch ( m_clientState )
         {
             case CLIENT_STATE_SENDING_CONNECTION_REQUEST:
             {
+                if ( m_lastPacketSendTime + ConnectionRequestSendRate > time )
+                    return;
+
                 char buffer[256];
                 const char *addressString = m_serverAddress.ToString( buffer, sizeof( buffer ) );
                 printf( "client sending connection request to server: %s\n", addressString );
@@ -639,6 +684,9 @@ public:
 
             case CLIENT_STATE_SENDING_CHALLENGE_RESPONSE:
             {
+                if ( m_lastPacketSendTime + ConnectionResponseSendRate > time )
+                    return;
+
                 char buffer[256];
                 const char *addressString = m_serverAddress.ToString( buffer, sizeof( buffer ) );
                 printf( "client sending challenge response to server: %s\n", addressString );
@@ -646,16 +694,21 @@ public:
                 ConnectionResponsePacket * packet = (ConnectionResponsePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_RESPONSE );
                 packet->client_salt = m_clientSalt;
                 packet->challenge_salt = m_challengeSalt;
-                m_networkInterface->SendPacket( m_serverAddress, packet );
+
+                SendPacketToServer( packet, time );
             }
             break;
 
             case CLIENT_STATE_CONNECTED:
             {
+                if ( m_lastPacketSendTime + ConnectionKeepAliveSendRate > time )
+                    return;
+
                 ConnectionKeepAlivePacket * packet = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
                 packet->client_salt = m_clientSalt;
                 packet->challenge_salt = m_challengeSalt;
-                m_networkInterface->SendPacket( m_serverAddress, packet );
+
+                SendPacketToServer( packet, time );
             }
             break;
 
@@ -701,6 +754,16 @@ protected:
         m_challengeSalt = 0;
         m_lastPacketSendTime = -1000.0;
         m_lastPacketReceiveTime = -1000.0;
+    }
+
+    void SendPacketToServer( Packet *packet, double time )
+    {
+        assert( m_clientState != CLIENT_STATE_DISCONNECTED );
+        assert( m_serverAddress.IsValid() );
+
+        m_networkInterface->SendPacket( m_serverAddress, packet );
+
+        m_lastPacketSendTime = time;
     }
 
     void ProcessConnectionChallenge( const ConnectionChallengePacket & packet, const Address & address, double /*time*/ )
