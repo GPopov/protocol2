@@ -41,17 +41,13 @@ namespace yojimbo
 {
 	class Allocator;
 
-	// todo: remove this nested namespace crap. InitializeMemory/ShutdownMemory etc.
-	namespace memory
-	{
-		void initialize( uint32_t scratch_buffer_size = 8 * 1024 * 1024 );
+	void memory_initialize( uint32_t scratch_buffer_size = 8 * 1024 * 1024 );
 
-		Allocator & default_allocator();
-		
-		Allocator & scratch_allocator();
-		
-		void shutdown();
-	}
+	Allocator & memory_default_allocator();
+	
+	Allocator & memory_scratch_allocator();
+	
+	void memory_shutdown();
 
     inline void * align_forward( void * p, uint32_t align )
     {
@@ -86,7 +82,7 @@ namespace yojimbo
 	{
 	public:
 		
-		TempAllocator( Allocator & backing = memory::scratch_allocator() )
+		TempAllocator( Allocator & backing = memory_scratch_allocator() )
 			: m_backing( backing ), m_chunk_size( 4*1024 )
 		{
 			m_p = m_start = m_buffer;

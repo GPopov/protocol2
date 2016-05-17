@@ -1,7 +1,13 @@
 DONE
 
+    Convert yojimbo.cpp stuff to use allocator
+
+    Fix up stupid nested namespaces for array::something_whatever => array_something_whatever
+
 TODO
-    
-    Pass over remaining todos in yojimbo and actually implement them!
 
     Implement counters for socket interface.
+
+    Find a way to pass context into read and write packet functions.
+
+    Make packet factory go through allocator.

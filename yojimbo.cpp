@@ -40,6 +40,8 @@
 
 namespace yojimbo
 {
+    typedef network2::Socket NetworkSocket;
+
     SocketInterface::SocketInterface( Allocator & allocator, 
                                       protocol2::PacketFactory & packetFactory, 
                                       uint32_t protocolId,
@@ -60,7 +62,7 @@ namespace yojimbo
 
         m_allocator = &allocator;
         
-        m_socket = new network2::Socket( socketPort, socketType );          // todo: create using allocator
+        m_socket = YOJIMBO_NEW( *m_allocator, NetworkSocket, socketPort, socketType );
         
         m_protocolId = protocolId;
 
@@ -76,8 +78,10 @@ namespace yojimbo
         
         m_packetFactory = &packetFactory;
         
-        queue::reserve( m_sendQueue, sendQueueSize );
-        queue::reserve( m_receiveQueue, receiveQueueSize );
+        queue_reserve( m_sendQueue, sendQueueSize );
+        queue_reserve( m_receiveQueue, receiveQueueSize );
+
+        memset( m_counters, 0, sizeof( m_counters ) );
     }
 
     SocketInterface::~SocketInterface()
@@ -86,7 +90,7 @@ namespace yojimbo
         assert( m_packetBuffer );
         assert( m_packetFactory );
 
-        for ( size_t i = 0; i < queue::size( m_sendQueue ); ++i )
+        for ( size_t i = 0; i < queue_size( m_sendQueue ); ++i )
         {
             PacketEntry & entry = m_sendQueue[i];
             assert( entry.packet );
@@ -94,7 +98,7 @@ namespace yojimbo
             m_packetFactory->DestroyPacket( entry.packet );
         }
 
-        for ( size_t i = 0; i < queue::size( m_receiveQueue ); ++i )
+        for ( size_t i = 0; i < queue_size( m_receiveQueue ); ++i )
         {
             PacketEntry & entry = m_receiveQueue[i];
             assert( entry.packet );
@@ -102,10 +106,10 @@ namespace yojimbo
             m_packetFactory->DestroyPacket( entry.packet );
         }
 
-        queue::clear( m_sendQueue );
-        queue::clear( m_receiveQueue );
+        queue_clear( m_sendQueue );
+        queue_clear( m_receiveQueue );
 
-        delete m_socket;
+        YOJIMBO_DELETE( *m_allocator, NetworkSocket, m_socket );
 
         m_allocator->Free( m_packetBuffer );
         
@@ -158,14 +162,14 @@ namespace yojimbo
         entry.address = address;
         entry.packet = packet;
 
-        if ( queue::size( m_sendQueue ) >= (size_t)m_sendQueueSize )
+        if ( queue_size( m_sendQueue ) >= (size_t)m_sendQueueSize )
         {
-            // todo: counter for packet send queue overflow
+            m_counters[SOCKET_INTERFACE_COUNTER_SEND_QUEUE_OVERFLOW]++;
             m_packetFactory->DestroyPacket( packet );
             return;
         }
 
-        queue::push_back( m_sendQueue, entry );
+        queue_push_back( m_sendQueue, entry );
     }
 
     protocol2::Packet * SocketInterface::ReceivePacket( network2::Address & from )
@@ -176,12 +180,12 @@ namespace yojimbo
         if ( IsError() )
             return NULL;
 
-        if ( queue::size( m_receiveQueue ) == 0 )
+        if ( queue_size( m_receiveQueue ) == 0 )
             return NULL;
 
         const PacketEntry & entry = m_receiveQueue[0];
 
-        queue::consume( m_receiveQueue, 1 );
+        queue_consume( m_receiveQueue, 1 );
 
         assert( entry.packet );
         assert( entry.address.IsValid() );
@@ -198,18 +202,14 @@ namespace yojimbo
         assert( m_packetBuffer );
         assert( m_packetFactory );
 
-        // todo: implement bandwidth limits here, eg. choke. can't send packets because no bandwidth available
-
-        // todo: packet choke counter
-
-        while ( queue::size( m_sendQueue ) )
+        while ( queue_size( m_sendQueue ) )
         {
             const PacketEntry & entry = m_sendQueue[0];
 
             assert( entry.packet );
             assert( entry.address.IsValid() );
 
-            queue::consume( m_sendQueue, 1 );
+            queue_consume( m_sendQueue, 1 );
 
             bool error = false;
 
@@ -219,13 +219,13 @@ namespace yojimbo
 
             if ( bytesWritten > 0 )
             {
-                // todo: increase counter for packet written
+                m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
             }
             else
             {
                 printf( "write packet error\n" );
                 m_packetFactory->DestroyPacket( entry.packet );
-                // todo: increase counter for packet write failures
+                m_counters[SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS]++;
                 error = true;
             }
 
@@ -245,17 +245,6 @@ namespace yojimbo
         assert( m_packetBuffer );
         assert( m_packetFactory );
 
-        // todo: extend the packet factory to provide custom allocation of packets (eg. through allocator), but don't put allocator in protocol2!
-
-        // todo: put encryption inside protocol2 layer (PROTOCOL2_SECURE)
-
-        // todo: must be able to discard unsupported packet types quickly, at this layer, before going further
-        // (eg. on server, mark packet types expected to be received, and discard any other types...)
-
-        // todo: encryption must be in the packet serialization layer (protocol2)
-
-        // todo: pass in list of addresses and encryption keys
-
         while ( true )
         {
             network2::Address address;
@@ -263,9 +252,9 @@ namespace yojimbo
             if ( !packetBytes )
                 break;
 
-            if ( queue::size( m_receiveQueue ) == (size_t) m_receiveQueueSize )
+            if ( queue_size( m_receiveQueue ) == (size_t) m_receiveQueueSize )
             {
-                // todo: counter for receive queue overflow
+                m_counters[SOCKET_INTERFACE_COUNTER_RECEIVE_QUEUE_OVERFLOW]++;
                 break;
             }
 
@@ -275,19 +264,19 @@ namespace yojimbo
             protocol2::Packet *packet = protocol2::ReadPacket( *m_packetFactory, m_packetBuffer, packetBytes, m_protocolId, NULL, &readError );
             if ( packet )
             {
-                // todo: counter
+                m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
             }
             else
             {
                 printf( "read packet error: %s\n", protocol2::GetErrorString( readError ) );
-                // todo: counter
+                m_counters[SOCKET_INTERFACE_COUNTER_READ_PACKET_ERRORS]++;
                 continue;
             }
 
             PacketEntry entry;
             entry.packet = packet;
             entry.address = address;
-            queue::push_back( m_receiveQueue, entry );
+            queue_push_back( m_receiveQueue, entry );
         }
     }
 

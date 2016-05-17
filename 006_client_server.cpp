@@ -1014,7 +1014,7 @@ int main()
 {
     printf( "client/server connection\n" );
 
-    memory::initialize();
+    memory_initialize();
     {
         srand( (unsigned int) time( NULL ) );
 
@@ -1026,8 +1026,8 @@ int main()
         ClientServerPacketFactory clientPacketFactory;
         ClientServerPacketFactory serverPacketFactory;
 
-        SocketInterface clientInterface( memory::default_allocator(), clientPacketFactory, ProtocolId, ClientPort );
-        SocketInterface serverInterface( memory::default_allocator(), serverPacketFactory, ProtocolId, ServerPort );
+        SocketInterface clientInterface( memory_default_allocator(), clientPacketFactory, ProtocolId, ClientPort );
+        SocketInterface serverInterface( memory_default_allocator(), serverPacketFactory, ProtocolId, ServerPort );
 
         if ( clientInterface.GetError() != SOCKET_ERROR_NONE || serverInterface.GetError() != SOCKET_ERROR_NONE )
             return 1;
@@ -1080,7 +1080,7 @@ int main()
         ShutdownNetwork();
     }
 
-    memory::shutdown();
+    memory_shutdown();
 
     return 0;
 }

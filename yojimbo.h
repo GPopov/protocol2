@@ -59,6 +59,19 @@ namespace yojimbo
         virtual void SetContext( const void * context ) = 0;
     };
 
+    enum SocketInterfaceCounter
+    {
+        SOCKET_INTERFACE_COUNTER_PACKETS_SENT,
+        SOCKET_INTERFACE_COUNTER_PACKETS_RECEIVED,
+        SOCKET_INTERFACE_COUNTER_PACKETS_READ,
+        SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN,
+        SOCKET_INTERFACE_COUNTER_READ_PACKET_ERRORS,
+        SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS,
+        SOCKET_INTERFACE_COUNTER_SEND_QUEUE_OVERFLOW,
+        SOCKET_INTERFACE_COUNTER_RECEIVE_QUEUE_OVERFLOW,
+        SOCKET_INTERFACE_COUNTER_NUM_COUNTERS
+    };
+
     class SocketInterface : public NetworkInterface
     {
         const void * m_context;
@@ -81,6 +94,8 @@ namespace yojimbo
 
         Queue<PacketEntry> m_sendQueue;
         Queue<PacketEntry> m_receiveQueue;
+
+        uint64_t m_counters[SOCKET_INTERFACE_COUNTER_NUM_COUNTERS];
 
     public:
 
