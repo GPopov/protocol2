@@ -63,11 +63,16 @@ namespace yojimbo
         m_socket = new network2::Socket( socketPort, socketType );          // todo: create using allocator
         
         m_protocolId = protocolId;
-        m_maxPacketSize = maxPacketSize;                            // todo: make sure multiple of dwords. round up.
+
+        m_maxPacketSize = maxPacketSize + ( ( maxPacketSize % 4 ) ? ( 4 - ( maxPacketSize % 4 ) ) : 0 );
+        assert( m_maxPacketSize % 4 == 0 );
+        assert( m_maxPacketSize >= maxPacketSize );
+
         m_sendQueueSize = sendQueueSize;
+
         m_receiveQueueSize = receiveQueueSize;
         
-        m_packetBuffer = new uint8_t[maxPacketSize];               // todo: use allocator
+        m_packetBuffer = (uint8_t*) m_allocator->Allocate( maxPacketSize );
         
         m_packetFactory = &packetFactory;
         
@@ -101,11 +106,14 @@ namespace yojimbo
         queue::clear( m_receiveQueue );
 
         delete m_socket;
-        delete [] m_packetBuffer;              // todo: use allocator
+
+        m_allocator->Free( m_packetBuffer );
         
         m_socket = NULL;
         m_packetBuffer = NULL;
         m_packetFactory = NULL;
+
+        m_allocator = NULL;
     }
 
     bool SocketInterface::IsError() const
@@ -211,8 +219,6 @@ namespace yojimbo
 
             if ( bytesWritten > 0 )
             {
-                // todo: get the packet type name here
-//                printf( "wrote packet type %d (%d bytes)\n", entry.packet->GetType(), bytesWritten );
                 // todo: increase counter for packet written
             }
             else
@@ -248,13 +254,7 @@ namespace yojimbo
 
         // todo: encryption must be in the packet serialization layer (protocol2)
 
-        // todo: but each client has a different private key... how to distinguish?
-
-        // todo: seems like we need to pass a bunch of address/private key pairs to the packet factory for encrypted packets
-
-        // wow. crazy.
-
-        // urgh... client/server stuff spilling into protocol level.
+        // todo: pass in list of addresses and encryption keys
 
         while ( true )
         {
@@ -275,8 +275,6 @@ namespace yojimbo
             protocol2::Packet *packet = protocol2::ReadPacket( *m_packetFactory, m_packetBuffer, packetBytes, m_protocolId, NULL, &readError );
             if ( packet )
             {
-                // todo: get the packet type name here
-//                printf( "read packet type %d (%d bytes)\n", packet->GetType(), packetBytes );
                 // todo: counter
             }
             else

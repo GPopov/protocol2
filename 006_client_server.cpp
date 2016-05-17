@@ -920,7 +920,7 @@ protected:
         m_lastPacketSendTime = time;
     }
 
-    void ProcessConnectionDenied( const ConnectionDeniedPacket & packet, const Address & address, double time )
+    void ProcessConnectionDenied( const ConnectionDeniedPacket & packet, const Address & address, double /*time*/ )
     {
         if ( m_clientState != CLIENT_STATE_SENDING_CONNECTION_REQUEST )
             return;
