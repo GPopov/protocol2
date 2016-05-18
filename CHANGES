@@ -16,6 +16,18 @@ Wednesday May 18th, 2016
 
     Passes!
 
+    Overhead for encryption per-packet = 16 bytes.
+
+    Now implement packet encryption and decryption.
+
+    Given a packet of a given size, knowing the key and nonce, encrypt it.
+
+    Next, given encrypted packet of given size, knowing key and nonce, decrypt it.
+
+    Presumably extra data needs to be added to the end of the packet?
+
+    Once this is done, I have all the building blocks I need for the secure server!    
+
 
 Tuesday May 17th, 2016
 ======================

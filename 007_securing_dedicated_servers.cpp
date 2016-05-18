@@ -40,11 +40,10 @@ const int ServerPort = 50000;
 const int NonceBytes = crypto_aead_chacha20poly1305_NPUBBYTES;
 const int KeyBytes = crypto_aead_chacha20poly1305_KEYBYTES;
 const int AuthBytes = crypto_aead_chacha20poly1305_ABYTES;
+const int MacBytes = crypto_secretbox_MACBYTES;
 const int TokenBytes = 1024;
 const int MaxServersPerToken = 8;
 const int TokenExpirySeconds = 10;
-
-// todo: seems like client salt needs to be sent back to client, and sent with client to server inside connection request
 
 struct Token
 {
@@ -196,6 +195,26 @@ bool DecryptToken( const uint8_t * encryptedMessage, Token & decryptedToken, con
     return true;
 }
 
+bool EncryptPacket( const uint8_t * packetData, int packetLength, uint8_t *encryptedPacketData, int & encryptedPacketLength, const uint8_t *nonce, const uint8_t *key )
+{
+    if ( crypto_secretbox_easy( encryptedPacketData, packetData, packetLength, nonce, key ) != 0 )
+        return false;
+
+    encryptedPacketLength = packetLength + MacBytes;
+
+    return true;
+}
+
+bool DecryptPacket( const uint8_t * encryptedPacketData, int encryptedPacketLength, uint8_t *decryptedPacketData, int & decryptedPacketLength, const uint8_t *nonce, const uint8_t *key )
+{
+    if ( crypto_secretbox_open_easy( decryptedPacketData, encryptedPacketData, encryptedPacketLength, nonce, key ) != 0 )
+        return false;
+
+    decryptedPacketLength = encryptedPacketLength - MacBytes;
+
+    return true;
+}
+
 enum PacketTypes
 {
     PACKET_CONNECTION_REQUEST,                      // client requests a connection.
@@ -228,54 +247,6 @@ struct ConnectionRequestPacket : public Packet
     PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
 
-void sodium_test()
-{
-    printf( "NonceBytes = %d\n", NonceBytes );
-    printf( "KeyBytes = %d\n", KeyBytes );
-    printf( "AuthBytes = %d\n", AuthBytes );
-
-    const uint8_t message[] = "rigor mortis makes me hard";
-    const uint8_t additional[] = "connection request";
-
-    const int messageLength = strlen( (char*) message );
-    const int additionalLength = strlen( (char*) additional );
-
-    unsigned char nonce[NonceBytes];
-    unsigned char key[KeyBytes];
-
-    randombytes_buf( key, sizeof( key ) );
-    randombytes_buf( nonce, sizeof( nonce ) );
-
-    unsigned char ciphertext[ messageLength + crypto_aead_chacha20poly1305_ABYTES ];
-    unsigned long long ciphertext_len;
-
-    crypto_aead_chacha20poly1305_encrypt( ciphertext, &ciphertext_len,
-                                          message, messageLength,
-                                          additional, additionalLength,
-                                          NULL, nonce, key );
-
-    unsigned char decrypted[messageLength+1];
-    
-    unsigned long long decrypted_len;
-    
-    int decrypt_result = crypto_aead_chacha20poly1305_decrypt( decrypted, &decrypted_len,
-                                                               NULL,
-                                                               ciphertext, ciphertext_len,
-                                                               additional, additionalLength,
-                                                               nonce, key );
-
-    if ( decrypt_result == 0 )
-    {
-        decrypted[messageLength+1] = '\0';
-        assert( (int) decrypted_len == messageLength );
-        printf( "message decrypted OK: '%s'\n", decrypted );
-    }
-    else
-    {
-        printf( "message forged!\n" );
-    }
-}
-
 int main()
 {
     if ( sodium_init() == -1 )
@@ -283,8 +254,6 @@ int main()
         printf( "error: failed to initialize libsodium\n" );
         return 1;
     }
-
-//    sodium_test();
 
     Token token;
 
@@ -326,26 +295,40 @@ int main()
         return 1;
     }
 
+    uint8_t packet[1024];
+
+    randombytes_buf( packet, sizeof( packet ) );
+
+    uint8_t encryptedPacket[2048];
+    int encryptedPacketLength;
+    if ( !EncryptPacket( packet, sizeof( packet ), encryptedPacket, encryptedPacketLength, token.nonce, token.key ) )
+    {
+        printf( "error: failed to encrypt packet\n" );
+        return 1;
+    }
+
+    printf( "successfully encrypted packet\n" );
+
+    uint8_t decryptedPacket[2048];
+    int decryptedPacketLength;
+    if ( !DecryptPacket( encryptedPacket, encryptedPacketLength, decryptedPacket, decryptedPacketLength, token.nonce, token.key ) )
+    {
+        printf( "error: failed to decrypt packet\n" );
+        return 1;
+    }
+
+    printf( "successfull decrypted packet\n" );
+
+    if ( decryptedPacketLength == sizeof( packet ) && memcmp( packet, decryptedPacket, sizeof( packet ) ) == 0 )
+    {
+        printf( "success: decrypted packet matches original packet!\n" );
+
+    }
+    else
+    {
+        printf( "error: decrypted packet does not match original packet\n" );
+        return 1;
+    }
+
     return 0;
 }
-
-
-/*
-#define MESSAGE ((const unsigned char *) "test")
-#define MESSAGE_LEN 4
-#define CIPHERTEXT_LEN (crypto_secretbox_MACBYTES + MESSAGE_LEN)
-
-unsigned char nonce[crypto_secretbox_NONCEBYTES];
-unsigned char key[crypto_secretbox_KEYBYTES];
-unsigned char ciphertext[CIPHERTEXT_LEN];
-
-randombytes_buf(nonce, sizeof nonce);
-randombytes_buf(key, sizeof key);
-crypto_secretbox_easy(ciphertext, MESSAGE, MESSAGE_LEN, nonce, key);
-
-unsigned char decrypted[MESSAGE_LEN];
-if (crypto_secretbox_open_easy(decrypted, ciphertext, CIPHERTEXT_LEN, nonce, key) != 0) 
-{
-    printf( "message forged\n" );
-}
-*/
