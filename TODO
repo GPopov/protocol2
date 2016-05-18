@@ -2,3 +2,14 @@ DONE
 
 TODO
 
+    Now to actually design the packet format for the encryption packet
+
+    I think there needs to be an initial byte that tells you how to handle the packet
+
+    The initial byte needs to have the packet type, no question.
+
+    Because certain packet types will be encrypted and others will not be.
+
+    The packet factory needs to know which packets are encrypted on a per-type basis.
+
+    Protocol2 should be able to build without security if it is desired, so #if PROTOCOL_SECURE is necessary.
