@@ -81,6 +81,10 @@ namespace yojimbo
         queue_reserve( m_sendQueue, sendQueueSize );
         queue_reserve( m_receiveQueue, receiveQueueSize );
 
+#if YOJIMBO_SECURE
+        m_packetTypeIsEncrypted = (uint8_t*) m_allocator->Allocate( m_packetFactory->GetNumPacketTypes() );
+#endif // #if YOJIMBO_SECURE
+
         memset( m_counters, 0, sizeof( m_counters ) );
     }
 
@@ -113,6 +117,11 @@ namespace yojimbo
 
         m_allocator->Free( m_packetBuffer );
         
+#if YOJIMBO_SECURE
+        m_allocator->Free( m_packetTypeIsEncrypted );
+        m_packetTypeIsEncrypted = NULL;
+#endif // #if YOJIMBO_SECURE
+
         m_socket = NULL;
         m_packetBuffer = NULL;
         m_packetFactory = NULL;
@@ -301,4 +310,37 @@ namespace yojimbo
     {
         m_context = context;
     }
+
+#if YOJIMBO_SECURE
+
+    void SocketInterface::EnableEncryptionForAllPacketTypes()
+    {
+        memset( m_packetTypeIsEncrypted, 0xFF, m_packetFactory->GetNumPacketTypes() );
+    }
+
+    void SocketInterface::DisableEncryptionForPacketType( int type )
+    {
+        assert( type >= 0 );
+        assert( type < m_packetFactory->GetNumPacketTypes() );
+        m_packetTypeIsEncrypted[type] = 0;
+    }
+
+    bool SocketInterface::IsEncryptedPacketType( int type ) const
+    {
+        assert( type >= 0 );
+        assert( type < m_packetFactory->GetNumPacketTypes() );
+        return m_packetTypeIsEncrypted[type] != 0;
+    }
+
+    void SocketInterface::AddEncryptionMapping( const network2::Address & /*address*/, const uint8_t * /*nonce*/, const uint8_t * /*key*/ )
+    {
+        // todo
+    }
+
+    void SocketInterface::RemoveEncryptionMapping( const network2::Address & /*address*/ )
+    {
+        // todo
+    }
+
+#endif // #if YOJIMBO_SECURE
 }

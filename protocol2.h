@@ -1241,15 +1241,17 @@ namespace protocol2
 
     struct PacketInfo
     {
-        void * context;                             // context for the packet serialization (optional, pass in NULL)
+        bool rawFormat;                             // if true packets are written in "raw" format without crc32 (for encryption)
         uint32_t protocolId;                        // protocol id that distinguishes your protocol from other packets sent over UDP
         PacketFactory * packetFactory;              // packet factory used to create packets, and determine information about packet types. required.
+        void * context;                             // context for the packet serialization (optional, pass in NULL)
 
         PacketInfo()
         {
-            context = NULL;
+            rawFormat = false;
             protocolId = 0;
             packetFactory = NULL;
+            context = NULL;
         }
     };
 
@@ -1450,7 +1452,9 @@ namespace protocol2
         stream.SetContext( info.context );
 
         uint32_t crc32 = 0;
-        stream.SerializeBits( crc32, 32 );
+
+        if ( !info.rawFormat )
+            stream.SerializeBits( crc32, 32 );
 
         if ( header )
         {
@@ -1467,6 +1471,9 @@ namespace protocol2
             stream.SerializeInteger( packetType, 0, numPacketTypes - 1 );
         }
 
+        if ( info.rawFormat )
+            stream.SerializeAlign();            
+
         if ( !packet->SerializeWrite( stream ) )
             return 0;
 
@@ -1476,11 +1483,14 @@ namespace protocol2
 
         stream.Flush();
 
-        uint32_t network_protocolId = host_to_network( info.protocolId );
-        crc32 = calculate_crc32( (uint8_t*) &network_protocolId, 4 );
-        crc32 = calculate_crc32( buffer, stream.GetBytesProcessed(), crc32 );
+        if ( !info.rawFormat )
+        {
+            uint32_t network_protocolId = host_to_network( info.protocolId );
+            crc32 = calculate_crc32( (uint8_t*) &network_protocolId, 4 );
+            crc32 = calculate_crc32( buffer, stream.GetBytesProcessed(), crc32 );
 
-        *((uint32_t*)buffer) = host_to_network( crc32 );
+            *((uint32_t*)buffer) = host_to_network( crc32 );
+        }
 
         if ( stream.GetError() )
             return 0;
@@ -1507,19 +1517,22 @@ namespace protocol2
         stream.SetContext( info.context );
 
         uint32_t read_crc32 = 0;
-        stream.SerializeBits( read_crc32, 32 );
-
-        uint32_t network_protocolId = host_to_network( info.protocolId );
-        uint32_t crc32 = calculate_crc32( (const uint8_t*) &network_protocolId, 4 );
-        uint32_t zero = 0;
-        crc32 = calculate_crc32( (const uint8_t*) &zero, 4, crc32 );
-        crc32 = calculate_crc32( buffer + 4, bufferSize - 4, crc32 );
-
-        if ( crc32 != read_crc32 )
+        if ( !info.rawFormat )
         {
-            if ( errorCode )
-                *errorCode = PROTOCOL2_ERROR_CRC32_MISMATCH;
-            return NULL;
+            stream.SerializeBits( read_crc32, 32 );
+
+            uint32_t network_protocolId = host_to_network( info.protocolId );
+            uint32_t crc32 = calculate_crc32( (const uint8_t*) &network_protocolId, 4 );
+            uint32_t zero = 0;
+            crc32 = calculate_crc32( (const uint8_t*) &zero, 4, crc32 );
+            crc32 = calculate_crc32( buffer + 4, bufferSize - 4, crc32 );
+
+            if ( crc32 != read_crc32 )
+            {
+                if ( errorCode )
+                    *errorCode = PROTOCOL2_ERROR_CRC32_MISMATCH;
+                return NULL;
+            }
         }
 
         if ( header )
@@ -1619,9 +1632,13 @@ cleanup:
 
         numPacketsWritten = 0;
 
-        memset( buffer, 0, 4 );         // space for crc32
+        int aggregatePacketBytes = 0;
 
-        int aggregatePacketBytes = 4;
+        if ( !info.rawFormat )
+        {
+            memset( buffer, 0, 4 );         // space for crc32
+            aggregatePacketBytes = 4;
+        }
 
         // write the optional aggregate packet header
 
@@ -1719,13 +1736,16 @@ cleanup:
         assert( aggregatePacketBytes > 0 );
         assert( aggregatePacketBytes <= bufferSize );
 
-        // calculate header crc32 for aggregate packet as a whole
+        if ( !info.rawFormat )
+        {
+            // calculate header crc32 for aggregate packet as a whole
 
-        uint32_t network_protocolId = host_to_network( info.protocolId );
-        uint32_t crc32 = calculate_crc32( (uint8_t*) &network_protocolId, 4 );
-        crc32 = calculate_crc32( buffer, aggregatePacketBytes, crc32 );
+            uint32_t network_protocolId = host_to_network( info.protocolId );
+            uint32_t crc32 = calculate_crc32( (uint8_t*) &network_protocolId, 4 );
+            crc32 = calculate_crc32( buffer, aggregatePacketBytes, crc32 );
 
-        *((uint32_t*)buffer) = host_to_network( crc32 );
+            *((uint32_t*)buffer) = host_to_network( crc32 );
+        }
 
         return aggregatePacketBytes;
     }
@@ -1754,22 +1774,25 @@ cleanup:
 
         stream.SetContext( info.context );
 
-        // verify crc32 for packet matches, otherwise discard with error
-
-        uint32_t read_crc32 = 0;
-        stream.SerializeBits( read_crc32, 32 );
-
-        uint32_t network_protocolId = host_to_network( info.protocolId );
-        uint32_t crc32 = calculate_crc32( (const uint8_t*) &network_protocolId, 4 );
-        uint32_t zero = 0;
-        crc32 = calculate_crc32( (const uint8_t*) &zero, 4, crc32 );
-        crc32 = calculate_crc32( buffer + 4, bufferSize - 4, crc32 );
-
-        if ( crc32 != read_crc32 )
+        if ( !info.rawFormat )
         {
-            if ( errorCode )
-                *errorCode = PROTOCOL2_ERROR_CRC32_MISMATCH;
-            return;
+            // verify crc32 for packet matches, otherwise discard with error
+
+            uint32_t read_crc32 = 0;
+            stream.SerializeBits( read_crc32, 32 );
+
+            uint32_t network_protocolId = host_to_network( info.protocolId );
+            uint32_t crc32 = calculate_crc32( (const uint8_t*) &network_protocolId, 4 );
+            uint32_t zero = 0;
+            crc32 = calculate_crc32( (const uint8_t*) &zero, 4, crc32 );
+            crc32 = calculate_crc32( buffer + 4, bufferSize - 4, crc32 );
+
+            if ( crc32 != read_crc32 )
+            {
+                if ( errorCode )
+                    *errorCode = PROTOCOL2_ERROR_CRC32_MISMATCH;
+                return;
+            }
         }
 
         // read optional aggregate packet header

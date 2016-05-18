@@ -28,6 +28,91 @@ Wednesday May 18th, 2016
 
     Once this is done, I have all the building blocks I need for the secure server!    
 
+    Now to actually design the packet format for the encryption packet
+
+    I think there needs to be an initial byte that tells you how to handle the packet
+
+    The initial byte needs to have the packet type, no question.
+
+    Because certain packet types will be encrypted and others will not be.
+
+    The packet factory needs to know which packets are encrypted on a per-type basis.
+
+    Protocol2 should be able to build without security if it is desired, so #if PROTOCOL_SECURE is necessary.
+
+    To encrypt a packet, you need to know:
+
+        a) packet type
+        b) packet data
+        c) nonce
+        d) key
+
+    To decrypt a packet, you need to know:
+
+        a) packet type (some types may not be compressed, eg. connection request)
+        b) address it comes from
+        c) some mapping from address to (nonce,key) pair for that address
+
+    Does not seem that the encryption can be done at the protocol2 level entirely,
+    because it requires a mapping from address <-> (nonce,key), and address lives in network2.
+
+    Seems that it must push mostly up to yojimbo level.
+
+    But still I think the encrypted per-packet is in the protocol2 level.
+
+    No. Per packet encryption and everything has been moved into yojimbo. Leaving protocol2 alone.
+
+    Seems that the encrypted packet work needs to be done there, because it must allocate
+    data structures, and I don't want to have to move the custom allocator support down
+    into protocol2.
+
+    ---------
+
+    I think the packet header stuff is a bit shitty.
+
+    Is it really necessary? I mean you'd have to queue up the packet headers in addition to the packet types.
+
+    What need do I have for a packet header separate from the packet types?
+
+    Also, it makes encryption really annoying, because the header would need to go after the type.
+
+    Packet header is used in packet aggregation and packet fragmentation and reassembly examples.
+
+    Can these examples be implemented without this header support?
+
+    It would be nice if it could, because it would be much simpler.
+
+    IMO. A customized header shoud just be incorporated into a base packet type! *DONE*
+    
+    ------
+
+    Need to think long and hard about the header.
+
+    On one hand it is very flexible.
+
+    On the other, it's a huge pain in the ass for integration into a network interface.
+
+    I feel like what I really want is a simple one byte value before each packet, eg. packet flags:
+
+        fragment, encrypted, etc.
+
+    This way fragment/encrypted don't have a dependency on 'type' which doesn't makes sense anyway for an aggregate packet.
+
+    Seems like the decision to encrypt or not when sending a packet should be allowed on a per-packet basis,
+    but of course, the sender should only accept certain types of packets when encrypted, and discard any
+    non-encrypted ones sent to them.
+
+    So really, you only even want to allow the 'connection request' to be unencrypted and everything else must be encrypted,
+    including fragments, aggregate packets and so on.
+
+    -------
+
+    Idea: flag per-packet, PACKET_FLAG_DO_NOT_AGGREGATE, PACKET_FLAG_ENCRYPT, PACKET_FLAG_FRAGMENT
+
+    Perhaps I should just gut protocol2 and move it into yojimbo and rethink.
+
+    -------
+
 
 Tuesday May 17th, 2016
 ======================

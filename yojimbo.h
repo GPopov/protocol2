@@ -27,8 +27,7 @@
 #ifndef YOJIMBO_H
 #define YOJIMBO_H
 
-#define YOJIMBO_SECURE   1
-#define PROTOCOL2_SECURE 1
+#define YOJIMBO_SECURE 1
 
 #include "network2.h"
 #include "protocol2.h"
@@ -60,6 +59,20 @@ namespace yojimbo
         virtual int GetMaxPacketSize() const = 0;
 
         virtual void SetContext( void * context ) = 0;
+
+#if YOJIMBO_SECURE
+
+        virtual void EnableEncryptionForAllPacketTypes() = 0;
+
+        virtual void DisableEncryptionForPacketType( int type ) = 0;
+
+        virtual bool IsEncryptedPacketType( int type ) const = 0;
+
+        virtual void AddEncryptionMapping( const network2::Address & address, const uint8_t * nonce, const uint8_t * key ) = 0;
+
+        virtual void RemoveEncryptionMapping( const network2::Address & address ) = 0;
+
+#endif // #if YOJIMBO_SECURE
     };
 
     enum SocketInterfaceCounter
@@ -98,6 +111,10 @@ namespace yojimbo
         Queue<PacketEntry> m_sendQueue;
         Queue<PacketEntry> m_receiveQueue;
 
+#if YOJIMBO_SECURE
+        uint8_t * m_packetTypeIsEncrypted;
+#endif // #if YOJIMBO_SECURE
+
         uint64_t m_counters[SOCKET_INTERFACE_COUNTER_NUM_COUNTERS];
 
     public:
@@ -132,6 +149,20 @@ namespace yojimbo
         int GetMaxPacketSize() const;
 
         void SetContext( void * context );
+
+#if YOJIMBO_SECURE
+
+        void EnableEncryptionForAllPacketTypes();
+
+        void DisableEncryptionForPacketType( int type );
+
+        bool IsEncryptedPacketType( int type ) const;
+
+        void AddEncryptionMapping( const network2::Address & address, const uint8_t * nonce, const uint8_t * key );
+
+        void RemoveEncryptionMapping( const network2::Address & address );
+
+#endif // #if YOJIMBO_SECURE
     };
 }
 
