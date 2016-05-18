@@ -124,7 +124,7 @@ struct PacketFactory : public protocol2::PacketFactory
 {
     PacketFactory() : protocol2::PacketFactory( NUM_PACKET_TYPES ) {}
 
-    protocol2::Packet* CreateInternal( int type )
+    protocol2::Packet* Create( int type )
     {
         switch ( type )
         {
@@ -132,6 +132,11 @@ struct PacketFactory : public protocol2::PacketFactory
             case ACK_PACKET:     return new AckPacket();
         }
         return NULL;
+    }
+
+    void Destroy( protocol2::Packet *packet )
+    {
+        delete packet;
     }
 };
 
@@ -406,7 +411,11 @@ void SendPacket( const network2::Address & from, const network2::Address & to, p
 
     uint8_t *packetData = new uint8_t[MaxPacketSize];
 
-    const int packetSize = protocol2::WritePacket( packet, packetFactory.GetNumTypes(), packetData, MaxPacketSize, ProtocolId );
+    protocol2::PacketInfo info;
+    info.protocolId = ProtocolId;
+    info.packetFactory = &packetFactory;
+
+    const int packetSize = protocol2::WritePacket( info, packet, packetData, MaxPacketSize );
 
     if ( packetSize > 0 )
     {
@@ -427,8 +436,12 @@ protocol2::Packet* ReceivePacket( network2::Address & from, network2::Address & 
     if ( !packetData )
         return NULL;
 
+    protocol2::PacketInfo info;
+    info.protocolId = ProtocolId;
+    info.packetFactory = &packetFactory;
+
     int error = 0;
-    protocol2::Packet *packet = protocol2::ReadPacket( packetFactory, packetData, packetSize, ProtocolId, NULL, &error );
+    protocol2::Packet *packet = protocol2::ReadPacket( info, packetData, packetSize, NULL, &error );
     if ( error != PROTOCOL2_ERROR_NONE )
         printf( "read packet error: %s\n", protocol2::GetErrorString( error ) );
 

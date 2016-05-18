@@ -1,4 +1,20 @@
 
+Tuesday May 17th, 2016
+======================
+
+    Find a way to pass context into read and write packet functions.
+
+    PacketInfo struct passed into all read/write functions makes it easy to extend packet read/write in future.
+
+    Also, makes sure both read and write have access to the packet factory, which will be required.
+
+    Converted all example programs over to use the new stuff.
+
+    Also made packet factory destroy packet a virtual, so it can be overridden to create packets from a custom heap.
+
+    This should cover the protocol2 for embedding as a library as it does no other dynamic allocations.
+
+
 Monday May 16th, 2016
 =====================
 
@@ -19,6 +35,12 @@ Monday May 16th, 2016
     Server-side handle disconnect packets.
 
     Implement code on client that handles connection request denied, both reasons.
+
+    Convert yojimbo.cpp stuff to use allocator
+
+    Fix up stupid nested namespaces for array::something_whatever => array_something_whatever
+
+    Implement counters for socket interface.
 
 
 Sunday May 15th, 2016

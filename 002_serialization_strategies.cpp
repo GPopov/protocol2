@@ -874,7 +874,7 @@ struct TestPacketFactory : public protocol2::PacketFactory
 {
     TestPacketFactory() : PacketFactory( TEST_PACKET_NUM_TYPES ) {}
 
-    protocol2::Packet* CreateInternal( int type )
+    protocol2::Packet* Create( int type )
     {
         switch ( type )
         {
@@ -884,6 +884,11 @@ struct TestPacketFactory : public protocol2::PacketFactory
             case TEST_PACKET_D: return new TestPacketD();
         }
         return NULL;
+    }
+
+    void Destroy( protocol2::Packet *packet )
+    {
+        delete packet;
     }
 };
 
@@ -907,7 +912,11 @@ int main()
 
         bool error = false;
 
-        const int bytesWritten = protocol2::WritePacket( writePacket, packetFactory.GetNumTypes(), writeBuffer, MaxPacketSize, ProtocolId );
+        protocol2::PacketInfo info;
+        info.protocolId = ProtocolId;
+        info.packetFactory = &packetFactory;
+
+        const int bytesWritten = protocol2::WritePacket( info, writePacket, writeBuffer, MaxPacketSize );
 
         if ( bytesWritten > 0 )
         {
@@ -924,8 +933,7 @@ int main()
         memcpy( readBuffer, writeBuffer, bytesWritten );
 
         int readError;
-
-        protocol2::Packet *readPacket = protocol2::ReadPacket( packetFactory, readBuffer, bytesWritten, ProtocolId, NULL, &readError );
+        protocol2::Packet *readPacket = protocol2::ReadPacket( info, readBuffer, bytesWritten, NULL, &readError );
         
         if ( readPacket )
         {

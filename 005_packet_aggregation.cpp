@@ -219,7 +219,7 @@ struct TestPacketFactory : public protocol2::PacketFactory
 {
     TestPacketFactory() : PacketFactory( TEST_PACKET_NUM_TYPES ) {}
 
-    protocol2::Packet* CreateInternal( int type )
+    protocol2::Packet* Create( int type )
     {
         switch ( type )
         {
@@ -228,6 +228,11 @@ struct TestPacketFactory : public protocol2::PacketFactory
             case TEST_PACKET_C: return new TestPacketC();
         }
         return NULL;
+    }
+
+    void Destroy( protocol2::Packet *packet )
+    {
+        delete packet;
     }
 };
 
@@ -319,12 +324,15 @@ int main()
 
         int numPacketsActuallyWritten = 0;
 
-        const int bytesWritten = protocol2::WriteAggregatePacket( numWritePackets,
+        protocol2::PacketInfo info;
+        info.protocolId = ProtocolId;
+        info.packetFactory = &packetFactory;
+
+        const int bytesWritten = protocol2::WriteAggregatePacket( info, 
+                                                                  numWritePackets,
                                                                   writePackets, 
-                                                                  packetFactory.GetNumTypes(), 
                                                                   writeBuffer, 
                                                                   MaxPacketSize, 
-                                                                  ProtocolId, 
                                                                   numPacketsActuallyWritten,
                                                                   NULL,
                                                                   (protocol2::Object**) writePacketHeaders );
@@ -360,7 +368,11 @@ int main()
 
             printf( "reading aggregate packet (%d bytes)\n", bytesToRead );
 
-            ReadAggregatePacket( MaxPacketsPerIteration, readPackets, packetFactory, readBuffer, bytesWritten, ProtocolId, numReadPackets, NULL, (protocol2::Object**) readPacketHeaders, &readError );
+            protocol2::PacketInfo info;
+            info.protocolId = ProtocolId;
+            info.packetFactory = &packetFactory;
+
+            ReadAggregatePacket( info, MaxPacketsPerIteration, readPackets, readBuffer, bytesWritten, numReadPackets, NULL, (protocol2::Object**) readPacketHeaders, &readError );
 
             if ( readError != PROTOCOL2_ERROR_NONE )
             {

@@ -334,7 +334,7 @@ struct TestPacketFactory : public protocol2::PacketFactory
 {
     TestPacketFactory() : PacketFactory( TEST_PACKET_NUM_TYPES ) {}
 
-    protocol2::Packet* CreateInternal( int type )
+    protocol2::Packet* Create( int type )
     {
         switch ( type )
         {
@@ -343,6 +343,11 @@ struct TestPacketFactory : public protocol2::PacketFactory
             case TEST_PACKET_C: return new TestPacketC();
         }
         return NULL;
+    }
+
+    void Destroy( protocol2::Packet *packet )
+    {
+        delete packet;
     }
 };
 

@@ -57,6 +57,12 @@ project "006_client_server"
     files { "006_client_server.cpp", "protocol2.h", "network2.h" }
     links { "yojimbo" }
 
+project "007_securing_dedicated_servers"
+    language "C++"
+    kind "ConsoleApp"
+    files { "007_securing_dedicated_servers.cpp", "protocol2.h", "network2.h" }
+    links { "yojimbo", "sodium" }
+
 if _ACTION == "clean" then
     os.rmdir "obj"
     if not os.is "windows" then
@@ -74,6 +80,7 @@ if _ACTION == "clean" then
         os.execute "rm -f 004_sending_large_blocks_of_data"
         os.execute "rm -f 005_packet_aggregation"
         os.execute "rm -f 006_client_server"
+        os.execute "rm -f 006_securing_dedicated_servers"
         os.execute "find . -name .DS_Store -delete"
     else
         os.rmdir "ipch"
@@ -219,6 +226,21 @@ if not os.is "windows" then
         execute = function ()
             if os.execute "make -j4 006_client_server" == 0 then
                 os.execute "./bin/006_client_server"
+            end
+        end
+    }
+
+    newaction
+    {
+        trigger     = "007",
+        description = "Build example source for client/server",
+        valid_kinds = premake.action.get("gmake").valid_kinds,
+        valid_languages = premake.action.get("gmake").valid_languages,
+        valid_tools = premake.action.get("gmake").valid_tools,
+     
+        execute = function ()
+            if os.execute "make -j4 007_securing_dedicated_servers" == 0 then
+                os.execute "./bin/007_securing_dedicated_servers"
             end
         end
     }

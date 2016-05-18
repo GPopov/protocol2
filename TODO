@@ -1,13 +1,8 @@
 DONE
 
-    Convert yojimbo.cpp stuff to use allocator
-
-    Fix up stupid nested namespaces for array::something_whatever => array_something_whatever
+    Start playing around with libsodium and encrypted packets.
 
 TODO
+    
+    Sketch out token structure, connection request packet, generate tokens etc.
 
-    Implement counters for socket interface.
-
-    Find a way to pass context into read and write packet functions.
-
-    Make packet factory go through allocator.

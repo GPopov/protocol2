@@ -170,6 +170,8 @@ namespace yojimbo
         }
 
         queue_push_back( m_sendQueue, entry );
+
+        m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_SENT]++;
     }
 
     protocol2::Packet * SocketInterface::ReceivePacket( network2::Address & from )
@@ -192,6 +194,8 @@ namespace yojimbo
 
         from = entry.address;
 
+        m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_RECEIVED]++;
+
         return entry.packet;
     }
 
@@ -213,9 +217,13 @@ namespace yojimbo
 
             bool error = false;
 
-            // todo: need a way to pass in context to write packet
+            protocol2::PacketInfo info;
 
-            const int bytesWritten = protocol2::WritePacket( entry.packet, m_packetFactory->GetNumTypes(), m_packetBuffer, m_maxPacketSize, m_protocolId );
+            info.context = m_context;
+            info.protocolId = m_protocolId;
+            info.packetFactory = m_packetFactory;
+
+            const int bytesWritten = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
 
             if ( bytesWritten > 0 )
             {
@@ -258,10 +266,14 @@ namespace yojimbo
                 break;
             }
 
-            // todo: need a way to pass in context to read packet
+            protocol2::PacketInfo info;
+            
+            info.context = m_context;
+            info.protocolId = m_protocolId;
+            info.packetFactory = m_packetFactory;
 
             int readError;
-            protocol2::Packet *packet = protocol2::ReadPacket( *m_packetFactory, m_packetBuffer, packetBytes, m_protocolId, NULL, &readError );
+            protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
             if ( packet )
             {
                 m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
@@ -285,7 +297,7 @@ namespace yojimbo
         return m_maxPacketSize;
     }
 
-    void SocketInterface::SetContext( const void * context )
+    void SocketInterface::SetContext( void * context )
     {
         m_context = context;
     }

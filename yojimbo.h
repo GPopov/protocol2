@@ -27,6 +27,9 @@
 #ifndef YOJIMBO_H
 #define YOJIMBO_H
 
+#define YOJIMBO_SECURE   1
+#define PROTOCOL2_SECURE 1
+
 #include "network2.h"
 #include "protocol2.h"
 #include "yojimbo_config.h"
@@ -56,7 +59,7 @@ namespace yojimbo
 
         virtual int GetMaxPacketSize() const = 0;
 
-        virtual void SetContext( const void * context ) = 0;
+        virtual void SetContext( void * context ) = 0;
     };
 
     enum SocketInterfaceCounter
@@ -74,7 +77,7 @@ namespace yojimbo
 
     class SocketInterface : public NetworkInterface
     {
-        const void * m_context;
+        void * m_context;
 
         uint32_t m_protocolId;
         int m_maxPacketSize;
@@ -128,7 +131,7 @@ namespace yojimbo
 
         int GetMaxPacketSize() const;
 
-        void SetContext( const void * context );
+        void SetContext( void * context );
     };
 }
 

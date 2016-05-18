@@ -1003,6 +1003,9 @@ namespace protocol2
                 return false;                                                       \
         } while (0)
 
+    #define serialize_uint32( stream, value )                                       \
+        serialize_bits( stream, value, 32 );
+
     template <typename Stream> bool serialize_uint64_internal( Stream & stream, uint64_t & value )
     {
         uint32_t hi,lo;
@@ -1134,6 +1137,7 @@ namespace protocol2
     #define read_bool( stream, value ) read_bits( stream, value, 1 )
 
     #define read_float     serialize_float
+    #define read_uint32    serialize_uint32
     #define read_uint64    serialize_uint64
     #define read_double    serialize_double
     #define read_bytes     serialize_bytes
@@ -1164,6 +1168,7 @@ namespace protocol2
         } while (0)
 
     #define write_float    serialize_float
+    #define write_uint32   serialize_uint32
     #define write_uint64   serialize_uint64
     #define write_double   serialize_double
     #define write_bytes    serialize_bytes
@@ -1198,13 +1203,9 @@ namespace protocol2
         
         Packet( int _type ) : type(_type) {}
 
-        int GetType() const { return type; }
-
-    protected:
-
         virtual ~Packet() {}
 
-        friend class PacketFactory;
+        int GetType() const { return type; }
 
     private:
 
@@ -1214,7 +1215,7 @@ namespace protocol2
 
     class PacketFactory
     {        
-        int m_numTypes;
+        int m_numPacketTypes;
         int m_numAllocatedPackets;  
 #if PROTOCOL2_DEBUG_MEMORY_LEAKS
         std::map<void*,int> allocated_packets;
@@ -1230,22 +1231,60 @@ namespace protocol2
 
         void DestroyPacket( Packet *packet );
 
-        int GetNumTypes() const;
+        int GetNumPacketTypes() const;
 
     protected:
 
-        virtual Packet* CreateInternal( int type ) = 0;
+        virtual Packet* Create( int type ) = 0;
+        virtual void Destroy( Packet *packet ) = 0;
     };
 
-    int WritePacket( Packet *packet, int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL );
+    struct PacketInfo
+    {
+        void * context;                             // context for the packet serialization (optional, pass in NULL)
+        uint32_t protocolId;                        // protocol id that distinguishes your protocol from other packets sent over UDP
+        PacketFactory * packetFactory;              // packet factory used to create packets, and determine information about packet types. required.
 
-    Packet* ReadPacket( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header = NULL, int *errorCode = NULL );
+        PacketInfo()
+        {
+            context = NULL;
+            protocolId = 0;
+            packetFactory = NULL;
+        }
+    };
+
+    int WritePacket( const PacketInfo & info, 
+                     Packet *packet, 
+                     uint8_t *buffer, 
+                     int bufferSize, 
+                     Object *header = NULL );
+
+    Packet* ReadPacket( const PacketInfo & info, 
+                        const uint8_t *buffer, 
+                        int bufferSize, 
+                        Object *header = NULL, 
+                        int *errorCode = NULL );
 
 #if PROTOCOL2_PACKET_AGGREGATION
 
-    int WriteAggregatePacket( int numPackets, Packet **packets, int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, int & numPacketsWritten, Object *aggregatePacketHeader = NULL, Object **packetHeaders = NULL );
+    int WriteAggregatePacket( const PacketInfo & info, 
+                              int numPackets, 
+                              Packet **packets, 
+                              uint8_t *buffer, 
+                              int bufferSize, 
+                              int & numPacketsWritten, 
+                              Object *aggregatePacketHeader = NULL, 
+                              Object **packetHeaders = NULL );
 
-    void ReadAggregatePacket( int maxPacketsToRead, Packet **packets, PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, int & numPacketsRead, Object *aggregatePacketHeader = NULL, Object **packetHeaders = NULL, int *errorCode = NULL );
+    void ReadAggregatePacket( const PacketInfo & info, 
+                              int maxPacketsToRead, 
+                              Packet **packets, 
+                              const uint8_t *buffer, 
+                              int bufferSize, 
+                              int & numPacketsRead, 
+                              Object *aggregatePacketHeader = NULL, 
+                              Object **packetHeaders = NULL, 
+                              int *errorCode = NULL );
 
 #endif // #if PROTOCOL2_PACKET_AGGREGATION
 
@@ -1261,6 +1300,10 @@ namespace protocol2
 #else
 #include <alloca.h>
 #endif
+
+#if PROTOCOL2_SECURE
+#include <sodium.h>
+#endif // #if PROTOCOL2_SECURE
 
 namespace protocol2
 {
@@ -1388,14 +1431,23 @@ namespace protocol2
         return h;
     }
 
-    inline int WritePacket( Packet *packet, int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header )
+    inline int WritePacket( const PacketInfo & info, 
+                            Packet *packet,
+                            uint8_t *buffer, 
+                            int bufferSize, 
+                            Object *header )
     {
         assert( packet );
         assert( buffer );
         assert( bufferSize > 0 );
-        assert( protocolId != 0 );
+        assert( info.protocolId );
+        assert( info.packetFactory );
+
+        const int numPacketTypes = info.packetFactory->GetNumPacketTypes();
 
         WriteStream stream( buffer, bufferSize );
+
+        stream.SetContext( info.context );
 
         uint32_t crc32 = 0;
         stream.SerializeBits( crc32, 32 );
@@ -1415,15 +1467,16 @@ namespace protocol2
             stream.SerializeInteger( packetType, 0, numPacketTypes - 1 );
         }
 
-        packet->SerializeWrite( stream );
+        if ( !packet->SerializeWrite( stream ) )
+            return 0;
 
 #if PROTOCOL2_SERIALIZE_CHECKS
-        stream.SerializeCheck( protocolId );
+        stream.SerializeCheck( info.protocolId );
 #endif // #if PROTOCOL2_SERIALIZE_CHECKS
 
         stream.Flush();
 
-        uint32_t network_protocolId = host_to_network( protocolId );
+        uint32_t network_protocolId = host_to_network( info.protocolId );
         crc32 = calculate_crc32( (uint8_t*) &network_protocolId, 4 );
         crc32 = calculate_crc32( buffer, stream.GetBytesProcessed(), crc32 );
 
@@ -1435,21 +1488,28 @@ namespace protocol2
         return stream.GetBytesProcessed();
     }
 
-    inline Packet* ReadPacket( PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, Object *header, int *errorCode )
+    inline Packet* ReadPacket( const PacketInfo & info, 
+                               const uint8_t *buffer, 
+                               int bufferSize, 
+                               Object *header, 
+                               int *errorCode )
     {
         assert( buffer );
         assert( bufferSize > 0 );
-        assert( protocolId != 0 );
+        assert( info.protocolId != 0 );
+        assert( info.packetFactory );
 
         if ( errorCode )
             *errorCode = PROTOCOL2_ERROR_NONE;
 
         ReadStream stream( buffer, bufferSize );
 
+        stream.SetContext( info.context );
+
         uint32_t read_crc32 = 0;
         stream.SerializeBits( read_crc32, 32 );
 
-        uint32_t network_protocolId = host_to_network( protocolId );
+        uint32_t network_protocolId = host_to_network( info.protocolId );
         uint32_t crc32 = calculate_crc32( (const uint8_t*) &network_protocolId, 4 );
         uint32_t zero = 0;
         crc32 = calculate_crc32( (const uint8_t*) &zero, 4, crc32 );
@@ -1474,7 +1534,7 @@ namespace protocol2
 
         int packetType = 0;
 
-        const int numPacketTypes = packetFactory.GetNumTypes();
+        const int numPacketTypes = info.packetFactory->GetNumPacketTypes();
 
         assert( numPacketTypes > 0 );
 
@@ -1488,7 +1548,7 @@ namespace protocol2
             }
         }
 
-        protocol2::Packet *packet = packetFactory.CreatePacket( packetType );
+        protocol2::Packet *packet = info.packetFactory->CreatePacket( packetType );
         if ( !packet )
         {
             if ( errorCode )
@@ -1504,7 +1564,7 @@ namespace protocol2
         }
 
 #if PROTOCOL2_SERIALIZE_CHECKS
-        if ( !stream.SerializeCheck( protocolId ) )
+        if ( !stream.SerializeCheck( info.protocolId ) )
         {
             #if PROTOCOL2_ASSERT_ON_SERIALIZE_CHECK
             assert( false );
@@ -1527,22 +1587,33 @@ namespace protocol2
 
         return packet;
 
-    cleanup:
-        packetFactory.DestroyPacket( packet );
+cleanup:
+        info.packetFactory->DestroyPacket( packet );
         return NULL;
     }
 
 #if PROTOCOL2_PACKET_AGGREGATION
 
-    int WriteAggregatePacket( int numPackets, Packet **packets, int numPacketTypes, uint8_t *buffer, int bufferSize, uint32_t protocolId, int & numPacketsWritten, Object *aggregatePacketHeader, Object **packetHeaders )
+    int WriteAggregatePacket( const PacketInfo & info, 
+                              int numPackets, 
+                              Packet **packets, 
+                              uint8_t *buffer, 
+                              int bufferSize, 
+                              int & numPacketsWritten, 
+                              Object *aggregatePacketHeader, 
+                              Object **packetHeaders )
     {
         assert( numPackets >= 0 );
         assert( packets );
-        assert( numPacketTypes > 0 );
-        assert( numPacketTypes + 1 <= 65535 );
         assert( buffer );
         assert( bufferSize > 0 );
-        assert( protocolId != 0 );
+        assert( info.protocolId != 0 );
+        assert( info.packetFactory );
+
+        const int numPacketTypes = info.packetFactory->GetNumPacketTypes();
+
+        assert( numPacketTypes > 0 );
+        assert( numPacketTypes + 1 <= 65535 );
 
         const int packetTypeBytes = ( numPacketTypes > 255 ) ? 2 : 1;
 
@@ -1556,19 +1627,19 @@ namespace protocol2
 
         if ( aggregatePacketHeader )
         {
-            //uint8_t scratch[bufferSize];
-
 			uint8_t *scratch = (uint8_t*) alloca( bufferSize );
 
             typedef WriteStream Stream;
 
             Stream stream( scratch, bufferSize );
 
+            stream.SetContext( info.context );
+
             if ( !aggregatePacketHeader->SerializeWrite( stream ) )
                 return 0;
 
 #if PROTOCOL2_SERIALIZE_CHECKS
-            stream.SerializeCheck( protocolId );
+            stream.SerializeCheck( info.protocolId );
 #endif // #if PROTOCOL2_SERIALIZE_CHECKS
 
             stream.SerializeAlign();
@@ -1617,7 +1688,7 @@ namespace protocol2
                 return 0;
 
 #if PROTOCOL2_SERIALIZE_CHECKS
-            stream.SerializeCheck( protocolId );
+            stream.SerializeCheck( info.protocolId );
 #endif // #if PROTOCOL2_SERIALIZE_CHECKS
 
             stream.SerializeAlign();
@@ -1650,7 +1721,7 @@ namespace protocol2
 
         // calculate header crc32 for aggregate packet as a whole
 
-        uint32_t network_protocolId = host_to_network( protocolId );
+        uint32_t network_protocolId = host_to_network( info.protocolId );
         uint32_t crc32 = calculate_crc32( (uint8_t*) &network_protocolId, 4 );
         crc32 = calculate_crc32( buffer, aggregatePacketBytes, crc32 );
 
@@ -1659,8 +1730,19 @@ namespace protocol2
         return aggregatePacketBytes;
     }
 
-    void ReadAggregatePacket( int maxPacketsToRead, Packet **packets, PacketFactory & packetFactory, const uint8_t *buffer, int bufferSize, uint32_t protocolId, int & numPacketsRead, Object *aggregatePacketHeader, Object **packetHeaders, int *errorCode )
+    void ReadAggregatePacket( const PacketInfo & info,
+                              int maxPacketsToRead, 
+                              Packet **packets, 
+                              const uint8_t *buffer, 
+                              int bufferSize, 
+                              int & numPacketsRead, 
+                              Object *aggregatePacketHeader, 
+                              Object **packetHeaders, 
+                              int *errorCode )
     {
+        assert( info.protocolId );
+        assert( info.packetFactory );
+
         numPacketsRead = 0;
 
         for ( int i = 0; i < maxPacketsToRead; ++i )
@@ -1670,12 +1752,14 @@ namespace protocol2
 
         Stream stream( buffer, bufferSize );
 
+        stream.SetContext( info.context );
+
         // verify crc32 for packet matches, otherwise discard with error
 
         uint32_t read_crc32 = 0;
         stream.SerializeBits( read_crc32, 32 );
 
-        uint32_t network_protocolId = host_to_network( protocolId );
+        uint32_t network_protocolId = host_to_network( info.protocolId );
         uint32_t crc32 = calculate_crc32( (const uint8_t*) &network_protocolId, 4 );
         uint32_t zero = 0;
         crc32 = calculate_crc32( (const uint8_t*) &zero, 4, crc32 );
@@ -1700,7 +1784,7 @@ namespace protocol2
             }
 
 #if PROTOCOL2_SERIALIZE_CHECKS
-            stream.SerializeCheck( protocolId );
+            stream.SerializeCheck( info.protocolId );
 #endif // #if PROTOCOL2_SERIALIZE_CHECKS
 
             stream.SerializeAlign();
@@ -1710,12 +1794,12 @@ namespace protocol2
 
         while ( numPacketsRead < maxPacketsToRead )
         {
-            assert( packetFactory.GetNumTypes() > 0 );
+            assert( info.packetFactory->GetNumPacketTypes() > 0 );
 
             assert( stream.GetAlignBits() == 0 );       // must be byte aligned at this point
 
             int packetTypePlusOne;
-            stream.SerializeInteger( packetTypePlusOne, 0, packetFactory.GetNumTypes() );
+            stream.SerializeInteger( packetTypePlusOne, 0, info.packetFactory->GetNumPacketTypes() );
 
             if ( packetTypePlusOne == 0 )               // end of packet marker
                 break;
@@ -1734,7 +1818,7 @@ namespace protocol2
                 }
             }
 
-            packets[numPacketsRead] = packetFactory.CreatePacket( packetType );
+            packets[numPacketsRead] = info.packetFactory->CreatePacket( packetType );
 
             if ( !packets[numPacketsRead] )
             {
@@ -1751,7 +1835,7 @@ namespace protocol2
             }
 
 #if PROTOCOL2_SERIALIZE_CHECKS
-            if ( !stream.SerializeCheck( protocolId ) )
+            if ( !stream.SerializeCheck( info.protocolId ) )
             {
                     *errorCode = PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED;
                 goto cleanup;
@@ -1776,7 +1860,7 @@ namespace protocol2
 
         for ( int j = 0; j < numPacketsRead; ++j )
         {
-            packetFactory.DestroyPacket( packets[j] );
+            info.packetFactory->DestroyPacket( packets[j] );
             packets[j] = NULL;
         }
 
@@ -1785,9 +1869,9 @@ namespace protocol2
 
 #endif // #if PROTOCOL2_PACKET_AGGREGATION
 
-    PacketFactory::PacketFactory( int numTypes )
+    PacketFactory::PacketFactory( int numPacketTypes )
     {
-        m_numTypes = numTypes;
+        m_numPacketTypes = numPacketTypes;
         m_numAllocatedPackets = 0;
     }
 
@@ -1812,9 +1896,9 @@ namespace protocol2
     Packet* PacketFactory::CreatePacket( int type )
     {
         assert( type >= 0 );
-        assert( type < m_numTypes );
+        assert( type < m_numPacketTypes );
 
-        Packet * packet = CreateInternal( type );
+        Packet * packet = Create( type );
         if ( !packet )
             return NULL;
         
@@ -1846,12 +1930,12 @@ namespace protocol2
 
         m_numAllocatedPackets--;
 
-        delete packet;
+        Destroy( packet );
     }
 
-    int PacketFactory::GetNumTypes() const
+    int PacketFactory::GetNumPacketTypes() const
     {
-        return m_numTypes;
+        return m_numPacketTypes;
     }
 
     const char* GetErrorString( int error )

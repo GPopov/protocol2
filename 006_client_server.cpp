@@ -209,7 +209,7 @@ struct ClientServerPacketFactory : public PacketFactory
 {
     ClientServerPacketFactory() : PacketFactory( CLIENT_SERVER_NUM_PACKETS ) {}
 
-    Packet* CreateInternal( int type )
+    Packet* Create( int type )
     {
         switch ( type )
         {
@@ -222,6 +222,11 @@ struct ClientServerPacketFactory : public PacketFactory
             default:
                 return NULL;
         }
+    }
+
+    void Destroy( Packet *packet )
+    {
+        delete packet;
     }
 };
 
@@ -1030,7 +1035,10 @@ int main()
         SocketInterface serverInterface( memory_default_allocator(), serverPacketFactory, ProtocolId, ServerPort );
 
         if ( clientInterface.GetError() != SOCKET_ERROR_NONE || serverInterface.GetError() != SOCKET_ERROR_NONE )
+        {
+            printf( "error: failed to initialize sockets\n" );
             return 1;
+        }
         
         const int NumIterations = 20;
 
