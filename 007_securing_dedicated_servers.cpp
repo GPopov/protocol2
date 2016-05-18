@@ -89,6 +89,34 @@ struct Token
 
         return true;
     }
+
+    bool operator == ( const Token & other ) const
+    {
+        if ( protocol_id != other.protocol_id )
+            return false;
+
+        if ( client_id != other.client_id )
+            return false;
+
+        if ( expiry_timestamp != other.expiry_timestamp )
+            return false;
+
+        if ( num_server_addresses != other.num_server_addresses )
+            return false;
+
+        for ( int i = 0; i < num_server_addresses; ++i )
+        {
+            if ( server_address[i] != other.server_address[i] )
+                return false;
+        }
+
+        return true;
+    }
+
+    bool operator != ( const Token & other ) const
+    {
+        return !( (*this)== other );
+    }
 };
 
 void GenerateToken( Token & token, uint64_t clientId, int numServerAddresses, const Address * serverAddresses )
@@ -134,20 +162,39 @@ bool EncryptToken( Token & token, uint8_t *encryptedMessage, const uint8_t *addi
     if ( result != 0 )
         return false;
 
-    printf( "encryptedLength = %llu\n", encryptedLength );
-
-    assert( encryptedLength == TokenBytes );
+    assert( encryptedLength == TokenBytes + AuthBytes );
 
     return true;
 }
 
-/*
-bool DecryptToken( const uint8_t *encrypted_token, Token & token, const uint8_t *additional, int additionalLength, const uint8_t *nonce, const uint8_t *key )
+bool DecryptToken( const uint8_t * encryptedMessage, Token & decryptedToken, const uint8_t * additional, int additionalLength, const uint8_t * nonce, const uint8_t * key )
 {
-    // ...
-    return false;
+    unsigned char decryptedMessage[TokenBytes];
+    
+    unsigned long long decryptedMessageLength;
+    
+    const int encryptedMessageLength = TokenBytes + AuthBytes;
+
+    int result = crypto_aead_chacha20poly1305_decrypt( decryptedMessage, &decryptedMessageLength,
+                                                       NULL,
+                                                       encryptedMessage, encryptedMessageLength,
+                                                       additional, additionalLength,
+                                                       nonce, key );
+
+    assert( decryptedMessageLength == TokenBytes );
+
+    if ( result != 0 )
+        return false;
+
+    ReadStream stream( decryptedMessage, TokenBytes );
+    if ( !decryptedToken.Serialize( stream ) )
+        return false;
+
+    if ( stream.GetError() )
+        return false;
+
+    return true;
 }
-*/
 
 enum PacketTypes
 {
@@ -260,10 +307,27 @@ int main()
 
     printf( "successfully encrypted token\n" );
 
+    Token decryptedToken;
+    if ( !DecryptToken( encryptedToken, decryptedToken, NULL, 0, nonce, key ) )
+    {
+        printf( "error: failed to decrypt token\n" );
+        return 1;
+    }
+
+    printf( "successfully decrypted token\n" );
+
+    if ( decryptedToken == token )
+    {
+        printf( "success: decrypted token matches original token!\n" );
+    }
+    else
+    {
+        printf( "error: decrypted token does not match original token\n" );
+        return 1;
+    }
+
     return 0;
 }
-
-
 
 
 /*

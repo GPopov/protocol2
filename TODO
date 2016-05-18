@@ -1,8 +1,5 @@
 DONE
 
-    Start playing around with libsodium and encrypted packets.
-
 TODO
     
-    Sketch out token structure, connection request packet, generate tokens etc.
 

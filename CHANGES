@@ -1,4 +1,22 @@
 
+Wednesday May 18th, 2016
+========================
+
+    Start playing around with libsodium and encrypted packets.
+
+    Sketch out token structure, connection request packet, generate tokens etc.
+
+    Implement token encrypt.
+
+    Implement token decrypt.
+
+    Implement token comparison.
+
+    Verify decrypted token matches original token.
+
+    Passes!
+
+
 Tuesday May 17th, 2016
 ======================
 
