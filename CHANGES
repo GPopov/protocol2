@@ -113,6 +113,24 @@ Wednesday May 18th, 2016
 
     -------
 
+    We do actually need the packet header system so we can put a sequence # on each packet
+
+    That doesn't mean this sequence number needs to actually get passed in through to the user.
+
+    But it is necessary to implement the packet fragmentation and reassembly example, because
+    you need to know the sequence # of a packet if you are to try to reassemble it from fragments.
+
+    Seems like the packet header concept is here to stay.
+
+    I think the packet header doesn't belong to the user, the packet header belongs to the *INTERFACE*
+
+    Therefore, the interface can put whatever it wants in there, and its stripped before it gets to the user (Packet*)
+
+    This way the packet header is a flexible tool. It should stay. Just don't ever expose packet headers out of the 
+    interface layer to the user. Don't put them in send and receive queues etc.
+
+    -------
+    
 
 Tuesday May 17th, 2016
 ======================
