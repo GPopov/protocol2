@@ -1,16 +1,5 @@
 DONE
 
-    Seems like I have more work to do, for example if I want the prefix bytes to be considered as part of the crc32
-    this is going to suck ass.
-
-    Seeing as where it really counts, I'm going to be using encryption instead of CRC32, fuck it, don't include prefix bytes in crc32.
-
-    OK done.
-
-    Next, setup the network interface to write in raw format if encrypted, and stick the packet flag into the prefix byte.
-
-    Alright. Now we know if a packet is encrypted on not based on the flags in the first byte.
-
 TODO
 
-    Now rework the encryption so that it uses that first byte as the additional data. It needs to be signed!
+    Now implement the 
