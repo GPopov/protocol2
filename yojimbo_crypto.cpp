@@ -51,6 +51,12 @@ namespace yojimbo
         randombytes_buf( nonce, NonceBytes );
     }
 
+    void GenerateRandomBytes( uint8_t * data, int bytes )
+    {
+        assert( data );
+        randombytes_buf( data, bytes );
+    }
+
     bool Encrypt( const uint8_t * message, uint64_t messageLength, 
                   uint8_t * encryptedMessage, uint64_t & encryptedMessageLength,
                   const uint8_t * additional, uint64_t additionalLength,

@@ -2,4 +2,5 @@ DONE
 
 TODO
 
-    Now implement the 
+    Now implement the actual client/server setup as per the dedicated server, with the new connection packet.
+
