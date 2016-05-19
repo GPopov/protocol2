@@ -45,13 +45,7 @@ namespace yojimbo
         randombytes_buf( key, KeyBytes );
     }
     
-    void GenerateNonce( uint8_t * nonce )
-    {
-        assert( nonce );
-        randombytes_buf( nonce, NonceBytes );
-    }
-
-    void GenerateRandomBytes( uint8_t * data, int bytes )
+    void RandomBytes( uint8_t * data, int bytes )
     {
         assert( data );
         randombytes_buf( data, bytes );

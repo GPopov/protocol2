@@ -41,9 +41,7 @@ namespace yojimbo
 
     extern void GenerateKey( uint8_t * key );
 
-    extern void GenerateNonce( uint8_t * nonce );
-
-    extern void GenerateRandomBytes( uint8_t * data, int bytes );
+    extern void RandomBytes( uint8_t * data, int bytes );
 
     extern bool Encrypt( const uint8_t * message, uint64_t messageLength, 
                          uint8_t * encryptedMessage, uint64_t & encryptedMessageLength,

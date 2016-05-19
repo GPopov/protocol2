@@ -212,8 +212,47 @@ Wednesday May 18th, 2016
     Moved the encryption into the yojimbo_crypto.h, all the stuff I need is in there.
 
     -------------
-    
 
+    Now implement the actual client/server setup as per the dedicated server, with the new connection packet.
+
+    Stripped out unnecessary usage of client salt, challenge salt etc.
+
+    In most cases client salt becomes client id.
+
+    Need to ask friends if encoding short messages, eg. 0, 1, 2 bytes with the symmetric cipher weakens it. 
+
+    Seems strange.
+
+    -------------
+
+    Now actually need to go through the motion with the client processing the new connection request
+
+    eg. 
+
+    1. create a token
+
+    2. pass that token to the server in the connection request
+
+    3. have the server verify the token in the connection request
+
+    4. setup encrypted communications between the client and server, via address -> (nonce,key) mapping
+
+    5. reply back with the challenge response
+
+    6. client should have setup encryption already with the server via (nonce,key) it got back
+       when requesting the token.
+
+    Needs to be something that stops the client using the same token multiple times
+    for different connections, eg. the token is only good for one IP address:port pair,
+    the first one that uses it gets bound to that token, and the token won't work again
+    for a different IP address to get a challenge response.
+
+    Alternatively, put the client IP inside the token, that way the client cannot
+    spoof multiple clients connecting with the same token, but *would* fuck up with NAT
+
+    So blacklist on tokens already used and being bound to a particular address = SOLD
+
+    -----
 Tuesday May 17th, 2016
 ======================
 

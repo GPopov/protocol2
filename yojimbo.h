@@ -47,9 +47,9 @@ namespace yojimbo
 
         virtual void DestroyPacket( protocol2::Packet * packet ) = 0;
 
-        virtual void SendPacket( const network2::Address & address, protocol2::Packet * packet ) = 0;
+        virtual void SendPacket( const network2::Address & address, protocol2::Packet * packet, uint64_t sequence = 0 ) = 0;
 
-        virtual protocol2::Packet * ReceivePacket( network2::Address & from ) = 0;
+        virtual protocol2::Packet * ReceivePacket( network2::Address & from, uint64_t *sequence = NULL ) = 0;
 
         virtual void WritePackets( double time ) = 0;
 
@@ -108,6 +108,7 @@ namespace yojimbo
 
         struct PacketEntry
         {
+            uint64_t sequence;
             network2::Address address;
             protocol2::Packet *packet;
         };
@@ -140,9 +141,9 @@ namespace yojimbo
 
         void DestroyPacket( protocol2::Packet * packet );
 
-        void SendPacket( const network2::Address & address, protocol2::Packet * packet );
+        void SendPacket( const network2::Address & address, protocol2::Packet * packet, uint64_t sequence = 0 );
 
-        protocol2::Packet * ReceivePacket( network2::Address & from );
+        protocol2::Packet * ReceivePacket( network2::Address & from, uint64_t *sequence = NULL );
 
         void WritePackets( double time );
 

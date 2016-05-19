@@ -36,7 +36,7 @@ const uint32_t ProtocolId = 0x12341651;
 
 const int MaxClients = 32;
 const int ServerPort = 50000;
-const int ClientPort = 60000;
+//const int ClientPort = 60000;
 const int ChallengeHashSize = 1024;
 const float ChallengeSendRate = 0.1f;
 const float ChallengeTimeOut = 10.0f;
@@ -59,8 +59,18 @@ struct Token
     uint64_t expiry_timestamp;                                          // timestamp this token expires (eg. 10 seconds after token creation)
     int num_server_addresses;                                           // the number of server addresses this token may be used on
     Address server_address[MaxServersPerToken];                         // token only works with this list of server addresses.
-    uint8_t nonce[NonceBytes];                                          // the nonce for encrypted communication with this client post-connection.
-    uint8_t key[KeyBytes];                                              // the key for encryption communication with this client post-connection
+    uint8_t client_to_server_key[KeyBytes];                             // the key for encrypted communication from client -> server.
+    uint8_t server_to_client_key[KeyBytes];                             // the key for encrypted communication from server -> client.
+
+    Token()
+    {
+        protocol_id = 0;
+        client_id = 0;
+        expiry_timestamp = 0;
+        num_server_addresses = 0;
+        memset( client_to_server_key, 0, sizeof( client_to_server_key ) );
+        memset( server_to_client_key, 0, sizeof( server_to_client_key ) );
+    }
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
@@ -89,9 +99,9 @@ struct Token
             }
         }
 
-        serialize_bytes( stream, nonce, NonceBytes );
+        serialize_bytes( stream, client_to_server_key, KeyBytes );
 
-        serialize_bytes( stream, key, KeyBytes );
+        serialize_bytes( stream, server_to_client_key, KeyBytes );
 
         return true;
     }
@@ -139,11 +149,11 @@ void GenerateToken( Token & token, uint64_t clientId, int numServerAddresses, co
     for ( int i = 0; i < numServerAddresses; ++i )
         token.server_address[i] = serverAddresses[i];
 
-    GenerateKey( token.key );
-    GenerateNonce( token.nonce );
+    GenerateKey( token.client_to_server_key );    
+    GenerateKey( token.server_to_client_key );
 }
 
-bool EncryptToken( Token & token, uint8_t *encryptedMessage, const uint8_t *additional, int additionalLength, const uint8_t *nonce, const uint8_t *key )
+bool EncryptToken( Token & token, uint8_t *encryptedMessage, const uint8_t *additional, int additionalLength, uint64_t nonce, const uint8_t *key )
 {
     uint8_t message[TokenBytes];
     memset( message, 0, TokenBytes );
@@ -158,7 +168,7 @@ bool EncryptToken( Token & token, uint8_t *encryptedMessage, const uint8_t *addi
 
     uint64_t encryptedLength;
 
-    if ( !Encrypt( message, TokenBytes, encryptedMessage, encryptedLength, additional, additionalLength, nonce, key ) )
+    if ( !Encrypt( message, TokenBytes, encryptedMessage, encryptedLength, additional, additionalLength, (uint8_t*)&nonce, key ) )
         return false;
 
     assert( encryptedLength == TokenBytes + AuthBytes );
@@ -166,14 +176,14 @@ bool EncryptToken( Token & token, uint8_t *encryptedMessage, const uint8_t *addi
     return true;
 }
 
-bool DecryptToken( const uint8_t * encryptedMessage, Token & decryptedToken, const uint8_t * additional, int additionalLength, const uint8_t * nonce, const uint8_t * key )
+bool DecryptToken( const uint8_t * encryptedMessage, Token & decryptedToken, const uint8_t * additional, int additionalLength, uint64_t nonce, const uint8_t * key )
 {
     const int encryptedMessageLength = TokenBytes + AuthBytes;
 
     uint64_t decryptedMessageLength;
     uint8_t decryptedMessage[TokenBytes];
 
-    if ( !Decrypt( encryptedMessage, encryptedMessageLength, decryptedMessage, decryptedMessageLength, additional, additionalLength, nonce, key ) )
+    if ( !Decrypt( encryptedMessage, encryptedMessageLength, decryptedMessage, decryptedMessageLength, additional, additionalLength, (uint8_t*)&nonce, key ) )
         return false;
 
     ReadStream stream( decryptedMessage, TokenBytes );
@@ -189,7 +199,7 @@ bool DecryptToken( const uint8_t * encryptedMessage, Token & decryptedToken, con
 uint64_t GenerateSalt()
 {
     uint64_t salt;
-    GenerateRandomBytes( (uint8_t*) &salt, sizeof( uint64_t ) );
+    RandomBytes( (uint8_t*) &salt, sizeof( uint64_t ) );
     return salt;
 }
 
@@ -288,42 +298,18 @@ struct ConnectionResponsePacket : public Packet
 
 struct ConnectionKeepAlivePacket : public Packet
 {
-    uint64_t client_salt;
-    uint64_t challenge_salt;
+    ConnectionKeepAlivePacket() : Packet( PACKET_CONNECTION_KEEP_ALIVE ) {}
 
-    ConnectionKeepAlivePacket() : Packet( PACKET_CONNECTION_KEEP_ALIVE )
-    {
-        client_salt = 0;
-        challenge_salt = 0;
-    }
-
-    template <typename Stream> bool Serialize( Stream & stream )
-    {
-        serialize_uint64( stream, client_salt );
-        serialize_uint64( stream, challenge_salt );
-        return true;
-    }
+    template <typename Stream> bool Serialize( Stream & /*stream*/ ) { return true; }
 
     PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
 
 struct ConnectionDisconnectPacket : public Packet
 {
-    uint64_t client_salt;
-    uint64_t challenge_salt;
+    ConnectionDisconnectPacket() : Packet( PACKET_CONNECTION_DISCONNECT ) {}
 
-    ConnectionDisconnectPacket() : Packet( PACKET_CONNECTION_DISCONNECT )
-    {
-        client_salt = 0;
-        challenge_salt = 0;
-    }
-
-    template <typename Stream> bool Serialize( Stream & stream )
-    {
-        serialize_uint64( stream, client_salt );
-        serialize_uint64( stream, challenge_salt );
-        return true;
-    }
+    template <typename Stream> bool Serialize( Stream & /*stream*/ ) { return true; }
 
     PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
@@ -355,7 +341,7 @@ struct ClientServerPacketFactory : public PacketFactory
 
 struct ServerChallengeEntry
 {
-    uint64_t client_salt;                           // random number generated by client and sent to server in connection request
+    uint64_t client_id;                             // unique client id corresponding to this challenge
     uint64_t challenge_salt;                        // random number generated by server and sent back to client in challenge packet
     double create_time;                             // time this challenge entry was created. used for challenge timeout
     double last_packet_send_time;                   // the last time we sent a challenge packet to this client
@@ -371,27 +357,25 @@ struct ServerChallengeHash
     ServerChallengeHash() { memset( this, 0, sizeof( ServerChallengeHash ) ); }
 };
 
-uint64_t CalculateChallengeHashKey( const Address & address, uint64_t clientSalt, uint64_t serverSeed )
+uint64_t CalculateChallengeHashKey( const Address & address, uint64_t clientId, uint64_t serverSeed )
 {
     char buffer[256];
     const char * addressString = address.ToString( buffer, sizeof( buffer ) );
     const int addressLength = strlen( addressString );
-    return murmur_hash_64( &serverSeed, 8, murmur_hash_64( &clientSalt, 8, murmur_hash_64( addressString, addressLength, 0 ) ) );
+    return murmur_hash_64( &serverSeed, 8, murmur_hash_64( &clientId, 8, murmur_hash_64( addressString, addressLength, 0 ) ) );
 }
 
 struct ServerClientData
 {
     Address address;
-    uint64_t clientSalt;
-    uint64_t challengeSalt;
+    uint64_t clientId;
     double connectTime;
     double lastPacketSendTime;
     double lastPacketReceiveTime;
 
     ServerClientData()
     {
-        clientSalt = 0;
-        challengeSalt = 0;
+        clientId = 0;
         connectTime = 0.0;
         lastPacketSendTime = 0.0;
         lastPacketReceiveTime = 0.0;
@@ -408,9 +392,7 @@ class Server
     
     bool m_clientConnected[MaxClients];                                 // true if client n is connected
     
-    uint64_t m_clientSalt[MaxClients];                                  // array of client salt values per-client
-
-    uint64_t m_challengeSalt[MaxClients];                               // array of challenge salt values per-client
+    uint64_t m_clientId[MaxClients];                                    // array of client id values per-client
     
     Address m_clientAddress[MaxClients];                                // array of client address values per-client
     
@@ -446,8 +428,6 @@ public:
                 return;
 
             ConnectionKeepAlivePacket * packet = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
-            packet->client_salt = m_clientSalt[i];
-            packet->challenge_salt = m_challengeSalt[i];
 
             SendPacketToConnectedClient( i, packet, time );
         }
@@ -499,7 +479,7 @@ public:
             {
                 char buffer[256];
                 const char *addressString = m_clientAddress[i].ToString( buffer, sizeof( buffer ) );
-                printf( "client %d timed out (client address = %s, client salt = %llx, challenge salt = %llx)\n", i, addressString, m_clientSalt[i], m_challengeSalt[i] );
+                printf( "client %d timed out (client address = %s, client id = %llx)\n", i, addressString, m_clientId[i] );
                 DisconnectClient( i, time );
             }
         }
@@ -512,8 +492,7 @@ protected:
         assert( clientIndex >= 0 );
         assert( clientIndex < MaxClients );
         m_clientConnected[clientIndex] = false;
-        m_clientSalt[clientIndex] = 0;
-        m_challengeSalt[clientIndex] = 0;
+        m_clientId[clientIndex] = 0;
         m_clientAddress[clientIndex] = Address();
         m_clientData[clientIndex] = ServerClientData();
     }
@@ -528,17 +507,17 @@ protected:
         return -1;
     }
 
-    int FindExistingClientIndex( const Address & address, uint64_t clientSalt, uint64_t challengeSalt ) const
+    int FindExistingClientIndex( const Address & address ) const
     {
         for ( int i = 0; i < MaxClients; ++i )
         {
-            if ( m_clientConnected[i] && m_clientAddress[i] == address && m_clientSalt[i] == clientSalt && m_challengeSalt[i] == challengeSalt )
+            if ( m_clientConnected[i] && m_clientAddress[i] == address )
                 return i;
         }
         return -1;
     }
 
-    void ConnectClient( int clientIndex, const Address & address, uint64_t clientSalt, uint64_t challengeSalt, double time )
+    void ConnectClient( int clientIndex, const Address & address, uint64_t clientId, double time )
     {
         assert( m_numConnectedClients >= 0 );
         assert( m_numConnectedClients < MaxClients - 1 );
@@ -547,24 +526,20 @@ protected:
         m_numConnectedClients++;
 
         m_clientConnected[clientIndex] = true;
-        m_clientSalt[clientIndex] = clientSalt;
-        m_challengeSalt[clientIndex] = challengeSalt;
+        m_clientId[clientIndex] = clientId;
         m_clientAddress[clientIndex] = address;
 
         m_clientData[clientIndex].address = address;
-        m_clientData[clientIndex].clientSalt = clientSalt;
-        m_clientData[clientIndex].challengeSalt = challengeSalt;
+        m_clientData[clientIndex].clientId = clientId;
         m_clientData[clientIndex].connectTime = time;
         m_clientData[clientIndex].lastPacketSendTime = time;
         m_clientData[clientIndex].lastPacketReceiveTime = time;
 
         char buffer[256];
         const char *addressString = address.ToString( buffer, sizeof( buffer ) );
-        printf( "client %d connected (client address = %s, client salt = %llx, challenge salt = %llx)\n", clientIndex, addressString, clientSalt, challengeSalt );
+        printf( "client %d connected (client address = %s, client id = %llx)\n", clientIndex, addressString, clientId );
 
         ConnectionKeepAlivePacket * connectionKeepAlivePacket = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
-        connectionKeepAlivePacket->client_salt = m_clientSalt[clientIndex];
-        connectionKeepAlivePacket->challenge_salt = m_challengeSalt[clientIndex];
 
         SendPacketToConnectedClient( clientIndex, connectionKeepAlivePacket, time );
     }
@@ -578,11 +553,9 @@ protected:
 
         char buffer[256];
         const char *addressString = m_clientAddress[clientIndex].ToString( buffer, sizeof( buffer ) );
-        printf( "client %d disconnected: (client address = %s, client salt = %llx, challenge salt = %llx)\n", clientIndex, addressString, m_clientSalt[clientIndex], m_challengeSalt[clientIndex] );
+        printf( "client %d disconnected: (client address = %s, client id = %llx)\n", clientIndex, addressString, m_clientId[clientIndex] );
 
         ConnectionDisconnectPacket * packet = (ConnectionDisconnectPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DISCONNECT );
-        packet->client_salt = m_clientSalt[clientIndex];
-        packet->challenge_salt = m_challengeSalt[clientIndex];
 
         SendPacketToConnectedClient( clientIndex, packet, time );
 
@@ -591,30 +564,42 @@ protected:
         m_numConnectedClients--;
     }
 
-    bool IsConnected( const Address & address, uint64_t clientSalt ) const
+    bool IsConnected( uint64_t clientId ) const
     {
         for ( int i = 0; i < MaxClients; ++i )
         {
             if ( !m_clientConnected[i] )
                 continue;
-            if ( m_clientAddress[i] == address && m_clientSalt[i] == clientSalt )
+            if ( m_clientId[i] == clientId )
                 return true;
         }
         return false;
     }
 
-    ServerChallengeEntry * FindChallenge( const Address & address, uint64_t clientSalt, double time )
+    bool IsConnected( const Address & address, uint64_t clientId ) const
     {
-        const uint64_t key = CalculateChallengeHashKey( address, clientSalt, m_serverSalt );
+        for ( int i = 0; i < MaxClients; ++i )
+        {
+            if ( !m_clientConnected[i] )
+                continue;
+            if ( m_clientAddress[i] == address && m_clientId[i] == clientId )
+                return true;
+        }
+        return false;
+    }
+
+    ServerChallengeEntry * FindChallenge( const Address & address, uint64_t clientId, double time )
+    {
+        const uint64_t key = CalculateChallengeHashKey( address, clientId, m_serverSalt );
 
         int index = key % ChallengeHashSize;
         
-        printf( "client salt = %llx\n", clientSalt );
+        printf( "client id = %llx\n", clientId );
         printf( "challenge hash key = %llx\n", key );
         printf( "challenge hash index = %d\n", index );
 
         if ( m_challengeHash.exists[index] && 
-             m_challengeHash.entries[index].client_salt == clientSalt && 
+             m_challengeHash.entries[index].client_id == clientId && 
              m_challengeHash.entries[index].address == address && 
              m_challengeHash.entries[index].create_time + ChallengeTimeOut >= time )
         {
@@ -626,13 +611,13 @@ protected:
         return NULL;
     }
 
-    ServerChallengeEntry * FindOrInsertChallenge( const Address & address, uint64_t clientSalt, double time )
+    ServerChallengeEntry * FindOrInsertChallenge( const Address & address, uint64_t clientId, double time )
     {
-        const uint64_t key = CalculateChallengeHashKey( address, clientSalt, m_serverSalt );
+        const uint64_t key = CalculateChallengeHashKey( address, clientId, m_serverSalt );
 
         int index = key % ChallengeHashSize;
         
-        printf( "client salt = %llx\n", clientSalt );
+        printf( "client salt = %llx\n", clientId );
         printf( "challenge hash key = %llx\n", key );
         printf( "challenge hash index = %d\n", index );
 
@@ -642,9 +627,8 @@ protected:
 
             ServerChallengeEntry * entry = &m_challengeHash.entries[index];
 
-            entry->client_salt = clientSalt;
-            // todo
-            //entry->challenge_salt = GenerateSalt();
+            entry->client_id = clientId;
+            entry->challenge_salt = GenerateSalt();
             entry->last_packet_send_time = time - ChallengeSendRate * 2;
             entry->create_time = time;
             entry->address = address;
@@ -655,7 +639,7 @@ protected:
         }
 
         if ( m_challengeHash.exists[index] && 
-             m_challengeHash.entries[index].client_salt == clientSalt && 
+             m_challengeHash.entries[index].client_id == clientId && 
              m_challengeHash.entries[index].address == address )
         {
             printf( "found existing challenge hash entry at index %d\n", index );
@@ -788,9 +772,9 @@ protected:
         */
     }
 
-    void ProcessConnectionKeepAlive( const ConnectionKeepAlivePacket & packet, const Address & address, double time )
+    void ProcessConnectionKeepAlive( const ConnectionKeepAlivePacket & /*packet*/, const Address & address, double time )
     {
-        const int clientIndex = FindExistingClientIndex( address, packet.client_salt, packet.challenge_salt );
+        const int clientIndex = FindExistingClientIndex( address );
         if ( clientIndex == -1 )
             return;
 
@@ -800,9 +784,9 @@ protected:
         m_clientData[clientIndex].lastPacketReceiveTime = time;
     }
 
-    void ProcessConnectionDisconnect( const ConnectionDisconnectPacket & packet, const Address & address, double time )
+    void ProcessConnectionDisconnect( const ConnectionDisconnectPacket & /*packet*/, const Address & address, double time )
     {
-        const int clientIndex = FindExistingClientIndex( address, packet.client_salt, packet.challenge_salt );
+        const int clientIndex = FindExistingClientIndex( address );
         if ( clientIndex == -1 )
             return;
 
@@ -888,8 +872,6 @@ public:
         {
             printf( "client-side disconnect: (client salt = %llx, challenge salt = %llx)\n", m_clientSalt, m_challengeSalt );
             ConnectionDisconnectPacket * packet = (ConnectionDisconnectPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DISCONNECT );
-            packet->client_salt = m_clientSalt;
-            packet->challenge_salt = m_challengeSalt;
             SendPacketToServer( packet, time );
         }
 
@@ -938,8 +920,6 @@ public:
                     return;
 
                 ConnectionKeepAlivePacket * packet = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
-                packet->client_salt = m_clientSalt;
-                packet->challenge_salt = m_challengeSalt;
 
                 SendPacketToServer( packet, time );
             }
@@ -1098,15 +1078,9 @@ protected:
         m_lastPacketReceiveTime = time;
     }
 
-    void ProcessConnectionKeepAlive( const ConnectionKeepAlivePacket & packet, const Address & address, double time )
+    void ProcessConnectionKeepAlive( const ConnectionKeepAlivePacket & /*packet*/, const Address & address, double time )
     {
         if ( m_clientState < CLIENT_STATE_SENDING_CHALLENGE_RESPONSE )
-            return;
-
-        if ( packet.client_salt != m_clientSalt )
-            return;
-
-        if ( packet.challenge_salt != m_challengeSalt )
             return;
 
         if ( address != m_serverAddress )
@@ -1123,15 +1097,9 @@ protected:
         m_lastPacketReceiveTime = time;
     }
 
-    void ProcessConnectionDisconnect( const ConnectionDisconnectPacket & packet, const Address & address, double time )
+    void ProcessConnectionDisconnect( const ConnectionDisconnectPacket & /*packet*/, const Address & address, double time )
     {
         if ( m_clientState != CLIENT_STATE_CONNECTED )
-            return;
-
-        if ( packet.client_salt != m_clientSalt )
-            return;
-
-        if ( packet.challenge_salt != m_challengeSalt )
             return;
 
         if ( address != m_serverAddress )
@@ -1141,6 +1109,7 @@ protected:
     }
 };
 
+/*
 int main()
 {
     printf( "client/server connection\n" );
@@ -1218,24 +1187,8 @@ int main()
 
     return 0;
 }
+*/
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
 int main()
 {
     if ( !InitializeCrypto() )
@@ -1251,11 +1204,10 @@ int main()
     GenerateToken( token, 1231241, 1, &serverAddress );
 
     uint8_t encryptedToken[TokenBytes+AuthBytes];
-    uint8_t nonce[NonceBytes];
     uint8_t key[KeyBytes];
+    uint64_t nonce = 1;         // todo: increment this with each token encryption
 
     GenerateKey( key );
-    GenerateNonce( nonce );
 
     if ( !EncryptToken( token, encryptedToken, NULL, 0, nonce, key ) )
     {
@@ -1286,4 +1238,3 @@ int main()
 
     return 0;
 }
-*/

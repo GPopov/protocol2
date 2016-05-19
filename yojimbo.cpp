@@ -149,7 +149,7 @@ namespace yojimbo
         m_packetFactory->DestroyPacket( packet );
     }
 
-    void SocketInterface::SendPacket( const network2::Address & address, protocol2::Packet * packet )
+    void SocketInterface::SendPacket( const network2::Address & address, protocol2::Packet * packet, uint64_t sequence )
     {
         assert( m_allocator );
         assert( m_packetFactory );
@@ -164,6 +164,7 @@ namespace yojimbo
         }
 
         PacketEntry entry;
+        entry.sequence = sequence;
         entry.address = address;
         entry.packet = packet;
 
@@ -179,7 +180,7 @@ namespace yojimbo
         m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_SENT]++;
     }
 
-    protocol2::Packet * SocketInterface::ReceivePacket( network2::Address & from )
+    protocol2::Packet * SocketInterface::ReceivePacket( network2::Address & from, uint64_t * /*sequence*/ )
     {
         assert( m_allocator );
         assert( m_packetFactory );
