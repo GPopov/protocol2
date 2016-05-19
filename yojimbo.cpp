@@ -37,6 +37,7 @@
 
 #include "network2.h"
 #include "protocol2.h"
+#include <sodium.h>
 
 namespace yojimbo
 {
@@ -81,9 +82,7 @@ namespace yojimbo
         queue_reserve( m_sendQueue, sendQueueSize );
         queue_reserve( m_receiveQueue, receiveQueueSize );
 
-#if YOJIMBO_SECURE
         m_packetTypeIsEncrypted = (uint8_t*) m_allocator->Allocate( m_packetFactory->GetNumPacketTypes() );
-#endif // #if YOJIMBO_SECURE
 
         memset( m_counters, 0, sizeof( m_counters ) );
     }
@@ -116,15 +115,12 @@ namespace yojimbo
         YOJIMBO_DELETE( *m_allocator, NetworkSocket, m_socket );
 
         m_allocator->Free( m_packetBuffer );
-        
-#if YOJIMBO_SECURE
         m_allocator->Free( m_packetTypeIsEncrypted );
-        m_packetTypeIsEncrypted = NULL;
-#endif // #if YOJIMBO_SECURE
 
         m_socket = NULL;
         m_packetBuffer = NULL;
         m_packetFactory = NULL;
+        m_packetTypeIsEncrypted = NULL;
 
         m_allocator = NULL;
     }
@@ -226,13 +222,19 @@ namespace yojimbo
 
             bool error = false;
 
+            const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
+
             protocol2::PacketInfo info;
 
             info.context = m_context;
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
+            info.prefixBytes = 1;
+            info.rawFormat = encrypt;
 
             const int bytesWritten = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
+
+            m_packetBuffer[0] = encrypt ? PACKET_FLAG_ENCRYPTED : PACKET_FLAG_NONE;
 
             if ( bytesWritten > 0 )
             {
@@ -240,7 +242,6 @@ namespace yojimbo
             }
             else
             {
-                printf( "write packet error\n" );
                 m_packetFactory->DestroyPacket( entry.packet );
                 m_counters[SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS]++;
                 error = true;
@@ -275,11 +276,15 @@ namespace yojimbo
                 break;
             }
 
+            const uint8_t packetFlags = m_packetBuffer[0];
+
             protocol2::PacketInfo info;
             
             info.context = m_context;
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
+            info.prefixBytes = 1;
+            info.rawFormat = ( packetFlags & PACKET_FLAG_ENCRYPTED ) != 0;
 
             int readError;
             protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
@@ -311,9 +316,7 @@ namespace yojimbo
         m_context = context;
     }
 
-#if YOJIMBO_SECURE
-
-    void SocketInterface::EnableEncryptionForAllPacketTypes()
+    void SocketInterface::EnablePacketEncryption()
     {
         memset( m_packetTypeIsEncrypted, 0xFF, m_packetFactory->GetNumPacketTypes() );
     }
@@ -341,6 +344,4 @@ namespace yojimbo
     {
         // todo
     }
-
-#endif // #if YOJIMBO_SECURE
 }

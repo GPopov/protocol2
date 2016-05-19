@@ -1,30 +1,16 @@
 DONE
 
+    Seems like I have more work to do, for example if I want the prefix bytes to be considered as part of the crc32
+    this is going to suck ass.
+
+    Seeing as where it really counts, I'm going to be using encryption instead of CRC32, fuck it, don't include prefix bytes in crc32.
+
+    OK done.
+
+    Next, setup the network interface to write in raw format if encrypted, and stick the packet flag into the prefix byte.
+
+    Alright. Now we know if a packet is encrypted on not based on the flags in the first byte.
+
 TODO
 
-    So to get the encryption working, there needs to be a byte inserted in front of all packets with a flag,
-    eg. encrypted yes/no.
-
-    On send:
-
-        the sender can check the packet type, if its encrypted, send it encrypted (get nonce/key pair from address map, *fail* if not found)
-
-    On receive:
-
-        the receiver checks the flag to see if encrypted. Type is *inside* the encrypted bit. 
-
-        if not encrypted, check type. if type is encrypted, but packet is not, discard. otherwise process.
-
-        if encrypted, search for nonce/key pair for from address. if doesn't exist, throw away. otherwise, decrypt.
-
-        check type. if type is encrypted, allow packet through. if type is decrypted, discard packet (strict)
-
-    I think this means I need to in the SocketInterface level stick a one byte for flags in front of each packet,
-    and in each packet entry in the queues. This is actually a neat solution, because I can put cool flags in there:
-
-        PACKET_FLAG_DONT_AGGREGATE
-        PACKET_FLAG_FRAGMENT          // *do not expose this to the user*, internal use only.
-        PACKET_FLAG_ENCRYPTED
-        PACKET_FLAG_COMPRESSED        // if some form of compression is done
-
-    This is very flexible, and a byte should be plenty!
+    Now rework the encryption so that it uses that first byte as the additional data. It needs to be signed!

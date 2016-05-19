@@ -130,7 +130,72 @@ Wednesday May 18th, 2016
     interface layer to the user. Don't put them in send and receive queues etc.
 
     -------
-    
+
+    So to get the encryption working, there needs to be a byte inserted in front of all packets with a flag,
+    eg. encrypted yes/no.
+
+    On send:
+
+        the sender can check the packet type, if its encrypted, send it encrypted (get nonce/key pair from address map, *fail* if not found)
+
+    On receive:
+
+        the receiver checks the flag to see if encrypted. Type is *inside* the encrypted bit. 
+
+        if not encrypted, check type. if type is encrypted, but packet is not, discard. otherwise process.
+
+        if encrypted, search for nonce/key pair for from address. if doesn't exist, throw away. otherwise, decrypt.
+
+        check type. if type is encrypted, allow packet through. if type is decrypted, discard packet (strict)
+
+    I think this means I need to in the SocketInterface level stick a one byte for flags in front of each packet,
+    and in each packet entry in the queues. This is actually a neat solution, because I can put cool flags in there:
+
+        PACKET_FLAG_DONT_AGGREGATE
+        PACKET_FLAG_FRAGMENT          // *do not expose this to the user*, internal use only.
+        PACKET_FLAG_ENCRYPTED
+        PACKET_FLAG_COMPRESSED        // if some form of compression is done
+
+    This is very flexible, and a byte should be plenty!
+
+    -------------
+
+    Seems like the packet flags should be part of the additional data
+
+    eg. you would not like somebody to be able to modify them, but you don't want them encrypted, you just want them signed.
+
+    Seems that I should use AEAD for the packet payloads too!
+
+    -------------
+
+    Suggested packet format at this point in time:
+
+        [packet_flags][encrypted_packet_data][auth]
+
+    -------------
+
+    Add packet flags to yojimbo
+
+    In write packet, pass in rawFormat = true
+
+    In read packet, pass in rawFormat = true
+
+    Make sure everything still works in 006.
+
+    Now, when writing packet prefix with one byte (0s)
+
+    Next, when reading packet, read in one byte first.
+
+    Might need an extra packet copy to do this. Shitty.
+
+    Much better idea. "prefixBytes" passed in to PacketInfo, skip these bytes on write and read!!! (on write, fill with zeros, leave it up to caller to fill)
+
+    On read, avoids shitty copy.
+
+    OK. After a bunch of work, prefix bytes work with crc32. Wowwwwch.
+
+    -------------
+
 
 Tuesday May 17th, 2016
 ======================

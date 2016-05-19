@@ -25,7 +25,6 @@
 */
 
 #include "yojimbo.h"
-#include <sodium.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -34,13 +33,7 @@ using namespace protocol2;
 using namespace network2;
 
 const uint32_t ProtocolId = 0x12341651;
-
 const int ServerPort = 50000;
-
-const int NonceBytes = crypto_aead_chacha20poly1305_NPUBBYTES;
-const int KeyBytes = crypto_aead_chacha20poly1305_KEYBYTES;
-const int AuthBytes = crypto_aead_chacha20poly1305_ABYTES;
-const int MacBytes = crypto_secretbox_MACBYTES;
 const int TokenBytes = 1024;
 const int MaxServersPerToken = 8;
 const int TokenExpirySeconds = 10;
@@ -132,8 +125,8 @@ void GenerateToken( Token & token, uint64_t clientId, int numServerAddresses, co
     for ( int i = 0; i < numServerAddresses; ++i )
         token.server_address[i] = serverAddresses[i];
 
-    randombytes_buf( token.key, sizeof( token.key ) );
-    randombytes_buf( token.nonce, sizeof( token.nonce ) );
+    GenerateKey( token.key );
+    GenerateNonce( token.nonce );
 }
 
 bool EncryptToken( Token & token, uint8_t *encryptedMessage, const uint8_t *additional, int additionalLength, const uint8_t *nonce, const uint8_t *key )
@@ -149,16 +142,9 @@ bool EncryptToken( Token & token, uint8_t *encryptedMessage, const uint8_t *addi
     if ( stream.GetError() )
         return false;
 
-    unsigned long long encryptedLength;
+    uint64_t encryptedLength;
 
-    const int messageLength = TokenBytes;
-
-    int result = crypto_aead_chacha20poly1305_encrypt( encryptedMessage, &encryptedLength,
-                                                       message, messageLength,
-                                                       additional, additionalLength,
-                                                       NULL, nonce, key );
-
-    if ( result != 0 )
+    if ( !Encrypt( message, TokenBytes, encryptedMessage, encryptedLength, additional, additionalLength, nonce, key ) )
         return false;
 
     assert( encryptedLength == TokenBytes + AuthBytes );
@@ -168,21 +154,12 @@ bool EncryptToken( Token & token, uint8_t *encryptedMessage, const uint8_t *addi
 
 bool DecryptToken( const uint8_t * encryptedMessage, Token & decryptedToken, const uint8_t * additional, int additionalLength, const uint8_t * nonce, const uint8_t * key )
 {
-    unsigned char decryptedMessage[TokenBytes];
-    
-    unsigned long long decryptedMessageLength;
-    
     const int encryptedMessageLength = TokenBytes + AuthBytes;
 
-    int result = crypto_aead_chacha20poly1305_decrypt( decryptedMessage, &decryptedMessageLength,
-                                                       NULL,
-                                                       encryptedMessage, encryptedMessageLength,
-                                                       additional, additionalLength,
-                                                       nonce, key );
+    uint64_t decryptedMessageLength;
+    uint8_t decryptedMessage[TokenBytes];
 
-    assert( decryptedMessageLength == TokenBytes );
-
-    if ( result != 0 )
+    if ( !Decrypt( encryptedMessage, encryptedMessageLength, decryptedMessage, decryptedMessageLength, additional, additionalLength, nonce, key ) )
         return false;
 
     ReadStream stream( decryptedMessage, TokenBytes );
@@ -191,26 +168,6 @@ bool DecryptToken( const uint8_t * encryptedMessage, Token & decryptedToken, con
 
     if ( stream.GetError() )
         return false;
-
-    return true;
-}
-
-bool EncryptPacket( const uint8_t * packetData, int packetLength, uint8_t *encryptedPacketData, int & encryptedPacketLength, const uint8_t *nonce, const uint8_t *key )
-{
-    if ( crypto_secretbox_easy( encryptedPacketData, packetData, packetLength, nonce, key ) != 0 )
-        return false;
-
-    encryptedPacketLength = packetLength + MacBytes;
-
-    return true;
-}
-
-bool DecryptPacket( const uint8_t * encryptedPacketData, int encryptedPacketLength, uint8_t *decryptedPacketData, int & decryptedPacketLength, const uint8_t *nonce, const uint8_t *key )
-{
-    if ( crypto_secretbox_open_easy( decryptedPacketData, encryptedPacketData, encryptedPacketLength, nonce, key ) != 0 )
-        return false;
-
-    decryptedPacketLength = encryptedPacketLength - MacBytes;
 
     return true;
 }
@@ -249,9 +206,9 @@ struct ConnectionRequestPacket : public Packet
 
 int main()
 {
-    if ( sodium_init() == -1 )
+    if ( !InitializeCrypto() )
     {
-        printf( "error: failed to initialize libsodium\n" );
+        printf( "error: failed to initialize crypto\n" );
         return 1;
     }
 
@@ -265,8 +222,8 @@ int main()
     uint8_t nonce[NonceBytes];
     uint8_t key[KeyBytes];
 
-    randombytes_buf( key, sizeof( key ) );
-    randombytes_buf( nonce, sizeof( nonce ) );
+    GenerateKey( key );
+    GenerateNonce( nonce );
 
     if ( !EncryptToken( token, encryptedToken, NULL, 0, nonce, key ) )
     {
@@ -292,41 +249,6 @@ int main()
     else
     {
         printf( "error: decrypted token does not match original token\n" );
-        return 1;
-    }
-
-    uint8_t packet[1024];
-
-    randombytes_buf( packet, sizeof( packet ) );
-
-    uint8_t encryptedPacket[2048];
-    int encryptedPacketLength;
-    if ( !EncryptPacket( packet, sizeof( packet ), encryptedPacket, encryptedPacketLength, token.nonce, token.key ) )
-    {
-        printf( "error: failed to encrypt packet\n" );
-        return 1;
-    }
-
-    printf( "successfully encrypted packet\n" );
-
-    uint8_t decryptedPacket[2048];
-    int decryptedPacketLength;
-    if ( !DecryptPacket( encryptedPacket, encryptedPacketLength, decryptedPacket, decryptedPacketLength, token.nonce, token.key ) )
-    {
-        printf( "error: failed to decrypt packet\n" );
-        return 1;
-    }
-
-    printf( "successfull decrypted packet\n" );
-
-    if ( decryptedPacketLength == sizeof( packet ) && memcmp( packet, decryptedPacket, sizeof( packet ) ) == 0 )
-    {
-        printf( "success: decrypted packet matches original packet!\n" );
-
-    }
-    else
-    {
-        printf( "error: decrypted packet does not match original packet\n" );
         return 1;
     }
 

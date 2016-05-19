@@ -25,6 +25,7 @@ project "yojimbo"
     language "C++"
     kind "StaticLib"
     files { "yojimbo.cpp", "yojimbo_*.h", "yojimbo_*.cpp" }
+    links { "sodium" }
 
 project "001_reading_and_writing_packets"
     language "C++"

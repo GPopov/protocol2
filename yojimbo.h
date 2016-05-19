@@ -27,13 +27,12 @@
 #ifndef YOJIMBO_H
 #define YOJIMBO_H
 
-#define YOJIMBO_SECURE 1
-
 #include "network2.h"
 #include "protocol2.h"
 #include "yojimbo_config.h"
 #include "yojimbo_types.h"
 #include "yojimbo_memory.h"
+#include "yojimbo_crypto.h"
 #include "yojimbo_allocator.h"
 
 namespace yojimbo
@@ -60,9 +59,7 @@ namespace yojimbo
 
         virtual void SetContext( void * context ) = 0;
 
-#if YOJIMBO_SECURE
-
-        virtual void EnableEncryptionForAllPacketTypes() = 0;
+        virtual void EnablePacketEncryption() = 0;
 
         virtual void DisableEncryptionForPacketType( int type ) = 0;
 
@@ -71,8 +68,6 @@ namespace yojimbo
         virtual void AddEncryptionMapping( const network2::Address & address, const uint8_t * nonce, const uint8_t * key ) = 0;
 
         virtual void RemoveEncryptionMapping( const network2::Address & address ) = 0;
-
-#endif // #if YOJIMBO_SECURE
     };
 
     enum SocketInterfaceCounter
@@ -86,6 +81,15 @@ namespace yojimbo
         SOCKET_INTERFACE_COUNTER_SEND_QUEUE_OVERFLOW,
         SOCKET_INTERFACE_COUNTER_RECEIVE_QUEUE_OVERFLOW,
         SOCKET_INTERFACE_COUNTER_NUM_COUNTERS
+    };
+
+    enum
+    {
+        PACKET_FLAG_ENCRYPTED       = (1<<0),                 // packet is encrypted
+        PACKET_FLAG_FRAGMENT        = (1<<1),                 // packet is a fragment (fragmentation and re-assembly)
+        PACKET_FLAG_COMPRESSED      = (1<<2),                 // packet is compressed (prior to encryption)
+        PACKET_FLAG_AGGREGATE       = (1<<3),                 // packet is an aggregate of several smaller packets
+        PACKET_FLAG_NONE            = 0,
     };
 
     class SocketInterface : public NetworkInterface
@@ -111,9 +115,7 @@ namespace yojimbo
         Queue<PacketEntry> m_sendQueue;
         Queue<PacketEntry> m_receiveQueue;
 
-#if YOJIMBO_SECURE
         uint8_t * m_packetTypeIsEncrypted;
-#endif // #if YOJIMBO_SECURE
 
         uint64_t m_counters[SOCKET_INTERFACE_COUNTER_NUM_COUNTERS];
 
@@ -150,9 +152,7 @@ namespace yojimbo
 
         void SetContext( void * context );
 
-#if YOJIMBO_SECURE
-
-        void EnableEncryptionForAllPacketTypes();
+        void EnablePacketEncryption();
 
         void DisableEncryptionForPacketType( int type );
 
@@ -161,8 +161,6 @@ namespace yojimbo
         void AddEncryptionMapping( const network2::Address & address, const uint8_t * nonce, const uint8_t * key );
 
         void RemoveEncryptionMapping( const network2::Address & address );
-
-#endif // #if YOJIMBO_SECURE
     };
 }
 

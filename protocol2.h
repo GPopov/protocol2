@@ -32,6 +32,7 @@
 #endif
 
 #include <stdint.h>
+#include <stdio.h>
 #include <assert.h>
 #include <math.h>
 #include <string.h>
@@ -1241,14 +1242,16 @@ namespace protocol2
 
     struct PacketInfo
     {
-        bool rawFormat;                             // if true packets are written in "raw" format without crc32 (for encryption)
-        uint32_t protocolId;                        // protocol id that distinguishes your protocol from other packets sent over UDP
-        PacketFactory * packetFactory;              // packet factory used to create packets, and determine information about packet types. required.
+        bool rawFormat;                             // if true packets are written in "raw" format without crc32 (useful for encrypted packets).
+        int prefixBytes;                            // prefix this number of bytes when reading and writing packets. stick your own data there.
+        uint32_t protocolId;                        // protocol id that distinguishes your protocol from other packets sent over UDP.
+        PacketFactory * packetFactory;              // create packets and determine information about packet types. required.
         void * context;                             // context for the packet serialization (optional, pass in NULL)
 
         PacketInfo()
         {
             rawFormat = false;
+            prefixBytes = 0;
             protocolId = 0;
             packetFactory = NULL;
             context = NULL;
@@ -1451,6 +1454,12 @@ namespace protocol2
 
         stream.SetContext( info.context );
 
+        for ( int i = 0; i < info.prefixBytes; ++i )
+        {
+            uint8_t zero = 0;
+            stream.SerializeBits( zero, 8 );
+        }
+
         uint32_t crc32 = 0;
 
         if ( !info.rawFormat )
@@ -1471,9 +1480,6 @@ namespace protocol2
             stream.SerializeInteger( packetType, 0, numPacketTypes - 1 );
         }
 
-        if ( info.rawFormat )
-            stream.SerializeAlign();            
-
         if ( !packet->SerializeWrite( stream ) )
             return 0;
 
@@ -1487,9 +1493,8 @@ namespace protocol2
         {
             uint32_t network_protocolId = host_to_network( info.protocolId );
             crc32 = calculate_crc32( (uint8_t*) &network_protocolId, 4 );
-            crc32 = calculate_crc32( buffer, stream.GetBytesProcessed(), crc32 );
-
-            *((uint32_t*)buffer) = host_to_network( crc32 );
+            crc32 = calculate_crc32( buffer + info.prefixBytes, stream.GetBytesProcessed() - info.prefixBytes, crc32 );
+            *((uint32_t*)(buffer+info.prefixBytes)) = host_to_network( crc32 );
         }
 
         if ( stream.GetError() )
@@ -1516,6 +1521,12 @@ namespace protocol2
 
         stream.SetContext( info.context );
 
+        for ( int i = 0; i < info.prefixBytes; ++i )
+        {
+            uint32_t dummy = 0;
+            stream.SerializeBits( dummy, 8 );
+        }
+
         uint32_t read_crc32 = 0;
         if ( !info.rawFormat )
         {
@@ -1525,10 +1536,12 @@ namespace protocol2
             uint32_t crc32 = calculate_crc32( (const uint8_t*) &network_protocolId, 4 );
             uint32_t zero = 0;
             crc32 = calculate_crc32( (const uint8_t*) &zero, 4, crc32 );
-            crc32 = calculate_crc32( buffer + 4, bufferSize - 4, crc32 );
+            crc32 = calculate_crc32( buffer + info.prefixBytes + 4, bufferSize - 4 - info.prefixBytes, crc32 );
 
             if ( crc32 != read_crc32 )
             {
+                printf( "crc32 mismatch. expected %x, got %x\n", crc32, read_crc32 );
+
                 if ( errorCode )
                     *errorCode = PROTOCOL2_ERROR_CRC32_MISMATCH;
                 return NULL;
@@ -1634,10 +1647,17 @@ cleanup:
 
         int aggregatePacketBytes = 0;
 
+        if ( info.prefixBytes > 0 )
+        {
+            memset( buffer, 0, info.prefixBytes );
+            aggregatePacketBytes += info.prefixBytes;
+        }
+
         if ( !info.rawFormat )
         {
-            memset( buffer, 0, 4 );         // space for crc32
-            aggregatePacketBytes = 4;
+            // reserve space for crc32
+            memset( buffer + aggregatePacketBytes, 0, 4 );
+            aggregatePacketBytes += 4;
         }
 
         // write the optional aggregate packet header
@@ -1744,7 +1764,7 @@ cleanup:
             uint32_t crc32 = calculate_crc32( (uint8_t*) &network_protocolId, 4 );
             crc32 = calculate_crc32( buffer, aggregatePacketBytes, crc32 );
 
-            *((uint32_t*)buffer) = host_to_network( crc32 );
+            *((uint32_t*)(buffer+info.prefixBytes)) = host_to_network( crc32 );
         }
 
         return aggregatePacketBytes;
@@ -1773,6 +1793,12 @@ cleanup:
         Stream stream( buffer, bufferSize );
 
         stream.SetContext( info.context );
+
+        for ( int i = 0; i < info.prefixBytes; ++i )
+        {
+            uint32_t dummy = 0;
+            stream.SerializeBits( dummy, 8 );
+        }
 
         if ( !info.rawFormat )
         {
