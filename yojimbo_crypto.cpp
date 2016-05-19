@@ -51,11 +51,27 @@ namespace yojimbo
         randombytes_buf( data, bytes );
     }
 
-    bool Encrypt( const uint8_t * message, uint64_t messageLength, 
-                  uint8_t * encryptedMessage, uint64_t & encryptedMessageLength,
-                  const uint8_t * additional, uint64_t additionalLength,
-                  const uint8_t * nonce,
-                  const uint8_t * key )
+    bool Encrypt( const uint8_t * message, int messageLength, uint8_t * encryptedMessage, int & encryptedMessageLength, const uint8_t * nonce, const uint8_t * key )
+    {
+        if ( crypto_secretbox_easy( encryptedMessage, message, messageLength, nonce, key ) != 0 )
+            return false;
+        encryptedMessageLength = messageLength + MacBytes;
+        return true;
+    }
+ 
+    bool Decrypt( const uint8_t * encryptedMessage, int encryptedMessageLength, uint8_t * decryptedMessage, int & decryptedMessageLength, const uint8_t * nonce, const uint8_t * key )
+    {
+        if ( crypto_secretbox_open_easy( decryptedMessage, encryptedMessage, encryptedMessageLength, nonce, key ) != 0 )
+            return false;
+        decryptedMessageLength = encryptedMessageLength - MacBytes;
+        return decryptedMessageLength >= 0;
+    }
+
+    bool Encrypt_AEAD( const uint8_t * message, uint64_t messageLength, 
+                       uint8_t * encryptedMessage, uint64_t & encryptedMessageLength,
+                       const uint8_t * additional, uint64_t additionalLength,
+                       const uint8_t * nonce,
+                       const uint8_t * key )
     {
         int result = crypto_aead_chacha20poly1305_encrypt( encryptedMessage, &encryptedMessageLength,
                                                            message, messageLength,
@@ -65,11 +81,11 @@ namespace yojimbo
         return result == 0;
     }
 
-    bool Decrypt( const uint8_t * encryptedMessage, uint64_t encryptedMessageLength, 
-                  uint8_t * decryptedMessage, uint64_t & decryptedMessageLength,
-                  const uint8_t * additional, uint64_t additionalLength,
-                  const uint8_t * nonce,
-                  const uint8_t * key )
+    bool Decrypt_AEAD( const uint8_t * encryptedMessage, uint64_t encryptedMessageLength, 
+                       uint8_t * decryptedMessage, uint64_t & decryptedMessageLength,
+                       const uint8_t * additional, uint64_t additionalLength,
+                       const uint8_t * nonce,
+                       const uint8_t * key )
     {
         int result = crypto_aead_chacha20poly1305_decrypt( decryptedMessage, &decryptedMessageLength,
                                                            NULL,

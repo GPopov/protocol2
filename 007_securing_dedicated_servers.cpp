@@ -168,7 +168,7 @@ bool EncryptToken( Token & token, uint8_t *encryptedMessage, const uint8_t *addi
 
     uint64_t encryptedLength;
 
-    if ( !Encrypt( message, TokenBytes, encryptedMessage, encryptedLength, additional, additionalLength, (uint8_t*)&nonce, key ) )
+    if ( !Encrypt_AEAD( message, TokenBytes, encryptedMessage, encryptedLength, additional, additionalLength, (uint8_t*)&nonce, key ) )
         return false;
 
     assert( encryptedLength == TokenBytes + AuthBytes );
@@ -183,7 +183,7 @@ bool DecryptToken( const uint8_t * encryptedMessage, Token & decryptedToken, con
     uint64_t decryptedMessageLength;
     uint8_t decryptedMessage[TokenBytes];
 
-    if ( !Decrypt( encryptedMessage, encryptedMessageLength, decryptedMessage, decryptedMessageLength, additional, additionalLength, (uint8_t*)&nonce, key ) )
+    if ( !Decrypt_AEAD( encryptedMessage, encryptedMessageLength, decryptedMessage, decryptedMessageLength, additional, additionalLength, (uint8_t*)&nonce, key ) )
         return false;
 
     ReadStream stream( decryptedMessage, TokenBytes );

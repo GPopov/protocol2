@@ -1,17 +1,4 @@
 DONE
-
+    
 TODO
 
-    No bugs says the nonce must *never* repeat
-
-    So in fact, it's better for it to not be a randomly generated 64bit number, but for it to be a 64bit number that increases is much better.
-
-    This can be done by adding the 64 bit sequence # to the end of the packet, it should never wrap around.
-
-    64bit sequence can be encoded better by prefixing it with the # of zero bytes
-
-    This means the token has no need to send nonce, but it does need two private keys, one for each direction.
-
-    Now I need a way to actually send the packet through with the nonce, the packet needs to know its sequence # to encrpypt.
-
-    Argh.
