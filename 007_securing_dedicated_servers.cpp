@@ -36,7 +36,7 @@ using namespace network2;
 const uint32_t ProtocolId = 0x12341651;
 
 const int MaxClients = 32;
-//const int ServerPort = 50000;
+const int ServerPort = 50000;
 //const int ClientPort = 60000;
 const int ChallengeHashSize = 1024;
 const float ChallengeSendRate = 0.1f;
@@ -1199,73 +1199,73 @@ int main()
         return 1;
     }
 
-    /*
-    Token token;
-
-    Address serverAddress( "::1", ServerPort );
-
-    GenerateToken( token, 1231241, 1, &serverAddress );
-
-    uint8_t encryptedToken[TokenBytes+AuthBytes];
-    uint8_t key[KeyBytes];
-    uint64_t nonce = 1;         // todo: increment this with each token encryption
-
-    GenerateKey( key );
-
-    if ( !EncryptToken( token, encryptedToken, NULL, 0, nonce, key ) )
     {
-        printf( "error: failed to encrypt token\n" );
-        return 1;
+        Token token;
+
+        Address serverAddress( "::1", ServerPort );
+
+        GenerateToken( token, 1231241, 1, &serverAddress );
+
+        uint8_t encryptedToken[TokenBytes+AuthBytes];
+        uint8_t key[KeyBytes];
+        uint64_t nonce = 1;         // todo: increment this with each token encryption
+
+        GenerateKey( key );
+
+        if ( !EncryptToken( token, encryptedToken, NULL, 0, nonce, key ) )
+        {
+            printf( "error: failed to encrypt token\n" );
+            return 1;
+        }
+
+        Token decryptedToken;
+        if ( !DecryptToken( encryptedToken, decryptedToken, NULL, 0, nonce, key ) )
+        {
+            printf( "error: failed to decrypt token\n" );
+            return 1;
+        }
+
+        if ( decryptedToken == token )
+        {
+            printf( "success: decrypted token matches original token!\n" );
+        }
+        else
+        {
+            printf( "error: decrypted token does not match original token\n" );
+            return 1;
+        }
     }
 
-    printf( "successfully encrypted token\n" );
-
-    Token decryptedToken;
-    if ( !DecryptToken( encryptedToken, decryptedToken, NULL, 0, nonce, key ) )
-    {
-        printf( "error: failed to decrypt token\n" );
-        return 1;
-    }
-
-    printf( "successfully decrypted token\n" );
-
-    if ( decryptedToken == token )
-    {
-        printf( "success: decrypted token matches original token!\n" );
-    }
-    else
-    {
-        printf( "error: decrypted token does not match original token\n" );
-        return 1;
-    }
-
-    printf( "hello what the fuck\n" );
-    */
+    // --------------------------
 
     uint8_t packet[1024];
   
     RandomBytes( packet, sizeof( packet ) );
   
-    uint8_t nonce[NonceBytes];
     uint8_t key[KeyBytes];
-    
+    uint8_t nonce[NonceBytes];
+
+    memset( key, 1, sizeof( key ) );
+    memset( nonce, 1, sizeof( nonce ) );
+
     uint8_t encrypted_packet[2048];
 
-    randombytes_buf( key, sizeof( key ) );
-    randombytes_buf( nonce, sizeof( nonce ) );
+    RandomBytes( key, sizeof( key ) );
+    RandomBytes( nonce, sizeof( nonce ) );
 
-    const int encrypted_length = sizeof( packet ) + MacBytes;
-    crypto_secretbox_easy( encrypted_packet, packet, sizeof( packet ), nonce, key );
+    int encrypted_length;
+    if ( !Encrypt( packet, sizeof( packet ), encrypted_packet, encrypted_length, nonce, key ) )
+    {
+        printf( "error: failed to encrypt\n" );
+        return 1;
+    }
 
     uint8_t decrypted_packet[2048];
-    const int decrypted_length = encrypted_length - MacBytes;
-    if ( crypto_secretbox_open_easy( decrypted_packet, encrypted_packet, encrypted_length, nonce, key ) != 0) 
+    int decrypted_length;
+    if ( !Decrypt( encrypted_packet, encrypted_length, decrypted_packet, decrypted_length, nonce, key ) )
     {
-        printf( "message fucked up\n" );
-    }
-    else
-    {
-        printf( "message is good\n" );
+        printf( "error: failed to decrypt\n" );
+        return 1;
     }
 
     if ( decrypted_length == sizeof( packet ) && memcmp( packet, decrypted_packet, sizeof( packet ) ) == 0 )
@@ -1277,29 +1277,6 @@ int main()
         printf( "error: decrypted packet does not match original packet\n" );
         return 1;
     }
-
-    /*
-    printf( "before encrypt\n" );
-
-    int encryptedPacketLength;
-    uint8_t encryptedPacket[2048];
-    if ( !Encrypt( packet, sizeof( packet ), encryptedPacket, encryptedPacketLength, (uint8_t*) nonce, key ) )
-    {
-        printf( "error: failed to encrypt packet\n" );
-        return 1;
-    }
- 
-    printf( "successfully encrypted packet\n" );
-  
-    int decryptedPacketLength;
-    uint8_t decryptedPacket[2048];
-    if ( !Decrypt( encryptedPacket, encryptedPacketLength, decryptedPacket, decryptedPacketLength, (uint8_t*) nonce, key ) )
-    {
-        printf( "error: failed to decrypt packet\n" );
-        return 1;
-    }
-  
-    */
 
     return 0;
 }

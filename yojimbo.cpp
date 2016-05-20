@@ -91,8 +91,8 @@ namespace yojimbo
 
         memset( m_counters, 0, sizeof( m_counters ) );
 
-        memset( m_key, 1, sizeof( m_key ) );
-        memset( m_nonce, 1, sizeof( m_nonce ) );
+        memset( m_key, 0, sizeof( m_key ) );
+        memset( m_nonce, 0, sizeof( m_nonce ) );
     }
 
     SocketInterface::~SocketInterface()
@@ -231,17 +231,16 @@ namespace yojimbo
 
             queue_consume( m_sendQueue, 1 );
 
-            const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
-
             // big big hack for testing
             static int64_t sequence = 0;
             sequence++;
+
+                const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
 
             uint8_t prefix[16] = { 0 };
             int prefixBytes = 1;
             if ( encrypt )
             {
-                printf( "encrypting packet: %lld\n", sequence/*entry.sequence*/ );
                 yojimbo::CompressPacketSequence( sequence/*entry.sequence*/, prefix[0], prefixBytes, prefix+1 );
                 prefix[0] |= ENCRYPTED_PACKET_FLAG;
                 prefixBytes++;
@@ -265,8 +264,6 @@ namespace yojimbo
 
                 if ( encrypt )
                 {
-                    memcpy( m_packetBuffer, prefix, prefixBytes );
-
                     int encryptedPacketSize;
 
                     if ( Encrypt( m_packetBuffer + prefixBytes, 
@@ -278,6 +275,7 @@ namespace yojimbo
                         printf( "bytes after encrypt = %d\n", encryptedPacketSize );
                         packetSize = prefixBytes + encryptedPacketSize;
                         assert( packetSize <= m_maxPacketSize );            // todo: absolute max packet size
+                        memcpy( m_packetBuffer, prefix, prefixBytes );
                         m_socket->SendPacket( entry.address, m_packetBuffer, packetSize );
                     }
                     else
@@ -320,17 +318,21 @@ namespace yojimbo
                 break;
             }
 
+            int prefixBytes = 1;
+
             const uint8_t prefixByte = m_packetBuffer[0];
 
-            if ( prefixByte & ENCRYPTED_PACKET_FLAG )
+            const bool encrypted = prefixByte & ENCRYPTED_PACKET_FLAG;
+
+            if ( encrypted )
             {
-                uint64_t sequence = yojimbo::DecompressPacketSequence( prefixByte, m_packetBuffer + 1 );
+                //uint64_t sequence = yojimbo::DecompressPacketSequence( prefixByte, m_packetBuffer + 1 );
 
                 const int sequenceBytes = yojimbo::GetPacketSequenceBytes( prefixByte );
 
-                const int prefixBytes = 1 + sequenceBytes;
+                prefixBytes += sequenceBytes;
 
-                printf( "decrypting packet: %lld\n", sequence );
+                printf( "decrypt prefix bytes = %d\n", prefixBytes );
 
                 printf( "bytes to decrypt = %d\n", packetBytes - prefixBytes );
 
@@ -354,8 +356,8 @@ namespace yojimbo
             info.context = m_context;
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
-            info.prefixBytes = 1;
-            info.rawFormat = 0;
+            info.prefixBytes = prefixBytes;
+            info.rawFormat = encrypted;
 
             int readError;
             protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
