@@ -150,6 +150,7 @@ void GenerateToken( Token & token, uint64_t clientId, int numServerAddresses, co
         token.server_address[i] = serverAddresses[i];
 
     GenerateKey( token.client_to_server_key );    
+    
     GenerateKey( token.server_to_client_key );
 }
 

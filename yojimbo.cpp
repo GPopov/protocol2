@@ -31,6 +31,7 @@
 #include "yojimbo_array.h"
 #include "yojimbo_hash.h"
 #include "yojimbo_queue.h"
+#include "yojimbo_util.h"
 
 #define NETWORK2_IMPLEMENTATION
 #define PROTOCOL2_IMPLEMENTATION
@@ -75,16 +76,20 @@ namespace yojimbo
 
         m_receiveQueueSize = receiveQueueSize;
         
-        m_packetBuffer = (uint8_t*) m_allocator->Allocate( maxPacketSize );
+        m_packetBuffer = (uint8_t*) m_allocator->Allocate( m_maxPacketSize );
         
         m_packetFactory = &packetFactory;
         
         queue_reserve( m_sendQueue, sendQueueSize );
         queue_reserve( m_receiveQueue, receiveQueueSize );
 
-        m_packetTypeIsEncrypted = (uint8_t*) m_allocator->Allocate( m_packetFactory->GetNumPacketTypes() );
+        const int numPacketTypes = m_packetFactory->GetNumPacketTypes();
+        m_packetTypeIsEncrypted = (uint8_t*) m_allocator->Allocate( numPacketTypes );
+        memset( m_packetTypeIsEncrypted, 0, m_packetFactory->GetNumPacketTypes() );
 
         memset( m_counters, 0, sizeof( m_counters ) );
+
+        GenerateKey( m_key );
     }
 
     SocketInterface::~SocketInterface()
@@ -221,8 +226,6 @@ namespace yojimbo
 
             queue_consume( m_sendQueue, 1 );
 
-            bool error = false;
-
             const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
 
             protocol2::PacketInfo info;
@@ -233,25 +236,19 @@ namespace yojimbo
             info.prefixBytes = 1;
             info.rawFormat = encrypt;
 
-            const int bytesWritten = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
-
-            m_packetBuffer[0] = encrypt ? PACKET_FLAG_ENCRYPTED : PACKET_FLAG_NONE;
+            int bytesWritten = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
 
             if ( bytesWritten > 0 )
             {
+                assert( bytesWritten <= m_maxPacketSize );
                 m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
+                m_socket->SendPacket( entry.address, m_packetBuffer, bytesWritten );
             }
             else
             {
-                m_packetFactory->DestroyPacket( entry.packet );
+                printf( "failed to write packet type %d\n", entry.packet->GetType() );
                 m_counters[SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS]++;
-                error = true;
             }
-
-            assert( bytesWritten > 0 );
-            assert( bytesWritten <= m_maxPacketSize );
-
-            m_socket->SendPacket( entry.address, m_packetBuffer, bytesWritten );
 
             m_packetFactory->DestroyPacket( entry.packet );
         }
@@ -277,7 +274,7 @@ namespace yojimbo
                 break;
             }
 
-            const uint8_t packetFlags = m_packetBuffer[0];
+            const uint8_t prefixByte = m_packetBuffer[0];
 
             protocol2::PacketInfo info;
             
@@ -285,7 +282,7 @@ namespace yojimbo
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
             info.prefixBytes = 1;
-            info.rawFormat = ( packetFlags & PACKET_FLAG_ENCRYPTED ) != 0;
+            info.rawFormat = prefixByte != 0;
 
             int readError;
             protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
@@ -336,7 +333,7 @@ namespace yojimbo
         return m_packetTypeIsEncrypted[type] != 0;
     }
 
-    void SocketInterface::AddEncryptionMapping( const network2::Address & /*address*/, const uint8_t * /*nonce*/, const uint8_t * /*key*/ )
+    void SocketInterface::AddEncryptionMapping( const network2::Address & /*address*/, const uint8_t * /*sendKey*/, const uint8_t * /*receiveKey*/ )
     {
         // todo
     }

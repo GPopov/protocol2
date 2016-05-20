@@ -1,4 +1,7 @@
 DONE
-    
+
+    Finally finished the encoding of the variable length uint64_t sequence #
+
 TODO
 
+    Now to hook up the packet to encode the sequence # at the end of the packet

@@ -20,6 +20,7 @@ project "test"
     language "C++"
     kind "ConsoleApp"
     files { "test.cpp", "protocol2.h", "network2.h" }
+    links { "yojimbo" }
 
 project "yojimbo"
     language "C++"
@@ -56,7 +57,7 @@ project "006_client_server"
     language "C++"
     kind "ConsoleApp"
     files { "006_client_server.cpp", "protocol2.h", "network2.h" }
-    links { "yojimbo" }
+    links { "yojimbo", "sodium" }
 
 project "007_securing_dedicated_servers"
     language "C++"

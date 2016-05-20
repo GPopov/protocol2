@@ -29,6 +29,7 @@
 
 #include "network2.h"
 #include "protocol2.h"
+#include "yojimbo_util.h"
 #include "yojimbo_config.h"
 #include "yojimbo_types.h"
 #include "yojimbo_memory.h"
@@ -65,7 +66,7 @@ namespace yojimbo
 
         virtual bool IsEncryptedPacketType( int type ) const = 0;
 
-        virtual void AddEncryptionMapping( const network2::Address & address, const uint8_t * nonce, const uint8_t * key ) = 0;
+        virtual void AddEncryptionMapping( const network2::Address & address, const uint8_t * sendKey, const uint8_t * receiveKey ) = 0;
 
         virtual void RemoveEncryptionMapping( const network2::Address & address ) = 0;
     };
@@ -81,15 +82,6 @@ namespace yojimbo
         SOCKET_INTERFACE_COUNTER_SEND_QUEUE_OVERFLOW,
         SOCKET_INTERFACE_COUNTER_RECEIVE_QUEUE_OVERFLOW,
         SOCKET_INTERFACE_COUNTER_NUM_COUNTERS
-    };
-
-    enum
-    {
-        PACKET_FLAG_ENCRYPTED       = (1<<0),                 // packet is encrypted
-        PACKET_FLAG_FRAGMENT        = (1<<1),                 // packet is a fragment (fragmentation and re-assembly)
-        PACKET_FLAG_COMPRESSED      = (1<<2),                 // packet is compressed (prior to encryption)
-        PACKET_FLAG_AGGREGATE       = (1<<3),                 // packet is an aggregate of several smaller packets
-        PACKET_FLAG_NONE            = 0,
     };
 
     class SocketInterface : public NetworkInterface
@@ -119,6 +111,9 @@ namespace yojimbo
         uint8_t * m_packetTypeIsEncrypted;
 
         uint64_t m_counters[SOCKET_INTERFACE_COUNTER_NUM_COUNTERS];
+
+        // very temporary!!!
+        uint8_t m_key[KeyBytes];
 
     public:
 
@@ -159,7 +154,7 @@ namespace yojimbo
 
         bool IsEncryptedPacketType( int type ) const;
 
-        void AddEncryptionMapping( const network2::Address & address, const uint8_t * nonce, const uint8_t * key );
+        void AddEncryptionMapping( const network2::Address & address, const uint8_t * sendKey, const uint8_t * receiveKey );
 
         void RemoveEncryptionMapping( const network2::Address & address );
     };
