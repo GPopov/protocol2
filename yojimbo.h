@@ -112,10 +112,6 @@ namespace yojimbo
 
         uint64_t m_counters[SOCKET_INTERFACE_COUNTER_NUM_COUNTERS];
 
-        // very temporary!!!
-        uint8_t m_key[KeyBytes];
-        uint8_t m_nonce[NonceBytes];
-
     public:
 
         SocketInterface( Allocator & allocator,

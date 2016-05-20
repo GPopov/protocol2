@@ -90,9 +90,6 @@ namespace yojimbo
         memset( m_packetTypeIsEncrypted, 0, m_packetFactory->GetNumPacketTypes() );
 
         memset( m_counters, 0, sizeof( m_counters ) );
-
-        memset( m_key, 0, sizeof( m_key ) );
-        memset( m_nonce, 0, sizeof( m_nonce ) );
     }
 
     SocketInterface::~SocketInterface()
@@ -235,7 +232,7 @@ namespace yojimbo
             static int64_t sequence = 0;
             sequence++;
 
-                const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
+            const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
 
             uint8_t prefix[16] = { 0 };
             int prefixBytes = 1;
@@ -264,15 +261,20 @@ namespace yojimbo
 
                 if ( encrypt )
                 {
+                    uint8_t key[KeyBytes];
+                    memset( key, 0, sizeof( key ) );
+
                     int encryptedPacketSize;
+
+                    uint8_t nonce[NonceBytes];
+                    memcpy( nonce, &sequence, NonceBytes );
 
                     if ( Encrypt( m_packetBuffer + prefixBytes, 
                                   packetSize - prefixBytes, 
                                   m_packetBuffer + prefixBytes, 
                                   encryptedPacketSize, 
-                                  m_nonce, m_key ) )//(uint8_t*) &sequence/*entry.sequence*/, m_key );
+                                  nonce, key ) )
                     {
-                        printf( "bytes after encrypt = %d\n", encryptedPacketSize );
                         packetSize = prefixBytes + encryptedPacketSize;
                         assert( packetSize <= m_maxPacketSize );            // todo: absolute max packet size
                         memcpy( m_packetBuffer, prefix, prefixBytes );
@@ -318,37 +320,39 @@ namespace yojimbo
                 break;
             }
 
-            int prefixBytes = 1;
-
             const uint8_t prefixByte = m_packetBuffer[0];
 
             const bool encrypted = prefixByte & ENCRYPTED_PACKET_FLAG;
 
+            int numPrefixBytes = 1;
+
             if ( encrypted )
             {
-                //uint64_t sequence = yojimbo::DecompressPacketSequence( prefixByte, m_packetBuffer + 1 );
+                uint8_t key[KeyBytes];
+                memset( key, 0, sizeof( key ) );
+
+                uint64_t sequence = yojimbo::DecompressPacketSequence( prefixByte, m_packetBuffer + 1 );
+
+                uint8_t nonce[NonceBytes];
+                memcpy( nonce, &sequence, NonceBytes );
 
                 const int sequenceBytes = yojimbo::GetPacketSequenceBytes( prefixByte );
 
-                prefixBytes += sequenceBytes;
-
-                printf( "decrypt prefix bytes = %d\n", prefixBytes );
-
-                printf( "bytes to decrypt = %d\n", packetBytes - prefixBytes );
+                numPrefixBytes += sequenceBytes;
 
                 int decryptedPacketBytes;
 
-                if ( !Decrypt( m_packetBuffer + prefixBytes, 
-                               packetBytes - prefixBytes, 
-                               m_packetBuffer + prefixBytes, 
+                if ( !Decrypt( m_packetBuffer + numPrefixBytes, 
+                               packetBytes - numPrefixBytes, 
+                               m_packetBuffer + numPrefixBytes, 
                                decryptedPacketBytes, 
-                               m_nonce, m_key ) )//(uint8_t*) &sequence, m_key ) )
+                               nonce, key ) )
                 {
                     printf( "failed to decrypt packet\n" );
                     continue;
                 }
 
-                packetBytes = prefixBytes + decryptedPacketBytes;
+                packetBytes = numPrefixBytes + decryptedPacketBytes;
             }
 
             protocol2::PacketInfo info;
@@ -356,7 +360,7 @@ namespace yojimbo
             info.context = m_context;
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
-            info.prefixBytes = prefixBytes;
+            info.prefixBytes = numPrefixBytes;
             info.rawFormat = encrypted;
 
             int readError;

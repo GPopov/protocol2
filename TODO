@@ -1,21 +1,9 @@
 DONE
 
-    Finally finished the encoding of the variable length uint64_t sequence #
-
-    Added code to stick the top bit to 1 in encrypted packets, and check this on packet read to know what to do.
-
-    Now to hook up the packet to encode the sequence # in the prefix byte and the end of the packet.
-
-    Had to disable stream check that no bits are left in packet to serialize for this to work.
-
-    Verify this writes and reads back properly. Only do it for encrypted mode.
-
-    Once this passes, extend to actually perform the encryption, eg. copy across to another buffer.
-
 TODO
 
-    Having some weird desync with the decryption refusing to work.
+    What the fuck. The sequence is clearly the same on both sides, but decrypting with it as nonce always fails.
 
-    Why don't I just have a variable # of prefix bytes. It so much simple than what I'm currently doing.
+    As soon as the nonce is forced back to a static constant value it works.
 
-    Halfway done. This would also allow me to simplify the compress/decompress sequence.
+    There is something funny going on...
