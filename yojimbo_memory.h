@@ -180,7 +180,7 @@ namespace yojimbo
 
 	class MallocAllocator : public Allocator
 	{
-		uint32_t m_total_allocated;
+		int64_t m_total_allocated;
 
 #if YOJIMBO_DEBUG_MEMORY_LEAKS
 		std::map<void*,int> m_alloc_map;
@@ -202,7 +202,7 @@ namespace yojimbo
 			{
 				printf( "you leaked memory!\n" );
 				printf( "%d blocks still allocated\n", (int) m_alloc_map.size() );
-				printf( "%d bytes still allocated\n", m_total_allocated );
+				printf( "%d bytes still allocated\n", (uint32_t) m_total_allocated );
 				typedef std::map<void*,int>::iterator itor_type;
 				for ( itor_type i = m_alloc_map.begin(); i != m_alloc_map.end(); ++i ) 
 				{
@@ -215,7 +215,7 @@ namespace yojimbo
 
 			if ( m_total_allocated != 0 )
 			{
-				printf( "you leaked memory! %d bytes still allocated\n", m_total_allocated );
+				printf( "you leaked memory! %d bytes still allocated\n", (uint32_t) m_total_allocated );
 				assert( !"leaked memory" );
 			}
 
