@@ -89,7 +89,7 @@ namespace yojimbo
 
         memset( m_counters, 0, sizeof( m_counters ) );
 
-        GenerateKey( m_key );
+        memset( m_key, 1, sizeof( m_key ) );
     }
 
     SocketInterface::~SocketInterface()
@@ -210,6 +210,8 @@ namespace yojimbo
         return entry.packet;
     }
 
+    static const int ENCRYPTED_PACKET_FLAG = (1<<7);
+
     void SocketInterface::WritePackets( double /*time*/ )
     {
         assert( m_allocator );
@@ -241,12 +243,55 @@ namespace yojimbo
             if ( bytesWritten > 0 )
             {
                 assert( bytesWritten <= m_maxPacketSize );
+
                 m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
-                m_socket->SendPacket( entry.address, m_packetBuffer, bytesWritten );
+
+                if ( encrypt )
+                {
+                    // big big hack for testing
+                    static int64_t sequence = 0;
+                    sequence++;
+
+                    printf( "encrypting packet: %lld\n", sequence/*entry.sequence*/ );
+
+                    const int EncryptedPacketBufferSize = bytesWritten + MacBytes + 8;
+
+                    uint8_t * encryptedPacket = (uint8_t*) alloca( EncryptedPacketBufferSize );
+
+                    int encryptedPacketLength;
+                    bool result = Encrypt( m_packetBuffer + 1, bytesWritten - 1, encryptedPacket + 1, encryptedPacketLength, (uint8_t*) &sequence/*entry.sequence*/, m_key );
+                    if ( result )
+                    {
+                        printf( "encrypted bytes = %d\n", encryptedPacketLength );
+
+                        encryptedPacketLength++;
+                        encryptedPacket[0] = m_packetBuffer[0];                    
+
+                        int sequenceBytes;
+                        yojimbo::CompressPacketSequence( sequence/*entry.sequence*/, encryptedPacket[0], sequenceBytes, encryptedPacket + encryptedPacketLength );
+                        encryptedPacketLength += sequenceBytes;
+
+                        encryptedPacket[0] |= ENCRYPTED_PACKET_FLAG;
+
+                        printf( "send sequence bytes = %d\n", sequenceBytes );
+
+                        assert( encryptedPacketLength <= EncryptedPacketBufferSize );
+
+                        m_socket->SendPacket( entry.address, encryptedPacket, encryptedPacketLength );
+                    }
+                    else
+                    {
+                        printf( "failed to encrypt packet\n" );
+                    }
+                }
+                else
+                {
+                    m_socket->SendPacket( entry.address, m_packetBuffer, bytesWritten );
+                }
             }
             else
             {
-                printf( "failed to write packet type %d\n", entry.packet->GetType() );
+                printf( "failed to write packet (type %d)\n", entry.packet->GetType() );
                 m_counters[SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS]++;
             }
 
@@ -276,31 +321,84 @@ namespace yojimbo
 
             const uint8_t prefixByte = m_packetBuffer[0];
 
-            protocol2::PacketInfo info;
-            
-            info.context = m_context;
-            info.protocolId = m_protocolId;
-            info.packetFactory = m_packetFactory;
-            info.prefixBytes = 1;
-            info.rawFormat = prefixByte != 0;
-
-            int readError;
-            protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
-            if ( packet )
+            if ( prefixByte & ENCRYPTED_PACKET_FLAG )
             {
-                m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
+                int sequenceBytes = yojimbo::GetPacketSequenceBytes( prefixByte );
+
+                printf( "recv sequence bytes = %d\n", sequenceBytes );
+
+                uint64_t sequence = yojimbo::DecompressPacketSequence( prefixByte, m_packetBuffer + packetBytes - sequenceBytes );
+
+                printf( "decrypting packet: %lld\n", sequence );
+
+                packetBytes -= sequenceBytes;
+
+                int decryptedPacketLength;
+                uint8_t * decryptedPacket = (uint8_t*) alloca( packetBytes );                
+                printf( "bytes to decrypt = %d\n", packetBytes - 1 );
+                if ( Decrypt( m_packetBuffer + 1, packetBytes - 1, decryptedPacket, decryptedPacketLength, (uint8_t*) &sequence, m_key ) )
+                {
+                    protocol2::PacketInfo info;
+                    
+                    info.context = m_context;
+                    info.protocolId = m_protocolId;
+                    info.packetFactory = m_packetFactory;
+                    info.prefixBytes = 1;
+                    info.rawFormat = 1;
+
+                    int readError;
+                    protocol2::Packet *packet = protocol2::ReadPacket( info, decryptedPacket, decryptedPacketLength, NULL, &readError );
+                    if ( packet )
+                    {
+                        m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
+                    }
+                    else
+                    {
+                        printf( "read packet error: %s\n", protocol2::GetErrorString( readError ) );
+                        m_counters[SOCKET_INTERFACE_COUNTER_READ_PACKET_ERRORS]++;
+                        continue;
+                    }
+
+                    PacketEntry entry;
+                    entry.sequence = sequence;
+                    entry.packet = packet;
+                    entry.address = address;
+                    queue_push_back( m_receiveQueue, entry );
+                }
+                else
+                {
+                    printf( "failed to decrypt packet\n" );
+                }
             }
             else
             {
-                printf( "read packet error: %s\n", protocol2::GetErrorString( readError ) );
-                m_counters[SOCKET_INTERFACE_COUNTER_READ_PACKET_ERRORS]++;
-                continue;
-            }
+                protocol2::PacketInfo info;
+                
+                info.context = m_context;
+                info.protocolId = m_protocolId;
+                info.packetFactory = m_packetFactory;
+                info.prefixBytes = 1;
+                info.rawFormat = 0;
 
-            PacketEntry entry;
-            entry.packet = packet;
-            entry.address = address;
-            queue_push_back( m_receiveQueue, entry );
+                int readError;
+                protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
+                if ( packet )
+                {
+                    m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
+                }
+                else
+                {
+                    printf( "read packet error: %s\n", protocol2::GetErrorString( readError ) );
+                    m_counters[SOCKET_INTERFACE_COUNTER_READ_PACKET_ERRORS]++;
+                    continue;
+                }
+
+                PacketEntry entry;
+                entry.sequence = 0;
+                entry.packet = packet;
+                entry.address = address;
+                queue_push_back( m_receiveQueue, entry );
+            }
         }
     }
 
@@ -330,7 +428,8 @@ namespace yojimbo
     {
         assert( type >= 0 );
         assert( type < m_packetFactory->GetNumPacketTypes() );
-        return m_packetTypeIsEncrypted[type] != 0;
+        // todo: for testing purposes only
+        return true; //m_packetTypeIsEncrypted[type] != 0;
     }
 
     void SocketInterface::AddEncryptionMapping( const network2::Address & /*address*/, const uint8_t * /*sendKey*/, const uint8_t * /*receiveKey*/ )

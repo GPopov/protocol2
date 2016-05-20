@@ -34,9 +34,7 @@ namespace yojimbo
 {
     inline void CompressPacketSequence( uint64_t sequence, uint8_t & prefix_byte, int & num_sequence_bytes, uint8_t * sequence_bytes )
     {
-        // algorithm: encode a mask of 7 bits. each bit is set if byte n is non-zero in the sequence
-        // 7 bits are used only, so the high bit can be used as a flag whether the packet is compressed or not.
-        // byte 0 is always sent because sequence numbers that are only <= 8 bits wide [0,255] are not worth optimizing.
+        // algorithm: encode a mask of 7 bits. each bit is set if byte n in the sequence is non-zero
 
         assert( sequence_bytes );
 

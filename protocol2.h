@@ -1593,7 +1593,7 @@ namespace protocol2
         if ( !stream.SerializeCheck( info.protocolId ) )
         {
             #if PROTOCOL2_ASSERT_ON_SERIALIZE_CHECK
-            assert( false );
+            assert( !"serialize check failed" );
             #endif // #if PROTOCOL2_ASSERT_ON_SERIALIZE_CHECK
 
             if ( errorCode )
@@ -1608,8 +1608,6 @@ namespace protocol2
                 *errorCode = stream.GetError();
             goto cleanup;
         }
-
-        assert( stream.GetBitsRemaining() == 0 );
 
         return packet;
 
