@@ -64,7 +64,7 @@ namespace yojimbo
         if ( crypto_secretbox_open_easy( decryptedMessage, encryptedMessage, encryptedMessageLength, nonce, key ) != 0 )
             return false;
         decryptedMessageLength = encryptedMessageLength - MacBytes;
-        return decryptedMessageLength >= 0;
+        return true;
     }
 
     bool Encrypt_AEAD( const uint8_t * message, uint64_t messageLength, 

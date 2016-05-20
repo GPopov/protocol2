@@ -867,6 +867,7 @@ public:
                     return;
                 }
 
+                // todo: this logic is bugged. needs a separate time value for salt change time so it can be updated here
                 if ( m_lastPacketReceiveTime + ClientSaltTimeout < time )
                 {
                     m_clientSalt = GenerateSalt();

@@ -114,6 +114,7 @@ namespace yojimbo
 
         // very temporary!!!
         uint8_t m_key[KeyBytes];
+        uint8_t m_nonce[NonceBytes];
 
     public:
 

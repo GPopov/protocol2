@@ -27,6 +27,7 @@
 #include "yojimbo.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <sodium.h> // temp
 
 using namespace yojimbo;
 using namespace protocol2;
@@ -35,7 +36,7 @@ using namespace network2;
 const uint32_t ProtocolId = 0x12341651;
 
 const int MaxClients = 32;
-const int ServerPort = 50000;
+//const int ServerPort = 50000;
 //const int ClientPort = 60000;
 const int ChallengeHashSize = 1024;
 const float ChallengeSendRate = 0.1f;
@@ -150,7 +151,7 @@ void GenerateToken( Token & token, uint64_t clientId, int numServerAddresses, co
         token.server_address[i] = serverAddresses[i];
 
     GenerateKey( token.client_to_server_key );    
-    
+
     GenerateKey( token.server_to_client_key );
 }
 
@@ -1198,6 +1199,7 @@ int main()
         return 1;
     }
 
+    /*
     Token token;
 
     Address serverAddress( "::1", ServerPort );
@@ -1236,6 +1238,68 @@ int main()
         printf( "error: decrypted token does not match original token\n" );
         return 1;
     }
+
+    printf( "hello what the fuck\n" );
+    */
+
+    uint8_t packet[1024];
+  
+    RandomBytes( packet, sizeof( packet ) );
+  
+    uint8_t nonce[NonceBytes];
+    uint8_t key[KeyBytes];
+    
+    uint8_t encrypted_packet[2048];
+
+    randombytes_buf( key, sizeof( key ) );
+    randombytes_buf( nonce, sizeof( nonce ) );
+
+    const int encrypted_length = sizeof( packet ) + MacBytes;
+    crypto_secretbox_easy( encrypted_packet, packet, sizeof( packet ), nonce, key );
+
+    uint8_t decrypted_packet[2048];
+    const int decrypted_length = encrypted_length - MacBytes;
+    if ( crypto_secretbox_open_easy( decrypted_packet, encrypted_packet, encrypted_length, nonce, key ) != 0) 
+    {
+        printf( "message fucked up\n" );
+    }
+    else
+    {
+        printf( "message is good\n" );
+    }
+
+    if ( decrypted_length == sizeof( packet ) && memcmp( packet, decrypted_packet, sizeof( packet ) ) == 0 )
+    {
+        printf( "success: decrypted packet matches original packet!\n" );
+    }
+    else
+    {
+        printf( "error: decrypted packet does not match original packet\n" );
+        return 1;
+    }
+
+    /*
+    printf( "before encrypt\n" );
+
+    int encryptedPacketLength;
+    uint8_t encryptedPacket[2048];
+    if ( !Encrypt( packet, sizeof( packet ), encryptedPacket, encryptedPacketLength, (uint8_t*) nonce, key ) )
+    {
+        printf( "error: failed to encrypt packet\n" );
+        return 1;
+    }
+ 
+    printf( "successfully encrypted packet\n" );
+  
+    int decryptedPacketLength;
+    uint8_t decryptedPacket[2048];
+    if ( !Decrypt( encryptedPacket, encryptedPacketLength, decryptedPacket, decryptedPacketLength, (uint8_t*) nonce, key ) )
+    {
+        printf( "error: failed to decrypt packet\n" );
+        return 1;
+    }
+  
+    */
 
     return 0;
 }

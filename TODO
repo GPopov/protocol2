@@ -18,3 +18,4 @@ TODO
 
     Why don't I just have a variable # of prefix bytes. It so much simple than what I'm currently doing.
 
+    Halfway done. This would also allow me to simplify the compress/decompress sequence.
