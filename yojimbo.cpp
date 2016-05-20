@@ -94,7 +94,7 @@ namespace yojimbo
 
         memset( m_counters, 0, sizeof( m_counters ) );
 
-        memset( m_key, 0, sizeof( m_key ) );
+        m_numEncryptionMappings = 0;
     }
 
     SocketInterface::~SocketInterface()
@@ -268,40 +268,53 @@ namespace yojimbo
             {
                 assert( packetSize <= m_maxPacketSize );
 
-                m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
-
                 if ( encrypt )
                 {
-                    int encryptedPacketSize;
+                    EncryptionMapping * encryptionMapping = FindEncryptionMapping( entry.address );
 
-                    uint8_t key[KeyBytes];
-                    uint8_t nonce[NonceBytes];
-
-                    memcpy( key, m_key, KeyBytes );
-                    memcpy( nonce, &entry.sequence, NonceBytes );
-
-                    if ( Encrypt( m_packetBuffer + prefixBytes, 
-                                  packetSize - prefixBytes, 
-                                  m_packetBuffer + prefixBytes, 
-                                  encryptedPacketSize, 
-                                  nonce, key ) )
+                    if ( encryptionMapping )
                     {
-                        packetSize = prefixBytes + encryptedPacketSize;
- 
-                        assert( packetSize <= m_absoluteMaxPacketSize );
- 
-                        memcpy( m_packetBuffer, prefix, prefixBytes );
+                        int encryptedPacketSize;
 
-                        m_socket->SendPacket( entry.address, m_packetBuffer, packetSize );
+                        uint8_t key[KeyBytes];
+                        uint8_t nonce[NonceBytes];
+
+                        memcpy( key, encryptionMapping->sendKey, KeyBytes );
+                        memcpy( nonce, &entry.sequence, NonceBytes );
+
+                        if ( Encrypt( m_packetBuffer + prefixBytes, 
+                                      packetSize - prefixBytes, 
+                                      m_packetBuffer + prefixBytes, 
+                                      encryptedPacketSize, 
+                                      nonce, key ) )
+                        {
+                            packetSize = prefixBytes + encryptedPacketSize;
+     
+                            assert( packetSize <= m_absoluteMaxPacketSize );
+     
+                            memcpy( m_packetBuffer, prefix, prefixBytes );
+
+                            m_socket->SendPacket( entry.address, m_packetBuffer, packetSize );
+
+                            m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
+                            m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN]++;    
+                        }
+                        else
+                        {
+                            m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES]++;
+                        }
                     }
                     else
                     {
-                        m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES]++;
+                        m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTION_MAPPING_FAILURES_SEND]++;
                     }
                 }
                 else
                 {
                     m_socket->SendPacket( entry.address, m_packetBuffer, packetSize );
+
+                    m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
+                    m_counters[SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN]++;    
                 }
             }
             else
@@ -341,12 +354,19 @@ namespace yojimbo
 
             if ( encrypted )
             {
+                EncryptionMapping * encryptionMapping = FindEncryptionMapping( address );
+                if ( !encryptionMapping )
+                {
+                    m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTION_MAPPING_FAILURES_RECEIVE]++;
+                    continue;
+                }
+
                 uint64_t sequence = yojimbo::DecompressPacketSequence( prefixByte, m_packetBuffer + 1 );
 
                 uint8_t key[KeyBytes];
                 uint8_t nonce[NonceBytes];
 
-                memcpy( key, m_key, KeyBytes );
+                memcpy( key, encryptionMapping->receiveKey, KeyBytes );
                 memcpy( nonce, &sequence, NonceBytes );
 
                 const int sequenceBytes = yojimbo::GetPacketSequenceBytes( prefixByte );
@@ -376,11 +396,18 @@ namespace yojimbo
             info.prefixBytes = numPrefixBytes;
             info.rawFormat = encrypted;
 
+            // todo: read into the packet and discard if this packet is not encrypted, but the packet type should be.
+
             int readError;
             protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
             if ( packet )
             {
                 m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
+
+                if ( encrypted )
+                    m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ]++;    
+                else
+                    m_counters[SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ]++;    
             }
             else
             {
@@ -425,13 +452,42 @@ namespace yojimbo
         return m_packetTypeIsEncrypted[type] != 0;
     }
 
-    void SocketInterface::AddEncryptionMapping( const network2::Address & /*address*/, const uint8_t * /*sendKey*/, const uint8_t * /*receiveKey*/ )
+    bool SocketInterface::AddEncryptionMapping( const network2::Address & address, const uint8_t * sendKey, const uint8_t * receiveKey )
     {
-        // todo
+        EncryptionMapping *encryptionMapping = FindEncryptionMapping( address );
+        if ( encryptionMapping )
+        {
+            encryptionMapping->address = address;
+            memcpy( encryptionMapping->sendKey, sendKey, KeyBytes );
+            memcpy( encryptionMapping->receiveKey, receiveKey, KeyBytes );
+            return true;
+        }
+
+        assert( m_numEncryptionMappings >= 0 );
+        assert( m_numEncryptionMappings <= MaxEncryptionMappings );
+
+        if ( m_numEncryptionMappings == MaxEncryptionMappings )
+            return false;
+
+        encryptionMapping = &m_encryptionMappings[m_numEncryptionMappings++];
+        encryptionMapping->address = address;
+        memcpy( encryptionMapping->sendKey, sendKey, KeyBytes );
+        memcpy( encryptionMapping->receiveKey, receiveKey, KeyBytes );
+
+        return true;
     }
 
-    void SocketInterface::RemoveEncryptionMapping( const network2::Address & /*address*/ )
+    bool SocketInterface::RemoveEncryptionMapping( const network2::Address & /*address*/ )
     {
-        // todo
+        // todo: implement this and consider a different data structure. this is not great.
+        assert( !"not implemented yet" );
+        return false;
+    }
+
+    uint64_t SocketInterface::GetCounter( int index ) const
+    {
+        assert( index >= 0 );
+        assert( index < SOCKET_INTERFACE_COUNTER_NUM_COUNTERS );
+        return m_counters[index];
     }
 }

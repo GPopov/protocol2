@@ -66,9 +66,9 @@ namespace yojimbo
 
         virtual bool IsEncryptedPacketType( int type ) const = 0;
 
-        virtual void AddEncryptionMapping( const network2::Address & address, const uint8_t * sendKey, const uint8_t * receiveKey ) = 0;
+        virtual bool AddEncryptionMapping( const network2::Address & address, const uint8_t * sendKey, const uint8_t * receiveKey ) = 0;
 
-        virtual void RemoveEncryptionMapping( const network2::Address & address ) = 0;
+        virtual bool RemoveEncryptionMapping( const network2::Address & address ) = 0;
     };
 
     enum SocketInterfaceCounter
@@ -83,6 +83,12 @@ namespace yojimbo
         SOCKET_INTERFACE_COUNTER_RECEIVE_QUEUE_OVERFLOW,
         SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES,
         SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES,
+        SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN,
+        SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ,
+        SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN,
+        SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ,
+        SOCKET_INTERFACE_COUNTER_ENCRYPTION_MAPPING_FAILURES_SEND,
+        SOCKET_INTERFACE_COUNTER_ENCRYPTION_MAPPING_FAILURES_RECEIVE,
         SOCKET_INTERFACE_COUNTER_NUM_COUNTERS
     };
 
@@ -115,13 +121,32 @@ namespace yojimbo
 
         uint64_t m_counters[SOCKET_INTERFACE_COUNTER_NUM_COUNTERS];
 
-        // temporary
-        uint8_t m_key[KeyBytes];
+        struct EncryptionMapping
+        {
+            network2::Address address;
+            uint8_t sendKey[KeyBytes];
+            uint8_t receiveKey[KeyBytes];
+        };
+
+        enum { MaxEncryptionMappings = 1024 };
+        int m_numEncryptionMappings;
+        EncryptionMapping m_encryptionMappings[MaxEncryptionMappings];
 
     protected:
 
         void ClearSendQueue();
+
         void ClearReceiveQueue();
+
+        EncryptionMapping * FindEncryptionMapping( const network2::Address & address )
+        {
+            for ( int i = 0; i < m_numEncryptionMappings; ++i )
+            {
+                if ( m_encryptionMappings[i].address == address )
+                    return &m_encryptionMappings[i];
+            }
+            return NULL;
+        }
 
     public:
 
@@ -162,9 +187,11 @@ namespace yojimbo
 
         bool IsEncryptedPacketType( int type ) const;
 
-        void AddEncryptionMapping( const network2::Address & address, const uint8_t * sendKey, const uint8_t * receiveKey );
+        bool AddEncryptionMapping( const network2::Address & address, const uint8_t * sendKey, const uint8_t * receiveKey );
 
-        void RemoveEncryptionMapping( const network2::Address & address );
+        bool RemoveEncryptionMapping( const network2::Address & address );
+
+        uint64_t GetCounter( int index ) const;
     };
 }
 

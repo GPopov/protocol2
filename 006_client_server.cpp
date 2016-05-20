@@ -709,6 +709,8 @@ class Client
 
     double m_lastPacketReceiveTime;                                     // time we last received a packet from the server (used for timeouts).
 
+    double m_clientSaltExpiryTime;                                      // time the client salt expires and we roll another (in case of collision).
+
     NetworkInterface * m_networkInterface;                              // network interface the client uses to send and receive packets.
 
 public:
@@ -733,6 +735,7 @@ public:
         m_clientState = CLIENT_STATE_SENDING_CONNECTION_REQUEST;
         m_lastPacketSendTime = time - 1.0f;
         m_lastPacketReceiveTime = time;
+        m_clientSaltExpiryTime = time + ClientSaltTimeout;
     }
 
     bool IsConnecting() const
@@ -867,10 +870,10 @@ public:
                     return;
                 }
 
-                // todo: this logic is bugged. needs a separate time value for salt change time so it can be updated here
-                if ( m_lastPacketReceiveTime + ClientSaltTimeout < time )
+                if ( m_clientSaltExpiryTime < time )
                 {
                     m_clientSalt = GenerateSalt();
+                    m_clientSaltExpiryTime = time + ClientSaltTimeout;
                     printf( "client salt timed out. new client salt is %llx\n", m_clientSalt );
                 }
             }

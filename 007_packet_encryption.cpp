@@ -238,7 +238,7 @@ int main()
 {
     if ( !InitializeCrypto() )
     {
-        printf( "error: failed to initialize crypto\n" );
+        printf( "error: failed to initialize crypto!\n" );
         return 1;
     }
 
@@ -296,17 +296,51 @@ int main()
             clientInterface.ReadPackets( time );
             serverInterface.ReadPackets( time );
 
-            // todo: read packets
+            while ( true )
+            {
+                Address address;
+                Packet * packet = clientInterface.ReceivePacket( address );
+                if ( !packet )
+                    break;
+                
+                printf( "client received packet type %d\n", packet->GetType() );
+
+                clientInterface.DestroyPacket( packet );
+            }
+
+            while ( true )
+            {
+                Address address;
+                Packet * packet = serverInterface.ReceivePacket( address );
+                if ( !packet )
+                    break;
+
+                printf( "server received packet type %d\n", packet->GetType() );
+
+                serverInterface.DestroyPacket( packet );
+            }
 
             time += 0.1f;
 
             printf( "----------------------------------------------------------\n" );
         }
 
+        printf( "client sent %lld encrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN ) );
+        printf( "client sent %lld unencrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN ) );
+        printf( "client received %lld encrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ ) );
+        printf( "client received %lld unencrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ ) );
+
+        printf( "----------------------------------------------------------\n" );
+
+        printf( "server sent %lld encrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN ) );
+        printf( "server sent %lld unencrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN ) );
+        printf( "server received %lld encrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ ) );
+        printf( "server received %lld unencrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ ) );
+
+        printf( "----------------------------------------------------------\n" );
+
         ShutdownNetwork();
     }
-
-    // todo: print relevant counters
 
     memory_shutdown();
 

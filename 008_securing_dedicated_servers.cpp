@@ -1208,7 +1208,7 @@ int main()
 
         uint8_t encryptedToken[TokenBytes+AuthBytes];
         uint8_t key[KeyBytes];
-        uint64_t nonce = 1;         // todo: increment this with each token encryption
+        uint64_t nonce = 0;
 
         GenerateKey( key );
 
@@ -1227,55 +1227,13 @@ int main()
 
         if ( decryptedToken == token )
         {
-            printf( "success: decrypted token matches original token!\n" );
+            printf( "success: decrypted token matches original token\n" );
         }
         else
         {
             printf( "error: decrypted token does not match original token\n" );
             return 1;
         }
-    }
-
-    // --------------------------
-
-    uint8_t packet[1024];
-  
-    RandomBytes( packet, sizeof( packet ) );
-  
-    uint8_t key[KeyBytes];
-    uint8_t nonce[NonceBytes];
-
-    memset( key, 1, sizeof( key ) );
-    memset( nonce, 1, sizeof( nonce ) );
-
-    uint8_t encrypted_packet[2048];
-
-    RandomBytes( key, sizeof( key ) );
-    RandomBytes( nonce, sizeof( nonce ) );
-
-    int encrypted_length;
-    if ( !Encrypt( packet, sizeof( packet ), encrypted_packet, encrypted_length, nonce, key ) )
-    {
-        printf( "error: failed to encrypt\n" );
-        return 1;
-    }
-
-    uint8_t decrypted_packet[2048];
-    int decrypted_length;
-    if ( !Decrypt( encrypted_packet, encrypted_length, decrypted_packet, decrypted_length, nonce, key ) )
-    {
-        printf( "error: failed to decrypt\n" );
-        return 1;
-    }
-
-    if ( decrypted_length == sizeof( packet ) && memcmp( packet, decrypted_packet, sizeof( packet ) ) == 0 )
-    {
-        printf( "success: decrypted packet matches original packet!\n" );
-    }
-    else
-    {
-        printf( "error: decrypted packet does not match original packet\n" );
-        return 1;
     }
 
     return 0;

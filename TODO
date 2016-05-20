@@ -1,7 +1,25 @@
 DONE
 
+    Hacked up a really simple data structure. Not implement
+
+    It's working! Packets ar
+
 TODO
 
-    Now it seems ready to implement the address -> key mapping.
+    Add counters to print out at the end of the packet encryption test
 
-    Once this mapping is working, it should be possible to move quickly through implementing the secure server.
+    Make sure everything is working OK
+
+    ----------
+
+    Fix the salt timeout it's broken
+
+    Search through additional todos
+
+    Get the code compiling on windows (install sodium)
+
+    Get the code compiling on linux (install sodium)
+
+    Package up something for supporters this month. It should make them happy, but be low key about it.
+
+    ----------

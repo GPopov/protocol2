@@ -1,4 +1,22 @@
 
+Friday May 20th, 2016
+=====================
+
+    Sketched out a new article just on the crypto approach + sequence 64bit nonce.
+
+    Seems appropriate. There is enough detail in here just to cover encryption before going on to secure server.
+
+    Fuck, the hash isn't even a real hash. It's a fucking set! What the fuck bitsquid guys?!
+
+    The key value are the same. It's a set. A fucking set not a hash!
+
+    I need an actual hash with key -> value mapping.
+
+    Fuck it, just work around it with something O(n) for the mapping.
+
+    Good enough for now, and can be replaced with something more awesome later. Get it done!
+
+
 Thursday May 19th, 2016
 =======================
 
