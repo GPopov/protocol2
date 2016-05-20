@@ -1246,7 +1246,7 @@ int main()
 
 int main()
 {
-	printf( "#define YOJIMBO_SECURE 1\n" );
+    printf( "\nCannot run sample because Yojimbo Security is disabled\n\n#define YOJIMBO_SECURE 1 in yojimbo_config.h\n\n" );
     return 0;
 }
 

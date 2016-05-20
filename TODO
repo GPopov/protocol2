@@ -14,8 +14,6 @@ DONE
 
     Specifically, I want a way to genericalyl abort packet read at the TYPE level, if that type is not allowed for some reason.
 
-TODO
-
     eg. a type that the server doesn't expect, *or* an unencrypted packet for a type that should be encrypted and so on.
 
     This part is probably important to do before saying the packet encryption part is finished, because that's a key part of being secure.
@@ -24,9 +22,19 @@ TODO
 
     Doing this now...
 
-    ----------
+    OK. This is pretty clean. I like the PacketInfo approach for extending read and write packets.
+
+TODO
 
     Get the code compiling on windows (install sodium)
+
+    Wow. It's totally fucked up again. How?!
+
+    First step, disable sodium by implementing #define YOJIBO_SECURE
+
+    If this is not defined, you can strip out all the security support.
+
+    -----------
 
     Get the code compiling on linux (install sodium)
 

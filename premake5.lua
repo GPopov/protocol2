@@ -24,8 +24,8 @@ project "test"
 project "yojimbo"
     language "C++"
     kind "StaticLib"
-    files { "yojimbo.cpp", "yojimbo_*.h", "yojimbo_*.cpp" }
-    links { "sodium" }
+    files { "yojimbo.h", "yojimbo.cpp", "yojimbo_*.h", "yojimbo_*.cpp" }
+--    links { "sodium" }
 
 project "001_reading_and_writing_packets"
     language "C++"
@@ -56,19 +56,22 @@ project "006_client_server"
     language "C++"
     kind "ConsoleApp"
     files { "006_client_server.cpp", "protocol2.h", "network2.h" }
-    links { "yojimbo", "sodium" }
+    links { "yojimbo" }
+--    links { "yojimbo", "sodium" }
 
 project "007_packet_encryption"
     language "C++"
     kind "ConsoleApp"
     files { "007_packet_encryption.cpp", "protocol2.h", "network2.h" }
-    links { "yojimbo", "sodium" }
+    links { "yojimbo" }
+--    links { "yojimbo", "sodium" }
 
 project "008_securing_dedicated_servers"
     language "C++"
     kind "ConsoleApp"
     files { "008_securing_dedicated_servers.cpp", "protocol2.h", "network2.h" }
-    links { "yojimbo", "sodium" }
+    links { "yojimbo" }
+--    links { "yojimbo", "sodium" }
 
 if _ACTION == "clean" then
     os.rmdir "obj"

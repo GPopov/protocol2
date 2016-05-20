@@ -99,9 +99,9 @@ namespace yojimbo
         queue_reserve( m_sendQueue, sendQueueSize );
         queue_reserve( m_receiveQueue, receiveQueueSize );
 
-        const int numPacketTypes = m_packetFactory->GetNumPacketTypes();
-
 #if YOJIMBO_SECURE
+
+        const int numPacketTypes = m_packetFactory->GetNumPacketTypes();
 
         m_packetTypeIsEncrypted = (uint8_t*) m_allocator->Allocate( numPacketTypes );
         m_packetTypeIsUnencrypted = (uint8_t*) m_allocator->Allocate( numPacketTypes );
@@ -251,7 +251,9 @@ namespace yojimbo
         return entry.packet;
     }
 
+#if YOJIMBO_SECURE
     static const int ENCRYPTED_PACKET_FLAG = (1<<7);
+#endif // if YOJIMBO_SECURE
 
     void SocketInterface::WritePackets( double /*time*/ )
     {
@@ -269,6 +271,8 @@ namespace yojimbo
 
             queue_consume( m_sendQueue, 1 );
 
+#if YOJIMBO_SECURE
+
             const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
 
             uint8_t prefix[16] = { 0 };
@@ -280,13 +284,17 @@ namespace yojimbo
                 prefixBytes++;
             }
 
+#endif // #if YOJIMBO_SECURE
+
             protocol2::PacketInfo info;
 
             info.context = m_context;
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
+#if YOJIMBO_SECURE
             info.prefixBytes = prefixBytes;
             info.rawFormat = encrypt;
+#endif // #if YOJIMBO_SECURE
 
             int packetSize = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
 

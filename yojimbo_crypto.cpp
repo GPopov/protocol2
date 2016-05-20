@@ -100,4 +100,8 @@ namespace yojimbo
     }
 }
 
+#else // #if YOJIMBO_SECURE
+
+int yojimbo_crypto_is_disabled = 1;
+
 #endif // #if YOJIMBO_SECURE
