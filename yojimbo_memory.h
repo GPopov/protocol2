@@ -31,6 +31,7 @@
 #include "yojimbo_allocator.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <new>
 
 #if YOJIMBO_DEBUG_MEMORY_LEAKS
