@@ -368,7 +368,6 @@ int main()
 
             printf( "reading aggregate packet (%d bytes)\n", bytesToRead );
 
-            protocol2::PacketInfo info;
             info.protocolId = ProtocolId;
             info.packetFactory = &packetFactory;
 

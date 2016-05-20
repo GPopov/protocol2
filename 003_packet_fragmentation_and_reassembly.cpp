@@ -753,10 +753,6 @@ int main()
 
         for ( int j = 0; j < numPackets; ++j )
         {
-            protocol2::PacketInfo info;
-            info.protocolId = ProtocolId;
-            info.packetFactory = &packetFactory;
-
             int readError;
             TestPacketHeader readPacketHeader;
             protocol2::Packet *readPacket = protocol2::ReadPacket( info, buffer, bytesWritten, &readPacketHeader, &readError );

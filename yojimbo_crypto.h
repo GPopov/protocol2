@@ -28,6 +28,9 @@
 #define YOJIMBO_CRYPTO_H
 
 #include "yojimbo_config.h"
+
+#if YOJIMBO_SECURE
+
 #include <stdint.h>
 
 namespace yojimbo
@@ -63,5 +66,7 @@ namespace yojimbo
                               const uint8_t * nonce,
                               const uint8_t * key );
 }
+
+#endif // #if YOJIMBO_SECURE
 
 #endif // #ifndef YOJIMBO_CRYPTO_H

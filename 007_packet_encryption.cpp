@@ -25,8 +25,12 @@
 */
 
 #include "yojimbo.h"
+
+#if YOJIMBO_SECURE
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 using namespace yojimbo;
 using namespace protocol2;
@@ -346,3 +350,13 @@ int main()
 
     return 0;
 }
+
+#else // #if YOJIMBO_SECURE
+
+int main()
+{
+	printf( "#define YOJIMBO_SECURE 1\n" );
+    return 0;
+}
+
+#endif // #if YOJIMBO_SECURE

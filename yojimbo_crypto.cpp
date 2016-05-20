@@ -25,6 +25,9 @@
 */
 
 #include "yojimbo_crypto.h"
+
+#if YOJIMBO_SECURE
+
 #include <sodium.h>
 #include <assert.h>
 
@@ -96,3 +99,5 @@ namespace yojimbo
         return result == 0;
     }
 }
+
+#endif // #if YOJIMBO_SECURE

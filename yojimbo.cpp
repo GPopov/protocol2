@@ -38,7 +38,10 @@
 
 #include "network2.h"
 #include "protocol2.h"
+
+#if YOJIMBO_SECURE
 #include <sodium.h>
+#endif // #if YOJIMBO_SECURE
 
 namespace yojimbo
 {
@@ -72,10 +75,18 @@ namespace yojimbo
         assert( m_maxPacketSize % 4 == 0 );
         assert( m_maxPacketSize >= maxPacketSize );
 
+#if YOJIMBO_SECURE
+
         const int MaxPrefixBytes = 9;
         const int CryptoOverhead = MacBytes;
 
         m_absoluteMaxPacketSize = m_maxPacketSize + MaxPrefixBytes + CryptoOverhead;
+
+#else // #if YOJIMBO_SECURE
+
+        m_absoluteMaxPacketSize = m_maxPacketSize;
+
+#endif // #if YOJIMBO_SECURE
 
         m_sendQueueSize = sendQueueSize;
 
@@ -90,15 +101,19 @@ namespace yojimbo
 
         const int numPacketTypes = m_packetFactory->GetNumPacketTypes();
 
+#if YOJIMBO_SECURE
+
         m_packetTypeIsEncrypted = (uint8_t*) m_allocator->Allocate( numPacketTypes );
         m_packetTypeIsUnencrypted = (uint8_t*) m_allocator->Allocate( numPacketTypes );
 
         memset( m_packetTypeIsEncrypted, 0, m_packetFactory->GetNumPacketTypes() );
         memset( m_packetTypeIsUnencrypted, 1, m_packetFactory->GetNumPacketTypes() );
 
-        memset( m_counters, 0, sizeof( m_counters ) );
-
         m_numEncryptionMappings = 0;
+
+#endif // #if YOJIMBO_SECURE
+
+        memset( m_counters, 0, sizeof( m_counters ) );
     }
 
     SocketInterface::~SocketInterface()
@@ -113,14 +128,19 @@ namespace yojimbo
         YOJIMBO_DELETE( *m_allocator, NetworkSocket, m_socket );
 
         m_allocator->Free( m_packetBuffer );
+
+#if YOJIMBO_SECURE
         m_allocator->Free( m_packetTypeIsEncrypted );
         m_allocator->Free( m_packetTypeIsUnencrypted );
+#endif // #if YOJIMBO_SECURE
 
         m_socket = NULL;
         m_packetBuffer = NULL;
         m_packetFactory = NULL;
+#if YOJIMBO_SECURE
         m_packetTypeIsEncrypted = NULL;
         m_packetTypeIsUnencrypted = NULL;
+#endif // #if YOJIMBO_SECURE
 
         m_allocator = NULL;
     }
@@ -274,6 +294,7 @@ namespace yojimbo
             {
                 assert( packetSize <= m_maxPacketSize );
 
+#if YOJIMBO_SECURE
                 if ( encrypt )
                 {
                     EncryptionMapping * encryptionMapping = FindEncryptionMapping( entry.address );
@@ -316,11 +337,14 @@ namespace yojimbo
                     }
                 }
                 else
+#endif // #if YOJIMBO_SECURE
                 {
                     m_socket->SendPacket( entry.address, m_packetBuffer, packetSize );
 
                     m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
+#if YOJIMBO_SECURE
                     m_counters[SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN]++;    
+#endif // #if YOJIMBO_SECURE
                 }
             }
             else
@@ -351,6 +375,8 @@ namespace yojimbo
                 m_counters[SOCKET_INTERFACE_COUNTER_RECEIVE_QUEUE_OVERFLOW]++;
                 break;
             }
+
+#if YOJIMBO_SECURE
 
             const uint8_t prefixByte = m_packetBuffer[0];
 
@@ -394,14 +420,18 @@ namespace yojimbo
                 packetBytes = numPrefixBytes + decryptedPacketBytes;
             }
 
+#endif // #if YOJMIBO_SECURE
+
             protocol2::PacketInfo info;
             
             info.context = m_context;
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
+#if YOJIMBO_SECURE
             info.prefixBytes = numPrefixBytes;
             info.rawFormat = encrypted;
             info.allowedPacketTypes = encrypted ? m_packetTypeIsEncrypted : m_packetTypeIsUnencrypted;
+#endif // #if YOJIMBO_SECURE
 
             int readError;
             protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
@@ -409,10 +439,12 @@ namespace yojimbo
             {
                 m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
 
+#if YOJIMBO_SECURE
                 if ( encrypted )
                     m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ]++;    
                 else
                     m_counters[SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ]++;    
+#endif // #if YOJIMBO_SECURE
             }
             else
             {
@@ -437,6 +469,8 @@ namespace yojimbo
     {
         m_context = context;
     }
+
+#if YOJIMBO_SECURE
 
     void SocketInterface::EnablePacketEncryption()
     {
@@ -490,6 +524,8 @@ namespace yojimbo
         assert( !"not implemented yet" );
         return false;
     }
+
+#endif // #if YOJIMBO_SECURE
 
     uint64_t SocketInterface::GetCounter( int index ) const
     {

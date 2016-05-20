@@ -25,9 +25,12 @@
 */
 
 #include "yojimbo.h"
+
+#if YOJIMBO_SECURE
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <sodium.h> // temp
+#include <time.h>
 
 using namespace yojimbo;
 using namespace protocol2;
@@ -363,7 +366,7 @@ uint64_t CalculateChallengeHashKey( const Address & address, uint64_t clientId, 
 {
     char buffer[256];
     const char * addressString = address.ToString( buffer, sizeof( buffer ) );
-    const int addressLength = strlen( addressString );
+    const int addressLength = (int) strlen( addressString );
     return murmur_hash_64( &serverSeed, 8, murmur_hash_64( &clientId, 8, murmur_hash_64( addressString, addressLength, 0 ) ) );
 }
 
@@ -1238,3 +1241,13 @@ int main()
 
     return 0;
 }
+
+#else // #if YOJIMBO_SECURE
+
+int main()
+{
+	printf( "#define YOJIMBO_SECURE 1\n" );
+    return 0;
+}
+
+#endif // #if YOJIMBO_SECURE

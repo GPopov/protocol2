@@ -252,7 +252,7 @@ uint64_t CalculateChallengeHashKey( const Address & address, uint64_t clientSalt
 {
     char buffer[256];
     const char * addressString = address.ToString( buffer, sizeof( buffer ) );
-    const int addressLength = strlen( addressString );
+    const int addressLength = (int) strlen( addressString );
     return murmur_hash_64( &serverSeed, 8, murmur_hash_64( &clientSalt, 8, murmur_hash_64( addressString, addressLength, 0 ) ) );
 }
 

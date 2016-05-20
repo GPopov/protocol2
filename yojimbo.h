@@ -29,8 +29,8 @@
 
 #include "network2.h"
 #include "protocol2.h"
-#include "yojimbo_util.h"
 #include "yojimbo_config.h"
+#include "yojimbo_util.h"
 #include "yojimbo_types.h"
 #include "yojimbo_memory.h"
 #include "yojimbo_crypto.h"
@@ -60,6 +60,8 @@ namespace yojimbo
 
         virtual void SetContext( void * context ) = 0;
 
+#if YOJIMBO_SECURE
+
         virtual void EnablePacketEncryption() = 0;
 
         virtual void DisableEncryptionForPacketType( int type ) = 0;
@@ -69,6 +71,8 @@ namespace yojimbo
         virtual bool AddEncryptionMapping( const network2::Address & address, const uint8_t * sendKey, const uint8_t * receiveKey ) = 0;
 
         virtual bool RemoveEncryptionMapping( const network2::Address & address ) = 0;
+
+#endif // #if YOJIMBO_SECURE
     };
 
     enum SocketInterfaceCounter
@@ -81,6 +85,7 @@ namespace yojimbo
         SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS,
         SOCKET_INTERFACE_COUNTER_SEND_QUEUE_OVERFLOW,
         SOCKET_INTERFACE_COUNTER_RECEIVE_QUEUE_OVERFLOW,
+#if YOJIMBO_SECURE
         SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES,
         SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES,
         SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN,
@@ -89,6 +94,7 @@ namespace yojimbo
         SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ,
         SOCKET_INTERFACE_COUNTER_ENCRYPTION_MAPPING_FAILURES_SEND,
         SOCKET_INTERFACE_COUNTER_ENCRYPTION_MAPPING_FAILURES_RECEIVE,
+#endif // #if YOJIMBO_SECURE
         SOCKET_INTERFACE_COUNTER_NUM_COUNTERS
     };
 
@@ -117,10 +123,10 @@ namespace yojimbo
         Queue<PacketEntry> m_sendQueue;
         Queue<PacketEntry> m_receiveQueue;
 
+#if YOJIMBO_SECURE
+
         uint8_t * m_packetTypeIsEncrypted;
         uint8_t * m_packetTypeIsUnencrypted;
-
-        uint64_t m_counters[SOCKET_INTERFACE_COUNTER_NUM_COUNTERS];
 
         struct EncryptionMapping
         {
@@ -133,11 +139,17 @@ namespace yojimbo
         int m_numEncryptionMappings;
         EncryptionMapping m_encryptionMappings[MaxEncryptionMappings];
 
+#endif // #if YOJIMBO_SECURE
+
+        uint64_t m_counters[SOCKET_INTERFACE_COUNTER_NUM_COUNTERS];
+
     protected:
 
         void ClearSendQueue();
 
         void ClearReceiveQueue();
+
+#if YOJIMBO_SECURE
 
         EncryptionMapping * FindEncryptionMapping( const network2::Address & address )
         {
@@ -148,6 +160,8 @@ namespace yojimbo
             }
             return NULL;
         }
+
+#endif // #if YOJIMBO_SECURE
 
     public:
 

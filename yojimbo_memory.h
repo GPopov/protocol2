@@ -341,19 +341,19 @@ namespace yojimbo
 			}
 
 			// Mark this slot as free
-			Header * h = header( p );
-			assert( (h->size & 0x80000000u ) == 0 );
-			h->size = h->size | 0x80000000u;
+			Header * h1 = header( p );
+			assert( (h1->size & 0x80000000u ) == 0 );
+			h1->size = h1->size | 0x80000000u;
 
 			// Advance the free pointer past all free slots.
 			int iterations = 0;
 			while ( m_free != m_allocate )
 			{
-				Header * h = (Header*) m_free;
-				if ( ( h->size & 0x80000000u ) == 0 )
+				Header * h2 = (Header*) m_free;
+				if ( ( h2->size & 0x80000000u ) == 0 )
 					break;
 
-				m_free += h->size & 0x7fffffffu;
+				m_free += h2->size & 0x7fffffffu;
 				if ( m_free == m_end )
 					 m_free = m_begin ;
 

@@ -250,7 +250,7 @@ namespace network2
 #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
 
 	#define _WINSOCK_DEPRECATED_NO_WARNINGS
-	#include <winsock2.h>
+	#include <WinSock2.h>
 	#include <ws2tcpip.h>
 	#pragma comment( lib, "WS2_32.lib" )
 

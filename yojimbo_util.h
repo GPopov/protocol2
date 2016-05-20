@@ -42,7 +42,7 @@ namespace yojimbo
         
         num_sequence_bytes = 0;
 
-        uint64_t byte_mask = 0xFF00000000000000LL;
+        uint64_t byte_mask = 0xFF00000000000000ULL;
 
         for ( int i = 7; i > 0; --i )
         {

@@ -7,7 +7,6 @@ solution "Building a Game Network Protocol"
     end
     configurations { "Debug", "Release" }
     flags { "ExtraWarnings", "FloatFast" }
-    exceptionhandling "Off"
     rtti "Off"
     configuration "Debug"
         flags { "Symbols" }
