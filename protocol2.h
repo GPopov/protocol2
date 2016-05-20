@@ -568,12 +568,13 @@ namespace protocol2
     #define PROTOCOL2_ERROR_NONE                        0
     #define PROTOCOL2_ERROR_CRC32_MISMATCH              1
     #define PROTOCOL2_ERROR_INVALID_PACKET_TYPE         2
-    #define PROTOCOL2_ERROR_CREATE_PACKET_FAILED        3
-    #define PROTOCOL2_ERROR_SERIALIZE_HEADER_FAILED     4
-    #define PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED     5
-    #define PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED      6
-    #define PROTOCOL2_ERROR_STREAM_OVERFLOW             7
-    #define PROTOCOL2_ERROR_STREAM_ABORTED              8
+    #define PROTOCOL2_ERROR_PACKET_TYPE_NOT_ALLOWED     3
+    #define PROTOCOL2_ERROR_CREATE_PACKET_FAILED        4
+    #define PROTOCOL2_ERROR_SERIALIZE_HEADER_FAILED     5
+    #define PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED     6
+    #define PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED      7
+    #define PROTOCOL2_ERROR_STREAM_OVERFLOW             8
+    #define PROTOCOL2_ERROR_STREAM_ABORTED              9
 
     class WriteStream
     {
@@ -1246,6 +1247,7 @@ namespace protocol2
         int prefixBytes;                            // prefix this number of bytes when reading and writing packets. stick your own data there.
         uint32_t protocolId;                        // protocol id that distinguishes your protocol from other packets sent over UDP.
         PacketFactory * packetFactory;              // create packets and determine information about packet types. required.
+        uint8_t * allowedPacketTypes;               // array of allowed packet types. if a packet type is not allowed the serialize read or write will fail.
         void * context;                             // context for the packet serialization (optional, pass in NULL)
 
         PacketInfo()
@@ -1254,6 +1256,7 @@ namespace protocol2
             prefixBytes = 0;
             protocolId = 0;
             packetFactory = NULL;
+            allowedPacketTypes = NULL;
             context = NULL;
         }
     };
@@ -1305,10 +1308,6 @@ namespace protocol2
 #else
 #include <alloca.h>
 #endif
-
-#if PROTOCOL2_SECURE
-#include <sodium.h>
-#endif // #if PROTOCOL2_SECURE
 
 namespace protocol2
 {
@@ -1570,6 +1569,16 @@ namespace protocol2
             {
                 if ( errorCode )
                     *errorCode = PROTOCOL2_ERROR_INVALID_PACKET_TYPE;
+                return NULL;
+            }
+        }
+
+        if ( info.allowedPacketTypes )
+        {
+            if ( !info.allowedPacketTypes[packetType] )
+            {
+                if ( errorCode )
+                    *errorCode = PROTOCOL2_ERROR_PACKET_TYPE_NOT_ALLOWED;
                 return NULL;
             }
         }
@@ -1852,6 +1861,16 @@ cleanup:
                 break;
 
             const int packetType = packetTypePlusOne - 1;
+
+            if ( info.allowedPacketTypes )
+            {
+                if ( !info.allowedPacketTypes[packetType] )
+                {
+                    if ( errorCode )
+                        *errorCode = PROTOCOL2_ERROR_PACKET_TYPE_NOT_ALLOWED;
+                    goto cleanup;
+                }
+            }
 
             if ( packetHeaders )
             {

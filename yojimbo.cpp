@@ -89,8 +89,12 @@ namespace yojimbo
         queue_reserve( m_receiveQueue, receiveQueueSize );
 
         const int numPacketTypes = m_packetFactory->GetNumPacketTypes();
+
         m_packetTypeIsEncrypted = (uint8_t*) m_allocator->Allocate( numPacketTypes );
+        m_packetTypeIsUnencrypted = (uint8_t*) m_allocator->Allocate( numPacketTypes );
+
         memset( m_packetTypeIsEncrypted, 0, m_packetFactory->GetNumPacketTypes() );
+        memset( m_packetTypeIsUnencrypted, 1, m_packetFactory->GetNumPacketTypes() );
 
         memset( m_counters, 0, sizeof( m_counters ) );
 
@@ -110,11 +114,13 @@ namespace yojimbo
 
         m_allocator->Free( m_packetBuffer );
         m_allocator->Free( m_packetTypeIsEncrypted );
+        m_allocator->Free( m_packetTypeIsUnencrypted );
 
         m_socket = NULL;
         m_packetBuffer = NULL;
         m_packetFactory = NULL;
         m_packetTypeIsEncrypted = NULL;
+        m_packetTypeIsUnencrypted = NULL;
 
         m_allocator = NULL;
     }
@@ -395,8 +401,7 @@ namespace yojimbo
             info.packetFactory = m_packetFactory;
             info.prefixBytes = numPrefixBytes;
             info.rawFormat = encrypted;
-
-            // todo: read into the packet and discard if this packet is not encrypted, but the packet type should be.
+            info.allowedPacketTypes = encrypted ? m_packetTypeIsEncrypted : m_packetTypeIsUnencrypted;
 
             int readError;
             protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
@@ -435,7 +440,8 @@ namespace yojimbo
 
     void SocketInterface::EnablePacketEncryption()
     {
-        memset( m_packetTypeIsEncrypted, 0xFF, m_packetFactory->GetNumPacketTypes() );
+        memset( m_packetTypeIsEncrypted, 1, m_packetFactory->GetNumPacketTypes() );
+        memset( m_packetTypeIsUnencrypted, 0, m_packetFactory->GetNumPacketTypes() );
     }
 
     void SocketInterface::DisableEncryptionForPacketType( int type )
@@ -443,6 +449,7 @@ namespace yojimbo
         assert( type >= 0 );
         assert( type < m_packetFactory->GetNumPacketTypes() );
         m_packetTypeIsEncrypted[type] = 0;
+        m_packetTypeIsUnencrypted[type] = 1;
     }
 
     bool SocketInterface::IsEncryptedPacketType( int type ) const

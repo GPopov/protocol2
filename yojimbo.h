@@ -118,6 +118,7 @@ namespace yojimbo
         Queue<PacketEntry> m_receiveQueue;
 
         uint8_t * m_packetTypeIsEncrypted;
+        uint8_t * m_packetTypeIsUnencrypted;
 
         uint64_t m_counters[SOCKET_INTERFACE_COUNTER_NUM_COUNTERS];
 

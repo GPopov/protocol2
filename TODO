@@ -2,19 +2,29 @@ DONE
 
     Hacked up a really simple data structure. Not implement
 
-    It's working! Packets ar
-
-TODO
-
     Add counters to print out at the end of the packet encryption test
 
     Make sure everything is working OK
 
-    ----------
+    Seems fine.
 
     Fix the salt timeout it's broken
 
-    Search through additional todos
+    Search through additional todos. Seems fine. Added some more notes.
+
+    Specifically, I want a way to genericalyl abort packet read at the TYPE level, if that type is not allowed for some reason.
+
+TODO
+
+    eg. a type that the server doesn't expect, *or* an unencrypted packet for a type that should be encrypted and so on.
+
+    This part is probably important to do before saying the packet encryption part is finished, because that's a key part of being secure.
+
+    Don't let the client just get in under the covers with an unencrypted packet!
+
+    Doing this now...
+
+    ----------
 
     Get the code compiling on windows (install sodium)
 
