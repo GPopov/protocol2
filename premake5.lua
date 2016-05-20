@@ -59,10 +59,16 @@ project "006_client_server"
     files { "006_client_server.cpp", "protocol2.h", "network2.h" }
     links { "yojimbo", "sodium" }
 
-project "007_securing_dedicated_servers"
+project "007_packet_encryption"
     language "C++"
     kind "ConsoleApp"
-    files { "007_securing_dedicated_servers.cpp", "protocol2.h", "network2.h" }
+    files { "007_packet_encryption.cpp", "protocol2.h", "network2.h" }
+    links { "yojimbo", "sodium" }
+
+project "008_securing_dedicated_servers"
+    language "C++"
+    kind "ConsoleApp"
+    files { "008_securing_dedicated_servers.cpp", "protocol2.h", "network2.h" }
     links { "yojimbo", "sodium" }
 
 if _ACTION == "clean" then
@@ -82,7 +88,8 @@ if _ACTION == "clean" then
         os.execute "rm -f 004_sending_large_blocks_of_data"
         os.execute "rm -f 005_packet_aggregation"
         os.execute "rm -f 006_client_server"
-        os.execute "rm -f 006_securing_dedicated_servers"
+        os.execute "rm -f 007_packet_encryption"
+        os.execute "rm -f 008_securing_dedicated_servers"
         os.execute "find . -name .DS_Store -delete"
     else
         os.rmdir "ipch"
@@ -235,14 +242,29 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "007",
-        description = "Build example source for client/server",
+        description = "Build example source for packet encryption",
         valid_kinds = premake.action.get("gmake").valid_kinds,
         valid_languages = premake.action.get("gmake").valid_languages,
         valid_tools = premake.action.get("gmake").valid_tools,
      
         execute = function ()
-            if os.execute "make -j4 007_securing_dedicated_servers" == 0 then
-                os.execute "./bin/007_securing_dedicated_servers"
+            if os.execute "make -j4 007_packet_encryption" == 0 then
+                os.execute "./bin/007_packet_encryption"
+            end
+        end
+    }
+
+    newaction
+    {
+        trigger     = "008",
+        description = "Build example source for securing dedicated servers",
+        valid_kinds = premake.action.get("gmake").valid_kinds,
+        valid_languages = premake.action.get("gmake").valid_languages,
+        valid_tools = premake.action.get("gmake").valid_tools,
+     
+        execute = function ()
+            if os.execute "make -j4 008_securing_dedicated_servers" == 0 then
+                os.execute "./bin/008_securing_dedicated_servers"
             end
         end
     }

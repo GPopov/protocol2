@@ -72,13 +72,16 @@ namespace yojimbo
         assert( m_maxPacketSize % 4 == 0 );
         assert( m_maxPacketSize >= maxPacketSize );
 
-        // todo: absolute max packet size with crypto overhead and worst case prefix consider
+        const int MaxPrefixBytes = 9;
+        const int CryptoOverhead = MacBytes;
+
+        m_absoluteMaxPacketSize = m_maxPacketSize + MaxPrefixBytes + CryptoOverhead;
 
         m_sendQueueSize = sendQueueSize;
 
         m_receiveQueueSize = receiveQueueSize;
         
-        m_packetBuffer = (uint8_t*) m_allocator->Allocate( m_maxPacketSize );
+        m_packetBuffer = (uint8_t*) m_allocator->Allocate( m_absoluteMaxPacketSize );
         
         m_packetFactory = &packetFactory;
         
@@ -90,6 +93,8 @@ namespace yojimbo
         memset( m_packetTypeIsEncrypted, 0, m_packetFactory->GetNumPacketTypes() );
 
         memset( m_counters, 0, sizeof( m_counters ) );
+
+        memset( m_key, 0, sizeof( m_key ) );
     }
 
     SocketInterface::~SocketInterface()
@@ -98,24 +103,8 @@ namespace yojimbo
         assert( m_packetBuffer );
         assert( m_packetFactory );
 
-        for ( size_t i = 0; i < queue_size( m_sendQueue ); ++i )
-        {
-            PacketEntry & entry = m_sendQueue[i];
-            assert( entry.packet );
-            assert( entry.address.IsValid() );
-            m_packetFactory->DestroyPacket( entry.packet );
-        }
-
-        for ( size_t i = 0; i < queue_size( m_receiveQueue ); ++i )
-        {
-            PacketEntry & entry = m_receiveQueue[i];
-            assert( entry.packet );
-            assert( entry.address.IsValid() );
-            m_packetFactory->DestroyPacket( entry.packet );
-        }
-
-        queue_clear( m_sendQueue );
-        queue_clear( m_receiveQueue );
+        ClearSendQueue();
+        ClearReceiveQueue();
 
         YOJIMBO_DELETE( *m_allocator, NetworkSocket, m_socket );
 
@@ -128,6 +117,32 @@ namespace yojimbo
         m_packetTypeIsEncrypted = NULL;
 
         m_allocator = NULL;
+    }
+
+    void SocketInterface::ClearSendQueue()
+    {
+        for ( size_t i = 0; i < queue_size( m_sendQueue ); ++i )
+        {
+            PacketEntry & entry = m_sendQueue[i];
+            assert( entry.packet );
+            assert( entry.address.IsValid() );
+            m_packetFactory->DestroyPacket( entry.packet );
+        }
+
+        queue_clear( m_sendQueue );
+    }
+
+    void SocketInterface::ClearReceiveQueue()
+    {
+        for ( size_t i = 0; i < queue_size( m_receiveQueue ); ++i )
+        {
+            PacketEntry & entry = m_receiveQueue[i];
+            assert( entry.packet );
+            assert( entry.address.IsValid() );
+            m_packetFactory->DestroyPacket( entry.packet );
+        }
+
+        queue_clear( m_receiveQueue );
     }
 
     bool SocketInterface::IsError() const
@@ -228,17 +243,13 @@ namespace yojimbo
 
             queue_consume( m_sendQueue, 1 );
 
-            // big big hack for testing
-            static int64_t sequence = 0;
-            sequence++;
-
             const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
 
             uint8_t prefix[16] = { 0 };
             int prefixBytes = 1;
             if ( encrypt )
             {
-                yojimbo::CompressPacketSequence( sequence/*entry.sequence*/, prefix[0], prefixBytes, prefix+1 );
+                yojimbo::CompressPacketSequence( entry.sequence, prefix[0], prefixBytes, prefix+1 );
                 prefix[0] |= ENCRYPTED_PACKET_FLAG;
                 prefixBytes++;
             }
@@ -261,13 +272,13 @@ namespace yojimbo
 
                 if ( encrypt )
                 {
-                    uint8_t key[KeyBytes];
-                    memset( key, 0, sizeof( key ) );
-
                     int encryptedPacketSize;
 
+                    uint8_t key[KeyBytes];
                     uint8_t nonce[NonceBytes];
-                    memcpy( nonce, &sequence, NonceBytes );
+
+                    memcpy( key, m_key, KeyBytes );
+                    memcpy( nonce, &entry.sequence, NonceBytes );
 
                     if ( Encrypt( m_packetBuffer + prefixBytes, 
                                   packetSize - prefixBytes, 
@@ -276,13 +287,16 @@ namespace yojimbo
                                   nonce, key ) )
                     {
                         packetSize = prefixBytes + encryptedPacketSize;
-                        assert( packetSize <= m_maxPacketSize );            // todo: absolute max packet size
+ 
+                        assert( packetSize <= m_absoluteMaxPacketSize );
+ 
                         memcpy( m_packetBuffer, prefix, prefixBytes );
+
                         m_socket->SendPacket( entry.address, m_packetBuffer, packetSize );
                     }
                     else
                     {
-                        printf( "failed to encrypt packet\n" );
+                        m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES]++;
                     }
                 }
                 else
@@ -292,7 +306,6 @@ namespace yojimbo
             }
             else
             {
-                printf( "failed to write packet (type %d)\n", entry.packet->GetType() );
                 m_counters[SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS]++;
             }
 
@@ -328,12 +341,12 @@ namespace yojimbo
 
             if ( encrypted )
             {
-                uint8_t key[KeyBytes];
-                memset( key, 0, sizeof( key ) );
-
                 uint64_t sequence = yojimbo::DecompressPacketSequence( prefixByte, m_packetBuffer + 1 );
 
+                uint8_t key[KeyBytes];
                 uint8_t nonce[NonceBytes];
+
+                memcpy( key, m_key, KeyBytes );
                 memcpy( nonce, &sequence, NonceBytes );
 
                 const int sequenceBytes = yojimbo::GetPacketSequenceBytes( prefixByte );
@@ -348,7 +361,7 @@ namespace yojimbo
                                decryptedPacketBytes, 
                                nonce, key ) )
                 {
-                    printf( "failed to decrypt packet\n" );
+                    m_counters[SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES]++;
                     continue;
                 }
 
@@ -371,7 +384,6 @@ namespace yojimbo
             }
             else
             {
-                printf( "read packet error: %s\n", protocol2::GetErrorString( readError ) );
                 m_counters[SOCKET_INTERFACE_COUNTER_READ_PACKET_ERRORS]++;
                 continue;
             }
@@ -410,8 +422,7 @@ namespace yojimbo
     {
         assert( type >= 0 );
         assert( type < m_packetFactory->GetNumPacketTypes() );
-        // todo: for testing purposes only
-        return true; //m_packetTypeIsEncrypted[type] != 0;
+        return m_packetTypeIsEncrypted[type] != 0;
     }
 
     void SocketInterface::AddEncryptionMapping( const network2::Address & /*address*/, const uint8_t * /*sendKey*/, const uint8_t * /*receiveKey*/ )

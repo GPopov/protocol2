@@ -81,6 +81,8 @@ namespace yojimbo
         SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS,
         SOCKET_INTERFACE_COUNTER_SEND_QUEUE_OVERFLOW,
         SOCKET_INTERFACE_COUNTER_RECEIVE_QUEUE_OVERFLOW,
+        SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES,
+        SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES,
         SOCKET_INTERFACE_COUNTER_NUM_COUNTERS
     };
 
@@ -92,6 +94,7 @@ namespace yojimbo
         int m_maxPacketSize;
         int m_sendQueueSize;
         int m_receiveQueueSize;
+        int m_absoluteMaxPacketSize;
 
         uint8_t * m_packetBuffer;
         Allocator * m_allocator;
@@ -111,6 +114,14 @@ namespace yojimbo
         uint8_t * m_packetTypeIsEncrypted;
 
         uint64_t m_counters[SOCKET_INTERFACE_COUNTER_NUM_COUNTERS];
+
+        // temporary
+        uint8_t m_key[KeyBytes];
+
+    protected:
+
+        void ClearSendQueue();
+        void ClearReceiveQueue();
 
     public:
 

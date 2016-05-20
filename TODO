@@ -2,8 +2,6 @@ DONE
 
 TODO
 
-    What the fuck. The sequence is clearly the same on both sides, but decrypting with it as nonce always fails.
+    Now it seems ready to implement the address -> key mapping.
 
-    As soon as the nonce is forced back to a static constant value it works.
-
-    There is something funny going on...
+    Once this mapping is working, it should be possible to move quickly through implementing the secure server.
