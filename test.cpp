@@ -628,6 +628,8 @@ void PrintBytes( const uint8_t * data, int data_bytes )
     printf( " (%d bytes)", data_bytes );
 }
 
+#include <sodium.h>
+
 void test_packet_encryption()
 {
     printf( "test_packet_encryption\n" );
@@ -635,27 +637,6 @@ void test_packet_encryption()
     using namespace yojimbo;
 
     InitializeCrypto();
-
-    /*
-    int encrypted_length = 18;
-    uint8_t encrypted_packet[] = { 0x65, 0x35, 0x1d, 0xe7, 0x6c, 0xd2, 0x4a, 0x23, 0x5e, 0x88, 0xad, 0xa0, 0x7b, 0xb3, 0xc4, 0xff, 0x25, 0x61 };
-
-    uint8_t key[KeyBytes];
-    uint8_t nonce[NonceBytes];
-
-    memset( key, 1, KeyBytes );
-    memset( nonce, 1, NonceBytes );
-
-    uint8_t decrypted_packet[2048];
-    int decrypted_length;
-    if ( !Decrypt( encrypted_packet, encrypted_length, decrypted_packet, decrypted_length, nonce, key ) )
-    {
-        printf( "error: failed to decrypt\n" );
-        exit(1);
-    }
-    */
-
-    using namespace yojimbo;
 
     uint8_t packet[1024];
   

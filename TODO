@@ -102,14 +102,26 @@ DONE
 
     This is fucked. =p
 
-TODO
-
     By taking a block that fails to decrypt on the server, and inputting it, it also fails to decrypt on mac.
 
     This indicates to me that something is going wrong in the ENCRYPT level. eg. it is encrypting to crap, for some reason,
     and this encrypted block cannot be decrypted because it it trashed.
 
     Idea: Pass in known packet bytes, eg. packet of size 1 with contents [ 1 ] and see what it encrypts to on linux vs. on mac.
-    
 
+TODO
 
+    OK. I've actually fucking caught it doing stupid crap in linux now. I have a small trivial test where on linux it fails,
+    and gives random encrypted packets, while no macosx it hits a proper fixed encoding.
+
+    I think this isolates the bug on linux. 
+
+    I also don't think it's mine.
+
+    You know what would fit. If the simple box nonce was larger than the bytes specified, or the key.
+
+    Yeah that would certainly explain what I'm seeing...
+
+    Found it. The key and nonce sizes are different for the simplebox.
+
+    Fuck me.

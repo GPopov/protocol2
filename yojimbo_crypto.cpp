@@ -34,6 +34,8 @@
 
 #include <sodium.h>
 #include <assert.h>
+#include <stdlib.h>
+#include <memory.h>
 
 namespace yojimbo
 {
@@ -62,7 +64,11 @@ namespace yojimbo
                   uint8_t * encryptedMessage, int & encryptedMessageLength, 
                   const uint8_t * nonce, const uint8_t * key )
     {
-        if ( crypto_secretbox_easy( encryptedMessage, message, messageLength, nonce, key ) != 0 )
+        uint8_t actual_nonce[crypto_secretbox_NONCEBYTES];
+        memset( actual_nonce, 0, sizeof( actual_nonce ) );
+        memcpy( actual_nonce, nonce, NonceBytes );
+
+        if ( crypto_secretbox_easy( encryptedMessage, message, messageLength, actual_nonce, key ) != 0 )
             return false;
 
         encryptedMessageLength = messageLength + MacBytes;
@@ -74,7 +80,11 @@ namespace yojimbo
                   uint8_t * decryptedMessage, int & decryptedMessageLength, 
                   const uint8_t * nonce, const uint8_t * key )
     {
-        if ( crypto_secretbox_open_easy( decryptedMessage, encryptedMessage, encryptedMessageLength, nonce, key ) != 0 )
+        uint8_t actual_nonce[crypto_secretbox_NONCEBYTES];
+        memset( actual_nonce, 0, sizeof( actual_nonce ) );
+        memcpy( actual_nonce, nonce, NonceBytes );
+
+        if ( crypto_secretbox_open_easy( decryptedMessage, encryptedMessage, encryptedMessageLength, actual_nonce, key ) != 0 )
             return false;
 
         decryptedMessageLength = encryptedMessageLength - MacBytes;
