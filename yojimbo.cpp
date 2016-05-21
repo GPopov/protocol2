@@ -446,9 +446,12 @@ namespace yojimbo
                                decryptedPacketBytes, 
                                nonce, key ) )
                                */
+
+                uint8_t output[2048];
+
                 if ( !Decrypt( m_packetBuffer, 
                                packetBytes, 
-                               m_packetBuffer, 
+                               output,
                                decryptedPacketBytes, 
                                nonce, key ) )
                 {

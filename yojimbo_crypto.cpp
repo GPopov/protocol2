@@ -64,7 +64,9 @@ namespace yojimbo
     {
         if ( crypto_secretbox_easy( encryptedMessage, message, messageLength, nonce, key ) != 0 )
             return false;
+
         encryptedMessageLength = messageLength + MacBytes;
+
         return true;
     }
  
@@ -74,7 +76,9 @@ namespace yojimbo
     {
         if ( crypto_secretbox_open_easy( decryptedMessage, encryptedMessage, encryptedMessageLength, nonce, key ) != 0 )
             return false;
+
         decryptedMessageLength = encryptedMessageLength - MacBytes;
+
         return true;
     }
 
