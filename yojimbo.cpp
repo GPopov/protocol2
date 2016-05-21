@@ -257,6 +257,17 @@ namespace yojimbo
     static const int ENCRYPTED_PACKET_FLAG = (1<<7);
 #endif // if YOJIMBO_SECURE
 
+    static void PrintBytes( const uint8_t * data, int data_bytes )
+    {
+        for ( int i = 0; i < data_bytes; ++i )
+        {
+            printf( "%02x", (int) data[i] );
+            if ( i != data_bytes - 1 )
+                printf( "-" );
+        }
+        printf( " (%d bytes)", data_bytes );
+    }
+
     void SocketInterface::WritePackets( double /*time*/ )
     {
         assert( m_allocator );
@@ -300,11 +311,11 @@ namespace yojimbo
             info.rawFormat = encrypt;
 #endif // #if YOJIMBO_SECURE
 
-            int packetSize = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
+            int packetBytes = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
 
-            if ( packetSize > 0 )
+            if ( packetBytes > 0 )
             {
-                assert( packetSize <= m_maxPacketSize );
+                assert( packetBytes <= m_maxPacketSize );
 
 #if YOJIMBO_SECURE
                 if ( encrypt )
@@ -315,19 +326,23 @@ namespace yojimbo
                     {
                         int encryptedPacketSize;
 
+                        printf( "packet: " );
+                        PrintBytes( m_packetBuffer, packetBytes + MacBytes );
+                        printf( "\n" );
+
                         if ( Encrypt( m_packetBuffer + prefixBytes, 
-                                      packetSize - prefixBytes, 
+                                      packetBytes - prefixBytes, 
                                       m_packetBuffer + prefixBytes, 
                                       encryptedPacketSize, 
                                       (uint8_t*) &entry.sequence, encryptionMapping->sendKey ) )
                         {
-                            packetSize = prefixBytes + encryptedPacketSize;
+                            packetBytes = prefixBytes + encryptedPacketSize;
 
-                            assert( packetSize <= m_absoluteMaxPacketSize );
+                            assert( packetBytes <= m_absoluteMaxPacketSize );
      
                             memcpy( m_packetBuffer, prefix, prefixBytes );
 
-                            m_socket->SendPacket( entry.address, m_packetBuffer, packetSize );
+                            m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );
 
                             m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
                             m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN]++;    
@@ -345,7 +360,7 @@ namespace yojimbo
                 else
 #endif // #if YOJIMBO_SECURE
                 {
-                    m_socket->SendPacket( entry.address, m_packetBuffer, packetSize );
+                    m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );
 
                     m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
 #if YOJIMBO_SECURE
@@ -422,6 +437,10 @@ namespace yojimbo
                 packetBytes = numPrefixBytes + decryptedPacketBytes;
 
                 memset( m_packetBuffer + packetBytes, 0, MacBytes );
+
+                printf( "decrypted packet: " );
+                PrintBytes( m_packetBuffer, packetBytes + MacBytes );
+                printf( "\n" );
             }
 
 #endif // #if YOJMIBO_SECURE
