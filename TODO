@@ -88,9 +88,12 @@ DONE
 
     Lets try some experiments...
 
-TODO
-
     Seems like linux just doesn't want to decrypt at all. Broken libsodium?
 
     Add a test for sodium packet encrypt/decrypt in lib sodium.
-    
+
+    Passes. I now suspect stack trashing and/or memory trashing.
+
+TODO
+
+    Try not using the stupid yojimbo allocator. See if that fixes it.
