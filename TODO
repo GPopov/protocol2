@@ -8,6 +8,7 @@ DONE
 
 TODO
 
+    I suspect I need to clear out the memory after the decrypt. It's extra bits getting fed into the bitpacker at the end from encryption!
     
     
 
