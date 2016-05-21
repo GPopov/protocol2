@@ -67,7 +67,7 @@ namespace yojimbo
 
         m_allocator = &allocator;
         
-        m_socket = new NetworkSocket( socketPort, socketType );//YOJIMBO_NEW( *m_allocator, NetworkSocket, socketPort, socketType );
+        m_socket = YOJIMBO_NEW( *m_allocator, NetworkSocket, socketPort, socketType );
         
         m_protocolId = protocolId;
 
@@ -92,7 +92,7 @@ namespace yojimbo
 
         m_receiveQueueSize = receiveQueueSize;
         
-        m_packetBuffer = new uint8_t[m_absoluteMaxPacketSize];//(uint8_t*) m_allocator->Allocate( m_absoluteMaxPacketSize );
+        m_packetBuffer = (uint8_t*) m_allocator->Allocate( m_absoluteMaxPacketSize );
         
         m_packetFactory = &packetFactory;
         
@@ -105,8 +105,8 @@ namespace yojimbo
 
 		assert( numPacketTypes > 0 );
 
-        m_packetTypeIsEncrypted = new uint8_t[numPacketTypes];//(uint8_t*) m_allocator->Allocate( numPacketTypes );
-        m_packetTypeIsUnencrypted = new uint8_t[numPacketTypes];//(uint8_t*) m_allocator->Allocate( numPacketTypes );
+        m_packetTypeIsEncrypted = (uint8_t*) m_allocator->Allocate( numPacketTypes );
+        m_packetTypeIsUnencrypted = (uint8_t*) m_allocator->Allocate( numPacketTypes );
 
         memset( m_packetTypeIsEncrypted, 0, m_packetFactory->GetNumPacketTypes() );
         memset( m_packetTypeIsUnencrypted, 1, m_packetFactory->GetNumPacketTypes() );
@@ -127,16 +127,13 @@ namespace yojimbo
         ClearSendQueue();
         ClearReceiveQueue();
 
-        delete m_socket; //YOJIMBO_DELETE( *m_allocator, NetworkSocket, m_socket );
+        YOJIMBO_DELETE( *m_allocator, NetworkSocket, m_socket );
 
-        //m_allocator->Free( m_packetBuffer );
-        delete [] m_packetBuffer;
+        m_allocator->Free( m_packetBuffer );
 
 #if YOJIMBO_SECURE
-        delete [] m_packetTypeIsEncrypted;
-        delete [] m_packetTypeIsUnencrypted;
-        //m_allocator->Free( m_packetTypeIsEncrypted );
-        //m_allocator->Free( m_packetTypeIsUnencrypted );
+        m_allocator->Free( m_packetTypeIsEncrypted );
+        m_allocator->Free( m_packetTypeIsUnencrypted );
 #endif // #if YOJIMBO_SECURE
 
         m_socket = NULL;

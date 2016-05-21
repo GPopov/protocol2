@@ -1,9 +1,14 @@
 DONE
 
+    Both windows and mac working perfectly.
+
 TODO
 
-    Linux is now complaining about serilaize checks failing
+    Linux is now complaining about serialize checks failing
 
     Truncation?
 
     Logic error with the sequence compression?
+
+    WTF... need to dig in. Tomorrow.
+

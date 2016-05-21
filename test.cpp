@@ -643,7 +643,6 @@ void test_packet_encryption()
     int packet_length = 1;
     memset( packet, 0, sizeof( packet ) );
     packet[0] = 1;  
-    //RandomBytes( packet, sizeof( packet ) );
   
     uint8_t key[KeyBytes];
     uint8_t nonce[NonceBytes];
@@ -653,9 +652,6 @@ void test_packet_encryption()
 
     uint8_t encrypted_packet[2048];
 
-//    RandomBytes( key, sizeof( key ) );
-//    RandomBytes( nonce, sizeof( nonce ) );
-
     int encrypted_length;
     if ( !Encrypt( packet, packet_length, encrypted_packet, encrypted_length, nonce, key ) )
     {
@@ -663,9 +659,20 @@ void test_packet_encryption()
         exit(1);
     }
 
-    printf( "encrypted packet: " );
-    PrintBytes( encrypted_packet, encrypted_length );
-    printf( "\n" );
+    const int expected_encrypted_length = 17;
+    const uint8_t expected_encrypted_packet[] = { 0xfa, 0x6c, 0x91, 0xf7, 0xef, 0xdc, 0xed, 0x22, 0x09, 0x23, 0xd5, 0xbf, 0xa1, 0xe9, 0x17, 0x70, 0x14 };
+    if ( encrypted_length != expected_encrypted_length || memcmp( expected_encrypted_packet, encrypted_packet, encrypted_length ) != 0 )
+    {
+        printf( "\npacket encryption failure!\n\n" );
+
+        printf( " expected: " );
+        PrintBytes( expected_encrypted_packet, expected_encrypted_length );
+        printf( "\n" );
+
+        printf( "      got: " );
+        PrintBytes( encrypted_packet, encrypted_length );
+        printf( "\n\n" );
+    }
 
     uint8_t decrypted_packet[2048];
     int decrypted_length;
