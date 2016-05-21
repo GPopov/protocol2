@@ -42,14 +42,17 @@ DONE
 
     I don't know what is going on here.
 
-TODO
-
     WINDOWS
 
     It's fucked up because I included the sockets implementation, which probably needs more headers.
 
     Without the sockets class it's fine. What else needs to be included for sockets?
 
+    Actually, it was some weird ass s_addr #define shit. Ugh. Fixed.
+
+TODO
+
+    Now turn back on YOJIMBO_SECURE and get it working under linux.
 
 
 
