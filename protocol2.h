@@ -277,7 +277,8 @@ namespace protocol2
     {
     public:
 
-        BitWriter( void* data, int bytes ) : m_data( (uint32_t*)data ), m_numWords( bytes / 4 )
+        BitWriter( void* data, int bytes ) 
+            : m_data( (uint32_t*)data ), m_numWords( bytes / 4 )
         {
             assert( data );
             assert( ( bytes % 4 ) == 0 );           // buffer size must be a multiple of four
@@ -421,7 +422,11 @@ namespace protocol2
     {
     public:
 
+#if DEBUG
         BitReader( const void* data, int bytes ) : m_data( (const uint32_t*)data ), m_numBytes( bytes ), m_numWords( ( bytes + 3 ) / 4)
+#else // #if DEBUG
+        BitReader( const void* data, int bytes ) : m_data( (const uint32_t*)data ), m_numBytes( bytes )
+#endif // #if DEBUG
         {
             // IMPORTANT: Although we support non-multiples of four bytes passed in, the actual buffer
             // underneath the bit reader must round up to at least 4 bytes because we read a dword at a time.
@@ -559,7 +564,9 @@ namespace protocol2
         uint64_t m_scratch;
         int m_numBits;
         int m_numBytes;
+#if DEBUG
         int m_numWords;
+#endif // #if DEBUG
         int m_bitsRead;
         int m_scratchBits;
         int m_wordIndex;

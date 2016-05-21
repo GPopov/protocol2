@@ -5,7 +5,7 @@ solution "Building a Game Network Protocol"
     if not os.is "windows" then
         targetdir "bin/"
     end
-    configurations { "Debug", "Release" }
+    configurations { "Release", "Debug" }
     flags { "ExtraWarnings", "FloatFast" }
     rtti "Off"
     configuration "Debug"
