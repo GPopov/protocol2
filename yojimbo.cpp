@@ -295,57 +295,43 @@ namespace yojimbo
 
             const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
 
-            uint8_t prefix[16];
-            memset( prefix, 0, sizeof( prefix ) );
-            int prefixBytes = 1;
-
             if ( encrypt )
             {
+                int prefixBytes;
+                uint8_t prefix[16];
                 yojimbo::CompressPacketSequence( entry.sequence, prefix[0], prefixBytes, prefix+1 );
                 prefix[0] |= ENCRYPTED_PACKET_FLAG;
                 prefixBytes++;
-            }
 
-#endif // #if YOJIMBO_SECURE
+                protocol2::PacketInfo info;
 
-            protocol2::PacketInfo info;
+                info.context = m_context;
+                info.protocolId = m_protocolId;
+                info.packetFactory = m_packetFactory;
+                info.rawFormat = true;
 
-            info.context = m_context;
-            info.protocolId = m_protocolId;
-            info.packetFactory = m_packetFactory;
-#if YOJIMBO_SECURE
-            info.prefixBytes = prefixBytes;
-            info.rawFormat = encrypt;
-#endif // #if YOJIMBO_SECURE
+                int packetBytes = protocol2::WritePacket( info, entry.packet, m_scratchBuffer, m_maxPacketSize );
 
-            int packetBytes = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
-
-            if ( packetBytes > 0 )
-            {
-                assert( packetBytes <= m_maxPacketSize );
-
-#if YOJIMBO_SECURE
-                if ( encrypt )
+                if ( packetBytes > 0 )
                 {
+                    assert( packetBytes <= m_maxPacketSize );
+
                     EncryptionMapping * encryptionMapping = FindEncryptionMapping( entry.address );
 
                     if ( encryptionMapping )
                     {
                         int encryptedPacketSize;
 
-                        memcpy( m_scratchBuffer, m_packetBuffer + prefixBytes, packetBytes - prefixBytes );
-
                         if ( Encrypt( m_scratchBuffer,
-                                      packetBytes - prefixBytes, 
+                                      packetBytes,
                                       m_scratchBuffer,
                                       encryptedPacketSize, 
                                       (uint8_t*) &entry.sequence, encryptionMapping->sendKey ) )
                         {
-                            packetBytes = prefixBytes + encryptedPacketSize;
-
                             memcpy( m_packetBuffer, prefix, prefixBytes );
                             memcpy( m_packetBuffer + prefixBytes, m_scratchBuffer, encryptedPacketSize );
-                            //memset( m_packetBuffer + packetBytes, 0, m_absoluteMaxPacketSize - packetBytes );
+
+                            packetBytes = prefixBytes + encryptedPacketSize;
 
                             assert( packetBytes <= m_absoluteMaxPacketSize );
 
@@ -369,15 +355,57 @@ namespace yojimbo
                     }
                 }
                 else
-#endif // #if YOJIMBO_SECURE
                 {
+                    m_counters[SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS]++;
+                }
+            }
+            else
+            {
+                protocol2::PacketInfo info;
+
+                info.context = m_context;
+                info.protocolId = m_protocolId;
+                info.packetFactory = m_packetFactory;
+                info.prefixBytes = 1;
+                info.rawFormat = true;
+
+                int packetBytes = protocol2::WritePacket( info, entry.packet, m_scratchBuffer, m_maxPacketSize );
+
+                if ( packetBytes > 0 )
+                {
+                    assert( packetBytes <= m_maxPacketSize );
+
                     m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );
 
                     m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
-#if YOJIMBO_SECURE
                     m_counters[SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN]++;    
-#endif // #if YOJIMBO_SECURE
                 }
+                else
+                {
+                    m_counters[SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS]++;
+                }
+            }
+
+            m_packetFactory->DestroyPacket( entry.packet );
+
+#else // #if YOJIMBO_SECURE
+
+            protocol2::PacketInfo info;
+
+            info.context = m_context;
+            info.protocolId = m_protocolId;
+            info.packetFactory = m_packetFactory;
+
+            int packetBytes = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
+
+            if ( packetBytes > 0 )
+            {
+                assert( packetBytes <= m_maxPacketSize );
+
+                m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );
+
+                m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
+                m_counters[SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN]++;    
             }
             else
             {
@@ -385,6 +413,9 @@ namespace yojimbo
             }
 
             m_packetFactory->DestroyPacket( entry.packet );
+
+#endif // #if YOJIMBO_SECURE
+
         }
     }
 
