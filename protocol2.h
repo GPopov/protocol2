@@ -834,7 +834,11 @@ namespace protocol2
 
         MeasureStream( int bytes ) : m_context( NULL ), m_error( PROTOCOL2_ERROR_NONE ), m_totalBytes( bytes ), m_bitsWritten(0) {}
 
+#if DEBUG
         bool SerializeInteger( int32_t value, int32_t min, int32_t max )
+#else // #if DEBUG
+        bool SerializeInteger( int32_t /*value*/, int32_t min, int32_t max )
+#endif // #if DEBUG
         {
             assert( min < max );
             assert( value >= min );

@@ -90,7 +90,7 @@ void test_bitpacker()
 
     const int bytesWritten = writer.GetBytesWritten();
 
-    assert( bytesWritten == 10 );
+    check( bytesWritten == 10 );
 
     memset( buffer + bytesWritten, 0, BufferSize - bytesWritten );
 
@@ -586,22 +586,22 @@ void test_packet_sequence()
 
         yojimbo::CompressPacketSequence( sequence, prefix_byte, num_sequence_bytes, sequence_bytes );
 
-        assert( prefix_byte == ( 1 | (1<<1) | (1<<3) ) );
+        check( prefix_byte == ( 1 | (1<<1) | (1<<3) ) );
 
-        assert( num_sequence_bytes == 4 );
+        check( num_sequence_bytes == 4 );
 
-        assert( sequence_bytes[0] == 0x11 );
-        assert( sequence_bytes[1] == 0x22 );
-        assert( sequence_bytes[2] == 0x33 );
-        assert( sequence_bytes[3] == 0x44 );
+        check( sequence_bytes[0] == 0x11 );
+        check( sequence_bytes[1] == 0x22 );
+        check( sequence_bytes[2] == 0x33 );
+        check( sequence_bytes[3] == 0x44 );
 
         int decoded_num_sequence_bytes = yojimbo::GetPacketSequenceBytes( prefix_byte );
 
-        assert( decoded_num_sequence_bytes == num_sequence_bytes );
+        check( decoded_num_sequence_bytes == num_sequence_bytes );
 
         uint64_t decoded_sequence = yojimbo::DecompressPacketSequence( prefix_byte, sequence_bytes );
 
-        assert( decoded_sequence == sequence );
+        check( decoded_sequence == sequence );
     }
 
     for ( uint64_t sequence = 0; sequence < 100000000LL; sequence += 101 )
@@ -611,7 +611,7 @@ void test_packet_sequence()
         int num_sequence_bytes;
         yojimbo::CompressPacketSequence( sequence, prefix_byte, num_sequence_bytes, sequence_bytes );
         uint64_t decoded_sequence = yojimbo::DecompressPacketSequence( prefix_byte, sequence_bytes );
-        assert( decoded_sequence == sequence );
+        check( decoded_sequence == sequence );
     }
 }
 
