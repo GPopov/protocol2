@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define NETWORK2_SOCKETS 1
 #define NETWORK2_SIMULATOR 1
 
 #define NETWORK2_PLATFORM_WINDOWS  1
@@ -150,6 +151,8 @@ namespace network2
         void Parse( const char * address );
     };
 
+#if NETWORK2_SOCKETS
+
     enum SocketType
     {
         SOCKET_TYPE_IPV4,
@@ -166,6 +169,12 @@ namespace network2
         SOCKET_ERROR_BIND_IPV6_FAILED
     };
 
+#if NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
+	typedef uint64_t SocketHandle;
+#else // #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
+	typedef int SocketHandle;
+#endif // #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
+						   
     class Socket
     {
     public:
@@ -185,9 +194,11 @@ namespace network2
     private:
 
         int m_error;
-        int m_socket;
         uint16_t m_port;
+        SocketHandle m_socket;
     };
+
+#endif // #if NETWORK2_SOCKETS
 
 #if NETWORK2_SIMULATOR
 
@@ -249,9 +260,10 @@ namespace network2
 
 #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
 
-	#define _WINSOCK_DEPRECATED_NO_WARNINGS
-	#include <WinSock2.h>
+//	#define _WINSOCK_DEPRECATED_NO_WARNINGS
+	#include <winsock2.h>
 	#include <ws2tcpip.h>
+	#include <ws2ipdef.h>
 	#pragma comment( lib, "WS2_32.lib" )
 
 	#ifdef SetPort
@@ -586,6 +598,8 @@ namespace network2
         return !( *this == other );
     }
 
+#if NETWORK2_SOCKETS
+
     Socket::Socket( uint16_t port, SocketType type )
     {
         assert( IsNetworkInitialized() );
@@ -718,22 +732,22 @@ namespace network2
 
         if ( address.GetType() == ADDRESS_IPV6 )
         {
-            sockaddr_in6 s_addr;
-            memset( &s_addr, 0, sizeof( s_addr ) );
-            s_addr.sin6_family = AF_INET6;
-            s_addr.sin6_port = htons( address.GetPort() );
-            memcpy( &s_addr.sin6_addr, address.GetAddress6(), sizeof( s_addr.sin6_addr ) );
-            const size_t sent_bytes = sendto( m_socket, (const char*)packetData, packetBytes, 0, (sockaddr*)&s_addr, sizeof(sockaddr_in6) );
-            result = sent_bytes == packetBytes;
+            sockaddr_in6 socket_address;
+            memset( &socket_address, 0, sizeof( socket_address ) );
+            socket_address.sin6_family = AF_INET6;
+            socket_address.sin6_port = htons( address.GetPort() );
+            memcpy( &socket_address.sin6_addr, address.GetAddress6(), sizeof( socket_address.sin6_addr ) );
+            size_t sent_bytes = sendto( m_socket, (const char*)packetData, (int) packetBytes, 0, (sockaddr*)&socket_address, sizeof( sockaddr_in6 ) );
+			result = sent_bytes == packetBytes;
         }
         else if ( address.GetType() == ADDRESS_IPV4 )
         {
-            sockaddr_in s_addr;
-            memset( &s_addr, 0, sizeof( s_addr ) );
-            s_addr.sin_family = AF_INET;
-            s_addr.sin_addr.s_addr = address.GetAddress4();
-            s_addr.sin_port = htons( (unsigned short) address.GetPort() );
-            const size_t sent_bytes = sendto( m_socket, (const char*)packetData, packetBytes, 0, (sockaddr*)&s_addr, sizeof(sockaddr_in) );
+            sockaddr_in socket_address;
+            memset( &socket_address, 0, sizeof( socket_address ) );
+            socket_address.sin_family = AF_INET;
+            socket_address.sin_addr.s_addr = address.GetAddress4();
+            socket_address.sin_port = htons( (unsigned short) address.GetPort() );
+            size_t sent_bytes = sendto( m_socket, (const char*)packetData, (int) packetBytes, 0, (sockaddr*)&socket_address, sizeof(sockaddr_in) );
             result = sent_bytes == packetBytes;
         }
 
@@ -760,6 +774,19 @@ namespace network2
 
         int result = recvfrom( m_socket, (char*)packetData, maxPacketSize, 0, (sockaddr*)&sockaddr_from, &fromLength );
 
+#if NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
+		if ( result == SOCKET_ERROR )
+		{
+			int error = WSAGetLastError();
+
+			if ( error = WSATRY_AGAIN )
+				return 0;
+
+			printf( "recvfrom failed: %d\n", error );
+
+			return 0;
+		}
+#else // #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
         if ( result <= 0 )
         {
             if ( errno == EAGAIN )
@@ -769,6 +796,7 @@ namespace network2
 
             return 0;
         }
+#endif // #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
 
         from = Address( sockaddr_from );
 
@@ -778,6 +806,8 @@ namespace network2
 
         return bytesRead;
     }
+
+#endif // #if NETWORK2_SOCKETS
 
 #if NETWORK2_SIMULATOR
 

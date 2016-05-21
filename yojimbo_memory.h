@@ -258,7 +258,7 @@ namespace yojimbo
 
 		virtual uint32_t GetTotalAllocated() 
 		{
-			return m_total_allocated;
+			return (uint32_t) m_total_allocated;
 		}
 	};
 

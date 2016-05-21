@@ -147,7 +147,7 @@ namespace yojimbo
 
     void SocketInterface::ClearSendQueue()
     {
-        for ( size_t i = 0; i < queue_size( m_sendQueue ); ++i )
+        for ( int i = 0; i < (int) queue_size( m_sendQueue ); ++i )
         {
             PacketEntry & entry = m_sendQueue[i];
             assert( entry.packet );
@@ -160,7 +160,7 @@ namespace yojimbo
 
     void SocketInterface::ClearReceiveQueue()
     {
-        for ( size_t i = 0; i < queue_size( m_receiveQueue ); ++i )
+        for ( int i = 0; i < (int) queue_size( m_receiveQueue ); ++i )
         {
             PacketEntry & entry = m_receiveQueue[i];
             assert( entry.packet );
