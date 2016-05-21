@@ -268,7 +268,7 @@ namespace yojimbo
             if ( i != data_bytes - 1 )
                 printf( "-" );
         }
-        printf( " (%d bytes)\n", data_bytes );
+        printf( " (%d bytes)", data_bytes );
     }
 
     void SocketInterface::WritePackets( double /*time*/ )
@@ -356,6 +356,14 @@ namespace yojimbo
                             printf( "encrypted packet: " );
 
                             PrintBytes( m_packetBuffer, encryptedPacketSize );
+
+                            printf( " | key: " );
+                            PrintBytes( key, KeyBytes );
+
+                            printf( " | nonce: " );
+                            PrintBytes( nonce, NonceBytes );
+
+                            printf( "\n" );
 
                             packetSize = /*prefixBytes +*/ encryptedPacketSize;
 
@@ -471,7 +479,15 @@ namespace yojimbo
                                nonce, key ) )
                 {
                     printf( " decrypt failure: " );
-                    PrintBytes( m_packetBuffer, packetBytes );
+
+                    printf( " | key: " );
+                    PrintBytes( key, KeyBytes );
+
+                    printf( " | nonce: " );
+                    PrintBytes( nonce, NonceBytes );
+
+                    printf( "\n" );
+
                     exit(1);
                     m_counters[SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES]++;
                     continue;
