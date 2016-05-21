@@ -421,7 +421,7 @@ namespace yojimbo
 
                 packetBytes = numPrefixBytes + decryptedPacketBytes;
 
-                memset( m_packetBuffer + packetBytes, MacBytes, 0 );
+                memset( m_packetBuffer + packetBytes, 0, MacBytes );
             }
 
 #endif // #if YOJMIBO_SECURE
