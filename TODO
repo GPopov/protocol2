@@ -100,8 +100,16 @@ DONE
 
     I really don't know what is going on.
 
+    This is fucked. =p
+
 TODO
 
-    This is fucked. =p
+    By taking a block that fails to decrypt on the server, and inputting it, it also fails to decrypt on mac.
+
+    This indicates to me that something is going wrong in the ENCRYPT level. eg. it is encrypting to crap, for some reason,
+    and this encrypted block cannot be decrypted because it it trashed.
+
+    Idea: Pass in known packet bytes, eg. packet of size 1 with contents [ 1 ] and see what it encrypts to on linux vs. on mac.
+    
 
 

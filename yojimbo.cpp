@@ -349,7 +349,8 @@ namespace yojimbo
                                       */
 
                         // hack
-                        packetSize = 2;
+                        m_packetBuffer[0] = 1;
+                        packetSize = 1;
 
                         if ( Encrypt( m_packetBuffer,
                                       packetSize,
