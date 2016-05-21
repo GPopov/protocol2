@@ -224,11 +224,14 @@ public:
     {
         EnablePacketEncryption();
 
+		// temporary
+		/*
         DisableEncryptionForPacketType( TEST_PACKET_A );
 
         assert( IsEncryptedPacketType( TEST_PACKET_A ) == false );
         assert( IsEncryptedPacketType( TEST_PACKET_B ) == true );
         assert( IsEncryptedPacketType( TEST_PACKET_C ) == true );
+		*/
     }
 
     ~TestNetworkInterface()
@@ -335,8 +338,8 @@ int main()
         printf( "client sent %" PRIu64 " unencrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN ) );
         printf( "client received %" PRIu64 " encrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ ) );
         printf( "client received %" PRIu64 " unencrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ ) );
-        printf( "client had %" PRIu64 " packet decrypt failures\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES ) );
         printf( "client had %" PRIu64 " packet encrypt failures\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES ) );
+        printf( "client had %" PRIu64 " packet decrypt failures\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES ) );
 
         printf( "----------------------------------------------------------\n" );
 

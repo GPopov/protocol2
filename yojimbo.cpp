@@ -274,10 +274,12 @@ namespace yojimbo
             queue_consume( m_sendQueue, 1 );
 
 #if YOJIMBO_SECURE
-
             const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
-
-            uint8_t prefix[16] = { 0 };
+			uint8_t prefix[8];
+			memcpy( prefix, &entry.sequence, 8 );
+			int prefixBytes = 2;
+			/*
+			uint8_t prefix[16] = { 0 };
             int prefixBytes = 1;
             if ( encrypt )
             {
@@ -285,7 +287,7 @@ namespace yojimbo
                 prefix[0] |= ENCRYPTED_PACKET_FLAG;
                 prefixBytes++;
             }
-
+			*/
 #endif // #if YOJIMBO_SECURE
 
             protocol2::PacketInfo info;
@@ -316,8 +318,11 @@ namespace yojimbo
                         uint8_t key[KeyBytes];
                         uint8_t nonce[NonceBytes];
 
-                        memcpy( key, encryptionMapping->sendKey, KeyBytes );
-                        memcpy( nonce, &entry.sequence, NonceBytes );
+						memset( key, 0, KeyBytes );
+						memset( nonce, 0, NonceBytes );
+
+                        //memcpy( key, encryptionMapping->sendKey, KeyBytes );
+                        //memcpy( nonce, &entry.sequence, NonceBytes );
 
                         if ( Encrypt( m_packetBuffer + prefixBytes, 
                                       packetSize - prefixBytes, 
@@ -326,7 +331,7 @@ namespace yojimbo
                                       nonce, key ) )
                         {
                             packetSize = prefixBytes + encryptedPacketSize;
-     
+
                             assert( packetSize <= m_absoluteMaxPacketSize );
      
                             memcpy( m_packetBuffer, prefix, prefixBytes );
@@ -390,10 +395,10 @@ namespace yojimbo
 
             const uint8_t prefixByte = m_packetBuffer[0];
 
-            const bool encrypted = ( prefixByte & ENCRYPTED_PACKET_FLAG ) != 0;
+            const bool encrypted = true; // ( prefixByte & ENCRYPTED_PACKET_FLAG ) != 0;
 
-            int numPrefixBytes = 1;
-
+            int numPrefixBytes = 2;
+				   
             if ( encrypted )
             {
                 EncryptionMapping * encryptionMapping = FindEncryptionMapping( address );
@@ -403,17 +408,22 @@ namespace yojimbo
                     continue;
                 }
 
-                uint64_t sequence = yojimbo::DecompressPacketSequence( prefixByte, m_packetBuffer + 1 );
+                uint64_t sequence;
+				memcpy( &sequence, m_packetBuffer, 8 );
 
                 uint8_t key[KeyBytes];
                 uint8_t nonce[NonceBytes];
 
-                memcpy( key, encryptionMapping->receiveKey, KeyBytes );
-                memcpy( nonce, &sequence, NonceBytes );
+				memset( key, 0, KeyBytes );
+				memset( nonce, 0, NonceBytes );
+                //memcpy( key, encryptionMapping->receiveKey, KeyBytes );
+                //memcpy( nonce, &sequence, NonceBytes );
 
+				/*
                 const int sequenceBytes = yojimbo::GetPacketSequenceBytes( prefixByte );
 
                 numPrefixBytes += sequenceBytes;
+				*/
 
                 int decryptedPacketBytes;
 
