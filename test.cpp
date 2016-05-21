@@ -617,12 +617,26 @@ void test_packet_sequence()
 
 #if YOJIMBO_SECURE
 
+void PrintBytes( const uint8_t * data, int data_bytes )
+{
+    for ( int i = 0; i < data_bytes; ++i )
+    {
+        printf( "%02x", (int) data[i] );
+        if ( i != data_bytes - 1 )
+            printf( "-" );
+    }
+    printf( " (%d bytes)", data_bytes );
+}
+
 void test_packet_encryption()
 {
     printf( "test_packet_encryption\n" );
 
     using namespace yojimbo;
 
+    InitializeCrypto();
+
+    /*
     int encrypted_length = 18;
     uint8_t encrypted_packet[] = { 0x65, 0x35, 0x1d, 0xe7, 0x6c, 0xd2, 0x4a, 0x23, 0x5e, 0x88, 0xad, 0xa0, 0x7b, 0xb3, 0xc4, 0xff, 0x25, 0x61 };
 
@@ -639,13 +653,16 @@ void test_packet_encryption()
         printf( "error: failed to decrypt\n" );
         exit(1);
     }
+    */
 
-    /*
     using namespace yojimbo;
 
     uint8_t packet[1024];
   
-    RandomBytes( packet, sizeof( packet ) );
+    int packet_length = 1;
+    memset( packet, 0, sizeof( packet ) );
+    packet[0] = 1;  
+    //RandomBytes( packet, sizeof( packet ) );
   
     uint8_t key[KeyBytes];
     uint8_t nonce[NonceBytes];
@@ -655,15 +672,19 @@ void test_packet_encryption()
 
     uint8_t encrypted_packet[2048];
 
-    RandomBytes( key, sizeof( key ) );
-    RandomBytes( nonce, sizeof( nonce ) );
+//    RandomBytes( key, sizeof( key ) );
+//    RandomBytes( nonce, sizeof( nonce ) );
 
     int encrypted_length;
-    if ( !Encrypt( packet, sizeof( packet ), encrypted_packet, encrypted_length, nonce, key ) )
+    if ( !Encrypt( packet, packet_length, encrypted_packet, encrypted_length, nonce, key ) )
     {
         printf( "error: failed to encrypt\n" );
         exit(1);
     }
+
+    printf( "encrypted packet: " );
+    PrintBytes( encrypted_packet, encrypted_length );
+    printf( "\n" );
 
     uint8_t decrypted_packet[2048];
     int decrypted_length;
@@ -673,12 +694,11 @@ void test_packet_encryption()
         exit(1);
     }
 
-    if ( decrypted_length != sizeof( packet ) || memcmp( packet, decrypted_packet, sizeof( packet ) ) != 0 )
+    if ( decrypted_length != packet_length || memcmp( packet, decrypted_packet, packet_length ) != 0 )
     {
         printf( "error: decrypted packet does not match original packet\n" );
         exit(1);
     }
-    */
 }
 
 #endif // #if YOJIMBO_SECURE
