@@ -287,7 +287,7 @@ int main()
         GenerateKey( server_to_client_key );
 
         uint64_t clientSequence = 0;
-        uint64_t serverSequence = 0;
+//        uint64_t serverSequence = 0;
 
         clientInterface.AddEncryptionMapping( serverAddress, client_to_server_key, server_to_client_key );
         serverInterface.AddEncryptionMapping( clientAddress, server_to_client_key, client_to_server_key );

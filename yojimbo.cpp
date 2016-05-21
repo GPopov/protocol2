@@ -435,6 +435,26 @@ namespace yojimbo
                 PrintBytes( m_packetBuffer, packetBytes );
                 printf( "\n" );
 
+                {
+                    uint8_t clean[1024];
+                    memset( clean, 0, sizeof( clean ) );
+                    int cleanBytes;
+                    if ( Decrypt( m_packetBuffer + numPrefixBytes, 
+                                  packetBytes - numPrefixBytes, 
+                                  clean,
+                                  cleanBytes,
+                                  (uint8_t*)&sequence, encryptionMapping->receiveKey ) )
+                    {
+                        printf( "clean %" PRIx64 ": ", sequence );
+                        PrintBytes( clean, cleanBytes );
+                        printf( "\n" );
+                    }
+                    else
+                    {
+                        printf( "clean decrypt failed\n" );
+                    }
+                }
+
                 if ( !Decrypt( m_packetBuffer + numPrefixBytes, 
                                packetBytes - numPrefixBytes, 
                                m_packetBuffer + numPrefixBytes, 
@@ -450,7 +470,7 @@ namespace yojimbo
                 memset( m_packetBuffer + packetBytes, 0, MacBytes );
 
                 printf( "decrypted %" PRIx64 ": ", sequence );
-                PrintBytes( m_packetBuffer, packetBytes + MacBytes );
+                PrintBytes( m_packetBuffer, packetBytes );
                 printf( "\n" );
             }
 
