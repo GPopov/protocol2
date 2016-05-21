@@ -1855,7 +1855,8 @@ cleanup:
 
             assert( stream.GetAlignBits() == 0 );       // must be byte aligned at this point
 
-            int packetTypePlusOne;
+            int packetTypePlusOne = 0;
+
             stream.SerializeInteger( packetTypePlusOne, 0, info.packetFactory->GetNumPacketTypes() );
 
             if ( packetTypePlusOne == 0 )               // end of packet marker
