@@ -998,20 +998,15 @@ namespace protocol2
 
     template <typename Stream> bool serialize_float_internal( Stream & stream, float & value )
     {
-        union FloatInt
-        {
-            float float_value;
-            uint32_t int_value;
-        };
+        uint32_t int_value;
 
-        FloatInt tmp;
         if ( Stream::IsWriting )
-            tmp.float_value = value;
+            memcpy( &int_value, &value, 4 );
 
-        bool result = stream.SerializeBits( tmp.int_value, 32 );
+        bool result = stream.SerializeBits( int_value, 32 );
 
         if ( Stream::IsReading )
-            value = tmp.float_value;
+            memcpy( &value, &int_value, 4 );
 
         return result;
     }
