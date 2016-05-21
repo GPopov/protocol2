@@ -71,15 +71,19 @@ namespace yojimbo
     }
 
     bool Encrypt_AEAD( const uint8_t * message, uint64_t messageLength, 
-                       uint8_t * encryptedMessage, uint64_t & encryptedMessageLength,
+                       uint8_t * encryptedMessage, uint64_t &  encryptedMessageLength,
                        const uint8_t * additional, uint64_t additionalLength,
                        const uint8_t * nonce,
                        const uint8_t * key )
     {
-        int result = crypto_aead_chacha20poly1305_encrypt( encryptedMessage, &encryptedMessageLength,
+        unsigned long long encryptedLength;
+
+        int result = crypto_aead_chacha20poly1305_encrypt( encryptedMessage, &encryptedLength,
                                                            message, messageLength,
                                                            additional, additionalLength,
                                                            NULL, nonce, key );
+
+        encryptedMessageLength = (uint64_t) encryptedLength;
 
         return result == 0;
     }
@@ -90,11 +94,15 @@ namespace yojimbo
                        const uint8_t * nonce,
                        const uint8_t * key )
     {
-        int result = crypto_aead_chacha20poly1305_decrypt( decryptedMessage, &decryptedMessageLength,
+        unsigned long long decryptedLength;
+
+        int result = crypto_aead_chacha20poly1305_decrypt( decryptedMessage, &decryptedLength,
                                                            NULL,
                                                            encryptedMessage, encryptedMessageLength,
                                                            additional, additionalLength,
                                                            nonce, key );
+
+        decryptedMessageLength = (uint64_t) decryptedLength;
 
         return result == 0;
     }
