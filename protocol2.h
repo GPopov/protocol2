@@ -774,7 +774,7 @@ namespace protocol2
             const uint32_t magic = hash_string( string, 0 );
             if ( magic != value )
             {
-                printf( "serialize check failed: '%s' - expected %x, got %x\n", string, magic, value );
+                printf( "serialize check failed: '%s'. expected %x, got %x\n", string, magic, value );
             }
             return value == magic;
 #else // #if PROTOCOL2_SERIALIZE_CHECKS
