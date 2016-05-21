@@ -262,6 +262,8 @@ namespace yojimbo
 		}
 	};
 
+#if YOJIMBO_SCRATCH_ALLOCATOR
+
 	class ScratchAllocator : public Allocator
 	{
 		Allocator & m_backing;
@@ -373,6 +375,8 @@ namespace yojimbo
 			return m_end - m_begin;
 		}
 	};
+
+#endif // #if YOJIMBO_SCRATCH_ALLOCATOR
 
 	// macros
 

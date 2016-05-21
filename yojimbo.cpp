@@ -103,6 +103,8 @@ namespace yojimbo
 
         const int numPacketTypes = m_packetFactory->GetNumPacketTypes();
 
+		assert( numPacketTypes > 0 );
+
         m_packetTypeIsEncrypted = (uint8_t*) m_allocator->Allocate( numPacketTypes );
         m_packetTypeIsUnencrypted = (uint8_t*) m_allocator->Allocate( numPacketTypes );
 
@@ -388,7 +390,7 @@ namespace yojimbo
 
             const uint8_t prefixByte = m_packetBuffer[0];
 
-            const bool encrypted = prefixByte & ENCRYPTED_PACKET_FLAG;
+            const bool encrypted = ( prefixByte & ENCRYPTED_PACKET_FLAG ) != 0;
 
             int numPrefixBytes = 1;
 

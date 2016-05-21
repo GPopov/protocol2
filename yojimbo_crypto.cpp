@@ -28,6 +28,10 @@
 
 #if YOJIMBO_SECURE
 
+#ifdef _MSC_VER
+#define SODIUM_STATIC
+#endif // #ifdef _MSC_VER
+
 #include <sodium.h>
 #include <assert.h>
 

@@ -260,7 +260,7 @@ namespace network2
 
 #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
 
-//	#define _WINSOCK_DEPRECATED_NO_WARNINGS
+	#define _WINSOCK_DEPRECATED_NO_WARNINGS
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 	#include <ws2ipdef.h>
@@ -779,7 +779,7 @@ namespace network2
 		{
 			int error = WSAGetLastError();
 
-			if ( error = WSATRY_AGAIN )
+			if ( error == WSAEWOULDBLOCK )
 				return 0;
 
 			printf( "recvfrom failed: %d\n", error );

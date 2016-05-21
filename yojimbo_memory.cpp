@@ -30,7 +30,11 @@ namespace yojimbo
 {
 	struct MemoryGlobals 
 	{
+#if YOJIMBO_SCRATCH_ALLOCATOR
 		static const int ALLOCATOR_MEMORY = sizeof( MallocAllocator ) + sizeof( ScratchAllocator );
+#else // #if YOJIMBO_SCRATCH_ALLOCATOR
+		static const int ALLOCATOR_MEMORY = sizeof( MallocAllocator ) + sizeof( MallocAllocator );
+#endif // #if YOJIMBO_SCRATCH_ALLOCATOR
 
 		uint8_t buffer[ALLOCATOR_MEMORY];
 
