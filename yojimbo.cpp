@@ -349,7 +349,8 @@ namespace yojimbo
                                       */
 
                         // hack
-                        m_packetBuffer[0] = 1;
+                        memset( m_packetBuffer, 0, 1024 );
+                        m_packetBuffer[0] = 1;  
                         packetSize = 1;
 
                         if ( Encrypt( m_packetBuffer,
@@ -359,15 +360,7 @@ namespace yojimbo
                                       nonce, key ) )
                         {
                             printf( "encrypted packet: " );
-
                             PrintBytes( m_packetBuffer, encryptedPacketSize );
-
-                            printf( " | key: " );
-                            PrintBytes( key, KeyBytes );
-
-                            printf( " | nonce: " );
-                            PrintBytes( nonce, NonceBytes );
-
                             printf( "\n" );
 
                             packetSize = /*prefixBytes +*/ encryptedPacketSize;
@@ -484,15 +477,7 @@ namespace yojimbo
                                nonce, key ) )
                 {
                     printf( " decrypt failure: " );
-
                     PrintBytes( m_packetBuffer, packetBytes );
-
-                    printf( " | key: " );
-                    PrintBytes( key, KeyBytes );
-
-                    printf( " | nonce: " );
-                    PrintBytes( nonce, NonceBytes );
-
                     printf( "\n" );
 
                     exit(1);
