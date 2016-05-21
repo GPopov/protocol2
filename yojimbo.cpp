@@ -470,7 +470,7 @@ namespace yojimbo
                                decryptedPacketBytes, 
                                nonce, key ) )
                 {
-                    printf( "  decrypt failure: " );
+                    printf( " decrypt failure: " );
                     PrintBytes( m_packetBuffer, packetBytes );
                     exit(1);
                     m_counters[SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES]++;
