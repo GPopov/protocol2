@@ -1,14 +1,14 @@
 DONE
 
-    Both windows and mac working perfectly.
+    serialize_check with a uint32_t passed in was annoying.
+
+    Changed it to pass in a string which is hashed, this way you can print out cool stuff like which check failed.
+
+    Which is very helpful for debugging...
 
 TODO
 
-    Linux is now complaining about serialize checks failing
+    
+    
 
-    Truncation?
-
-    Logic error with the sequence compression?
-
-    WTF... need to dig in. Tomorrow.
 

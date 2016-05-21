@@ -193,7 +193,7 @@ struct TestObject : public protocol2::Object
 
         serialize_bool( stream, data.g );
 
-        serialize_check( stream, 0x55225500 );
+        serialize_check( stream, "test object serialize check" );
 
         serialize_int( stream, data.numItems, 0, MaxItems - 1 );
         for ( int i = 0; i < data.numItems; ++i )
@@ -209,7 +209,7 @@ struct TestObject : public protocol2::Object
 
         serialize_string( stream, data.string, sizeof( data.string ) );
 
-        serialize_check( stream, 0x12341111 );
+        serialize_check( stream, "end of test object" );
 
         return true;
     }

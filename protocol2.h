@@ -625,10 +625,11 @@ namespace protocol2
             return m_writer.GetAlignBits();
         }
 
-        bool SerializeCheck( uint32_t magic )
+        bool SerializeCheck( const char * string )
         {
 #if PROTOCOL2_SERIALIZE_CHECKS
             SerializeAlign();
+            const uint32_t magic = hash_string( string, 0 );
             SerializeBits( magic, 32 );
 #endif // #if PROTOCOL2_SERIALIZE_CHECKS
             return true;
@@ -763,12 +764,18 @@ namespace protocol2
             return m_reader.GetAlignBits();
         }
 
-        bool SerializeCheck( uint32_t magic )
+        bool SerializeCheck( const char * string )
         {
 #if PROTOCOL2_SERIALIZE_CHECKS            
             SerializeAlign();
             uint32_t value = 0;
+            SerializeAlign();
             SerializeBits( value, 32 );
+            const uint32_t magic = hash_string( string, 0 );
+            if ( magic != value )
+            {
+                printf( "serialize check failed: '%s' - expected %x, got %x\n", string, magic, value );
+            }
             return value == magic;
 #else // #if PROTOCOL2_SERIALIZE_CHECKS
             return true;
@@ -864,7 +871,7 @@ namespace protocol2
             return 7;       // we can't know for sure, so be conservative and assume worst case
         }
 
-        bool SerializeCheck( uint32_t /*magic*/ )
+        bool SerializeCheck( const char * /*string*/ )
         {
 #if PROTOCOL2_SERIALIZE_CHECKS
             SerializeAlign();
@@ -1098,10 +1105,10 @@ namespace protocol2
                 return false;                                                               \
         } while (0)
 
-    #define serialize_check( stream, value )                                                \
+    #define serialize_check( stream, string )                                               \
         do                                                                                  \
         {                                                                                   \
-            if ( !stream.SerializeCheck( value ) )                                          \
+            if ( !stream.SerializeCheck( string ) )                                         \
                 return false;                                                               \
         } while (0)
 
@@ -1482,9 +1489,7 @@ namespace protocol2
         if ( !packet->SerializeWrite( stream ) )
             return 0;
 
-#if PROTOCOL2_SERIALIZE_CHECKS
-        stream.SerializeCheck( info.protocolId );
-#endif // #if PROTOCOL2_SERIALIZE_CHECKS
+        stream.SerializeCheck( "end of packet" );
 
         stream.Flush();
 
@@ -1599,12 +1604,8 @@ namespace protocol2
         }
 
 #if PROTOCOL2_SERIALIZE_CHECKS
-        if ( !stream.SerializeCheck( info.protocolId ) )
+        if ( !stream.SerializeCheck( "end of packet" ) )
         {
-            #if PROTOCOL2_ASSERT_ON_SERIALIZE_CHECK
-            assert( !"serialize check failed" );
-            #endif // #if PROTOCOL2_ASSERT_ON_SERIALIZE_CHECK
-
             if ( errorCode )
                 *errorCode = PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED;
             goto cleanup;
@@ -1682,9 +1683,7 @@ cleanup:
             if ( !aggregatePacketHeader->SerializeWrite( stream ) )
                 return 0;
 
-#if PROTOCOL2_SERIALIZE_CHECKS
-            stream.SerializeCheck( info.protocolId );
-#endif // #if PROTOCOL2_SERIALIZE_CHECKS
+            stream.SerializeCheck( "aggregate packet header" );
 
             stream.SerializeAlign();
 
@@ -1731,9 +1730,7 @@ cleanup:
             if ( !packet->SerializeWrite( stream ) )
                 return 0;
 
-#if PROTOCOL2_SERIALIZE_CHECKS
-            stream.SerializeCheck( info.protocolId );
-#endif // #if PROTOCOL2_SERIALIZE_CHECKS
+            stream.SerializeCheck( "end of packet" );
 
             stream.SerializeAlign();
 
@@ -1839,9 +1836,7 @@ cleanup:
                 return;
             }
 
-#if PROTOCOL2_SERIALIZE_CHECKS
-            stream.SerializeCheck( info.protocolId );
-#endif // #if PROTOCOL2_SERIALIZE_CHECKS
+            stream.SerializeCheck( "aggregate packet header" );
 
             stream.SerializeAlign();
         }
@@ -1900,13 +1895,12 @@ cleanup:
                 goto cleanup;
             }
 
-#if PROTOCOL2_SERIALIZE_CHECKS
-            if ( !stream.SerializeCheck( info.protocolId ) )
+            if ( !stream.SerializeCheck( "end of packet" ) )
             {
+                if ( errorCode )
                     *errorCode = PROTOCOL2_ERROR_SERIALIZE_CHECK_FAILED;
                 goto cleanup;
             }
-#endif // #if PROTOCOL2_SERIALIZE_CHECKS
 
             stream.SerializeAlign();
 
