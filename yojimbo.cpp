@@ -96,6 +96,8 @@ namespace yojimbo
         m_receiveQueueSize = receiveQueueSize;
         
         m_packetBuffer = (uint8_t*) m_allocator->Allocate( m_absoluteMaxPacketSize );
+
+        m_scratchBuffer = (uint8_t*) m_allocator->Allocate( m_absoluteMaxPacketSize );
         
         m_packetFactory = &packetFactory;
         
@@ -133,6 +135,7 @@ namespace yojimbo
         YOJIMBO_DELETE( *m_allocator, NetworkSocket, m_socket );
 
         m_allocator->Free( m_packetBuffer );
+        m_allocator->Free( m_scratchBuffer );
 
 #if YOJIMBO_SECURE
         m_allocator->Free( m_packetTypeIsEncrypted );
@@ -141,6 +144,7 @@ namespace yojimbo
 
         m_socket = NULL;
         m_packetBuffer = NULL;
+        m_scratchBuffer = NULL;
         m_packetFactory = NULL;
 #if YOJIMBO_SECURE
         m_packetTypeIsEncrypted = NULL;
@@ -329,29 +333,27 @@ namespace yojimbo
                     {
                         int encryptedPacketSize;
 
-                        printf( "packet %" PRIx64 ": ", entry.sequence );
-                        PrintBytes( m_packetBuffer, packetBytes );
-                        printf( "\n" );
+                        memcpy( m_scratchBuffer, m_packetBuffer + prefixBytes, packetBytes - prefixBytes );
 
-                        if ( Encrypt( m_packetBuffer + prefixBytes, 
+                        if ( Encrypt( m_scratchBuffer,
                                       packetBytes - prefixBytes, 
-                                      m_packetBuffer + prefixBytes, 
+                                      m_scratchBuffer,
                                       encryptedPacketSize, 
                                       (uint8_t*) &entry.sequence, encryptionMapping->sendKey ) )
                         {
                             packetBytes = prefixBytes + encryptedPacketSize;
 
-                            assert( packetBytes <= m_absoluteMaxPacketSize );
-     
                             memcpy( m_packetBuffer, prefix, prefixBytes );
-
-                            // temp
+                            memcpy( m_packetBuffer + prefixBytes, m_scratchBuffer, encryptedPacketSize );
                             memset( m_packetBuffer + packetBytes, 0, m_absoluteMaxPacketSize - packetBytes );
+
+                            assert( packetBytes <= m_absoluteMaxPacketSize );
 
                             printf( "send %" PRIx64 ": ", entry.sequence );
                             PrintBytes( m_packetBuffer, packetBytes );
                             printf( "\n" );
 
+                            /*
                             printf( "nonce " );
                             PrintBytes( (uint8_t*) &entry.sequence, NonceBytes );
                             printf( "\n" );
@@ -359,6 +361,7 @@ namespace yojimbo
                             printf( "key " );
                             PrintBytes( encryptionMapping->sendKey, KeyBytes );
                             printf( "\n" );
+                            */
 
                             m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );
 
@@ -446,12 +449,12 @@ namespace yojimbo
                 PrintBytes( m_packetBuffer, packetBytes );
                 printf( "\n" );
 
-                // temp
-                memset( m_packetBuffer + packetBytes, 0, m_absoluteMaxPacketSize - packetBytes );
+                memset( m_scratchBuffer, 0, m_absoluteMaxPacketSize );
+                memcpy( m_scratchBuffer, m_packetBuffer + numPrefixBytes, packetBytes - numPrefixBytes );
 
-                if ( !Decrypt( m_packetBuffer + numPrefixBytes, 
+                if ( !Decrypt( m_scratchBuffer,
                                packetBytes - numPrefixBytes, 
-                               m_packetBuffer + numPrefixBytes, 
+                               m_scratchBuffer,
                                decryptedPacketBytes, 
                                (uint8_t*)&sequence, encryptionMapping->receiveKey ) )
                 {
@@ -461,7 +464,8 @@ namespace yojimbo
 
                 packetBytes = numPrefixBytes + decryptedPacketBytes;
 
-                memset( m_packetBuffer + packetBytes, 0, MacBytes );
+                memcpy( m_packetBuffer + numPrefixBytes, m_scratchBuffer, decryptedPacketBytes );
+                memset( m_packetBuffer + packetBytes, 0, m_absoluteMaxPacketSize - packetBytes );
 
                 printf( "decrypted %" PRIx64 ": ", sequence );
                 PrintBytes( m_packetBuffer, packetBytes );

@@ -109,6 +109,8 @@ namespace yojimbo
         int m_absoluteMaxPacketSize;
 
         uint8_t * m_packetBuffer;
+        uint8_t * m_scratchBuffer;
+
         Allocator * m_allocator;
         network2::Socket * m_socket;
         protocol2::PacketFactory * m_packetFactory;
