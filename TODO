@@ -24,8 +24,6 @@ DONE
 
     OK. This is pretty clean. I like the PacketInfo approach for extending read and write packets.
 
-TODO
-
     Get the code compiling on windows (install sodium)
 
     Wow. It's totally fucked up again. How?!
@@ -33,6 +31,29 @@ TODO
     First step, disable sodium by implementing #define YOJIBO_SECURE
 
     If this is not defined, you can strip out all the security support.
+
+    Got the security stripped out and got everything working on Mac and Linux.
+
+    PRIx64 WTF. gross...
+
+    Now back to windows.
+
+    Repaired the Visual Studio installation. Really I don't have any other explanation for why it is busted other than corruption.
+
+    I don't know what is going on here.
+
+TODO
+
+    WINDOWS
+
+    It's fucked up because I included the sockets implementation, which probably needs more headers.
+
+    Without the sockets class it's fine. What else needs to be included for sockets?
+
+
+
+
+
 
     -----------
 
