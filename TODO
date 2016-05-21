@@ -60,11 +60,22 @@ DONE
 
     Kinda brought sodium up and working in windows. Bundling it seems to make the most sense.
 
-TODO
-
     Some errors with I think uint8_t pointer access through my uint64_t for the sequence #
 
     Hopefully this can be fixed, windows is complaining about it but mac and linux working fine.
 
     Should add packet encrypt/decrypt tests as well as AEAD tests to tests.cpp #if HAS( YOJIMBO_SECURE )
     
+    No dice. There is nothing wrong with the sequence number compress/decompress.
+
+TODO
+
+    I'm doing something wrong, either undefined behavior (three different compilers bitching about something = MY FAULT)
+
+    or memory trash
+
+    or stack trash or something.
+
+    Not sure yet!
+
+    Have to find it. Can't put this code out there without this.
