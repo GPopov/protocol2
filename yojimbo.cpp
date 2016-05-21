@@ -280,8 +280,10 @@ namespace yojimbo
 
             const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
 
+            uint8_t prefix[16];
+            memset( prefix, 0, sizeof( prefix ) );
             int prefixBytes = 1;
-			uint8_t prefix[16] = { 0 };            
+
             if ( encrypt )
             {
                 yojimbo::CompressPacketSequence( entry.sequence, prefix[0], prefixBytes, prefix+1 );
@@ -404,9 +406,9 @@ namespace yojimbo
 
                 const int sequenceBytes = GetPacketSequenceBytes( prefixByte );
 
-                uint64_t sequence = DecompressPacketSequence( prefixByte, m_packetBuffer + 1 );
-
                 numPrefixBytes += sequenceBytes;
+
+                uint64_t sequence = DecompressPacketSequence( prefixByte, m_packetBuffer + 1 );
 
                 int decryptedPacketBytes;
 
