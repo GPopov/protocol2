@@ -43,6 +43,9 @@
 #include <sodium.h>
 #endif // #if YOJIMBO_SECURE
 
+#include <stdint.h>
+#include <inttypes.h>
+
 namespace yojimbo
 {
     typedef network2::Socket NetworkSocket;
@@ -326,6 +329,7 @@ namespace yojimbo
                     {
                         int encryptedPacketSize;
 
+                        printf( "sequence %" PRIx64 "\n", entry.sequence );
                         printf( "packet: " );
                         PrintBytes( m_packetBuffer, packetBytes + MacBytes );
                         printf( "\n" );
@@ -438,6 +442,7 @@ namespace yojimbo
 
                 memset( m_packetBuffer + packetBytes, 0, MacBytes );
 
+                printf( "sequence %" PRIx64 "\n", sequence );
                 printf( "decrypted packet: " );
                 PrintBytes( m_packetBuffer, packetBytes + MacBytes );
                 printf( "\n" );
