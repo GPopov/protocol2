@@ -254,7 +254,7 @@ namespace yojimbo
     }
 
 #if YOJIMBO_SECURE
-    static const int ENCRYPTED_PACKET_FLAG = (1<<7);
+//    static const int ENCRYPTED_PACKET_FLAG = (1<<7);
 #endif // if YOJIMBO_SECURE
 
     void SocketInterface::WritePackets( double /*time*/ )
@@ -275,9 +275,11 @@ namespace yojimbo
 
 #if YOJIMBO_SECURE
             const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
+            /*
 			uint8_t prefix[8];
 			memcpy( prefix, &entry.sequence, 8 );
 			int prefixBytes = 8;
+            */
 			/*
 			uint8_t prefix[16] = { 0 };
             int prefixBytes = 1;
@@ -296,8 +298,8 @@ namespace yojimbo
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
 #if YOJIMBO_SECURE
-            info.prefixBytes = prefixBytes;
-            info.rawFormat = encrypt;
+            info.prefixBytes = 0; //prefixBytes;
+            info.rawFormat = 1;//encrypt;
 #endif // #if YOJIMBO_SECURE
 
             int packetSize = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
@@ -324,17 +326,24 @@ namespace yojimbo
                         //memcpy( key, encryptionMapping->sendKey, KeyBytes );
                         //memcpy( nonce, &entry.sequence, NonceBytes );
 
+                        /*
                         if ( Encrypt( m_packetBuffer + prefixBytes, 
                                       packetSize - prefixBytes, 
                                       m_packetBuffer + prefixBytes, 
                                       encryptedPacketSize, 
                                       nonce, key ) )
+                                      */
+                        if ( Encrypt( m_packetBuffer,
+                                      packetSize,
+                                      m_packetBuffer,
+                                      encryptedPacketSize, 
+                                      nonce, key ) )
                         {
-                            packetSize = prefixBytes + encryptedPacketSize;
+                            packetSize = /*prefixBytes +*/ encryptedPacketSize;
 
                             assert( packetSize <= m_absoluteMaxPacketSize );
      
-                            memcpy( m_packetBuffer, prefix, prefixBytes );
+                            //memcpy( m_packetBuffer, prefix, prefixBytes );
 
                             m_socket->SendPacket( entry.address, m_packetBuffer, packetSize );
 
@@ -393,7 +402,7 @@ namespace yojimbo
 
 #if YOJIMBO_SECURE
 
-            const uint8_t prefixByte = m_packetBuffer[0];
+            //const uint8_t prefixByte = m_packetBuffer[0];
 
             const bool encrypted = true; // ( prefixByte & ENCRYPTED_PACKET_FLAG ) != 0;
 
@@ -427,9 +436,16 @@ namespace yojimbo
 
                 int decryptedPacketBytes;
 
+                /*
                 if ( !Decrypt( m_packetBuffer + numPrefixBytes, 
                                packetBytes - numPrefixBytes, 
                                m_packetBuffer + numPrefixBytes, 
+                               decryptedPacketBytes, 
+                               nonce, key ) )
+                               */
+                if ( !Decrypt( m_packetBuffer, 
+                               packetBytes, 
+                               m_packetBuffer, 
                                decryptedPacketBytes, 
                                nonce, key ) )
                 {
@@ -448,7 +464,7 @@ namespace yojimbo
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
 #if YOJIMBO_SECURE
-            info.prefixBytes = numPrefixBytes;
+            info.prefixBytes = 0;//numPrefixBytes;
             info.rawFormat = encrypted;
             info.allowedPacketTypes = encrypted ? m_packetTypeIsEncrypted : m_packetTypeIsUnencrypted;
 #endif // #if YOJIMBO_SECURE
