@@ -6,10 +6,11 @@ DONE
 
     Which is very helpful for debugging...
 
-TODO
-
     I suspect I need to clear out the memory after the decrypt. It's extra bits getting fed into the bitpacker at the end from encryption!
     
-    
+    It genuinely does look like a bug in libsodium such that the packet is having the last byte corrupted.
 
+TODO
+
+    Next goal has to be to isolate this bug in a test harness.
 

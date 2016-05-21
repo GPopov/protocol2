@@ -345,8 +345,19 @@ namespace yojimbo
      
                             memcpy( m_packetBuffer, prefix, prefixBytes );
 
+                            // temp
+                            memset( m_packetBuffer + packetBytes, 0, m_absoluteMaxPacketSize - packetBytes );
+
                             printf( "send %" PRIx64 ": ", entry.sequence );
                             PrintBytes( m_packetBuffer, packetBytes );
+                            printf( "\n" );
+
+                            printf( "nonce " );
+                            PrintBytes( (uint8_t*) &entry.sequence, NonceBytes );
+                            printf( "\n" );
+
+                            printf( "key " );
+                            PrintBytes( encryptionMapping->sendKey, KeyBytes );
                             printf( "\n" );
 
                             m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );
@@ -435,25 +446,8 @@ namespace yojimbo
                 PrintBytes( m_packetBuffer, packetBytes );
                 printf( "\n" );
 
-                {
-                    uint8_t clean[1024];
-                    memset( clean, 0, sizeof( clean ) );
-                    int cleanBytes;
-                    if ( Decrypt( m_packetBuffer + numPrefixBytes, 
-                                  packetBytes - numPrefixBytes, 
-                                  clean,
-                                  cleanBytes,
-                                  (uint8_t*)&sequence, encryptionMapping->receiveKey ) )
-                    {
-                        printf( "clean %" PRIx64 ": ", sequence );
-                        PrintBytes( clean, cleanBytes );
-                        printf( "\n" );
-                    }
-                    else
-                    {
-                        printf( "clean decrypt failed\n" );
-                    }
-                }
+                // temp
+                memset( m_packetBuffer + packetBytes, 0, m_absoluteMaxPacketSize - packetBytes );
 
                 if ( !Decrypt( m_packetBuffer + numPrefixBytes, 
                                packetBytes - numPrefixBytes, 
