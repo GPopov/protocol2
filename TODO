@@ -50,18 +50,21 @@ DONE
 
     Actually, it was some weird ass s_addr #define shit. Ugh. Fixed.
 
-TODO
-
     Now turn back on YOJIMBO_SECURE and get it working under linux.
 
+    Done. Had to make from source and then run "ldconfig" to update shared libraries after installing.
 
-
-
-
-    -----------
-
-    Get the code compiling on linux (install sodium)
+    Now bring it back into windows and get sodium working and installing there.
 
     Package up something for supporters this month. It should make them happy, but be low key about it.
 
-    ----------
+    Kinda brought sodium up and working in windows. Bundling it seems to make the most sense.
+
+TODO
+
+    Some errors with I think uint8_t pointer access through my uint64_t for the sequence #
+
+    Hopefully this can be fixed, windows is complaining about it but mac and linux working fine.
+
+    Should add packet encrypt/decrypt tests as well as AEAD tests to tests.cpp #if HAS( YOJIMBO_SECURE )
+    
