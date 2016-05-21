@@ -484,7 +484,7 @@ public:
             {
                 char buffer[256];
                 const char *addressString = m_clientAddress[i].ToString( buffer, sizeof( buffer ) );
-                printf( "client %d timed out (client address = %s, client id = %llx)\n", i, addressString, m_clientId[i] );
+                printf( "client %d timed out (client address = %s, client id = %" PRIx64 ")\n", i, addressString, m_clientId[i] );
                 DisconnectClient( i, time );
             }
         }
@@ -542,7 +542,7 @@ protected:
 
         char buffer[256];
         const char *addressString = address.ToString( buffer, sizeof( buffer ) );
-        printf( "client %d connected (client address = %s, client id = %llx)\n", clientIndex, addressString, clientId );
+        printf( "client %d connected (client address = %s, client id = %" PRIx64 ")\n", clientIndex, addressString, clientId );
 
         ConnectionKeepAlivePacket * connectionKeepAlivePacket = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
 
@@ -558,7 +558,7 @@ protected:
 
         char buffer[256];
         const char *addressString = m_clientAddress[clientIndex].ToString( buffer, sizeof( buffer ) );
-        printf( "client %d disconnected: (client address = %s, client id = %llx)\n", clientIndex, addressString, m_clientId[clientIndex] );
+        printf( "client %d disconnected: (client address = %s, client id = %" PRIx64 ")\n", clientIndex, addressString, m_clientId[clientIndex] );
 
         ConnectionDisconnectPacket * packet = (ConnectionDisconnectPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DISCONNECT );
 
@@ -599,8 +599,8 @@ protected:
 
         int index = key % ChallengeHashSize;
         
-        printf( "client id = %llx\n", clientId );
-        printf( "challenge hash key = %llx\n", key );
+        printf( "client id = %" PRIx64 "\n", clientId );
+        printf( "challenge hash key = %" PRIx64 "\n", key );
         printf( "challenge hash index = %d\n", index );
 
         if ( m_challengeHash.exists[index] && 
@@ -622,8 +622,8 @@ protected:
 
         int index = key % ChallengeHashSize;
         
-        printf( "client salt = %llx\n", clientId );
-        printf( "challenge hash key = %llx\n", key );
+        printf( "client salt = %" PRIx64 "\n", clientId );
+        printf( "challenge hash key = %" PRIx64 "\n", key );
         printf( "challenge hash index = %d\n", index );
 
         if ( !m_challengeHash.exists[index] || ( m_challengeHash.exists[index] && m_challengeHash.entries[index].create_time + ChallengeTimeOut < time ) )
@@ -704,7 +704,7 @@ protected:
 
         if ( entry->last_packet_send_time + ChallengeSendRate < time )
         {
-            printf( "sending connection challenge to %s (challenge salt = %llx)\n", addressString, entry->challenge_salt );
+            printf( "sending connection challenge to %s (challenge salt = %" PRIx64 ")\n", addressString, entry->challenge_salt );
             ConnectionChallengePacket * connectionChallengePacket = (ConnectionChallengePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_CHALLENGE );
             connectionChallengePacket->client_salt = packet.client_salt;
             connectionChallengePacket->challenge_salt = entry->challenge_salt;
@@ -738,7 +738,7 @@ protected:
 
         char buffer[256];
         const char * addressString = address.ToString( buffer, sizeof( buffer ) );
-        printf( "processing connection response from client %s (client salt = %llx, challenge salt = %llx)\n", addressString, packet.client_salt, packet.challenge_salt );
+        printf( "processing connection response from client %s (client salt = %" PRIx64 ", challenge salt = %" PRIx64 ")\n", addressString, packet.client_salt, packet.challenge_salt );
 
         ServerChallengeEntry * entry = FindChallenge( address, packet.client_salt, time );
         if ( !entry )
@@ -750,7 +750,7 @@ protected:
 
         if ( entry->challenge_salt != packet.challenge_salt )
         {
-            printf( "connection challenge mismatch: expected %llx, got %llx\n", entry->challenge_salt, packet.challenge_salt );
+            printf( "connection challenge mismatch: expected %" PRIx64 ", got %" PRIx64 "\n", entry->challenge_salt, packet.challenge_salt );
             return;
         }
 
@@ -875,7 +875,7 @@ public:
     {
         if ( m_clientState == CLIENT_STATE_CONNECTED )
         {
-            printf( "client-side disconnect: (client salt = %llx, challenge salt = %llx)\n", m_clientSalt, m_challengeSalt );
+            printf( "client-side disconnect: (client salt = %" PRIx64 ", challenge salt = %" PRIx64 ")\n", m_clientSalt, m_challengeSalt );
             ConnectionDisconnectPacket * packet = (ConnectionDisconnectPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DISCONNECT );
             SendPacketToServer( packet, time );
         }
@@ -1072,7 +1072,7 @@ protected:
         
         // todo: stuff
 
-        //printf( "client received connection challenge from server: %s (challenge salt = %llx)\n", addressString, packet.challenge_salt );
+        //printf( "client received connection challenge from server: %s (challenge salt = %" PRIx64 ")\n", addressString, packet.challenge_salt );
 
         // todo: WUT
 
