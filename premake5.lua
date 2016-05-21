@@ -8,7 +8,6 @@ solution "Building a Game Network Protocol"
     configurations { "Debug", "Release" }
     flags { "ExtraWarnings", "FloatFast" }
     rtti "Off"
-    strictaliasing "Off"
     configuration "Debug"
         flags { "Symbols" }
         defines { "DEBUG" }
@@ -95,6 +94,8 @@ if _ACTION == "clean" then
         os.rmdir "ipch"
 		os.rmdir "bin"
 		os.rmdir ".vs"
+        os.rmdir "Debug"
+        os.rmdir "Release"
         os.execute "del /F /Q *.zip"
         os.execute "del /F /Q *.db"
         os.execute "del /F /Q *.opendb"
