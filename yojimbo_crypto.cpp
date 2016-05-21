@@ -58,7 +58,9 @@ namespace yojimbo
         randombytes_buf( data, bytes );
     }
 
-    bool Encrypt( const uint8_t * message, int messageLength, uint8_t * encryptedMessage, int & encryptedMessageLength, const uint8_t * nonce, const uint8_t * key )
+    bool Encrypt( const uint8_t * message, int messageLength, 
+                  uint8_t * encryptedMessage, int & encryptedMessageLength, 
+                  const uint8_t * nonce, const uint8_t * key )
     {
         if ( crypto_secretbox_easy( encryptedMessage, message, messageLength, nonce, key ) != 0 )
             return false;
@@ -66,7 +68,9 @@ namespace yojimbo
         return true;
     }
  
-    bool Decrypt( const uint8_t * encryptedMessage, int encryptedMessageLength, uint8_t * decryptedMessage, int & decryptedMessageLength, const uint8_t * nonce, const uint8_t * key )
+    bool Decrypt( const uint8_t * encryptedMessage, int encryptedMessageLength, 
+                  uint8_t * decryptedMessage, int & decryptedMessageLength, 
+                  const uint8_t * nonce, const uint8_t * key )
     {
         if ( crypto_secretbox_open_easy( decryptedMessage, encryptedMessage, encryptedMessageLength, nonce, key ) != 0 )
             return false;
@@ -83,8 +87,8 @@ namespace yojimbo
         unsigned long long encryptedLength;
 
         int result = crypto_aead_chacha20poly1305_encrypt( encryptedMessage, &encryptedLength,
-                                                           message, messageLength,
-                                                           additional, additionalLength,
+                                                           message, (unsigned long long) messageLength,
+                                                           additional, (unsigned long long) additionalLength,
                                                            NULL, nonce, key );
 
         encryptedMessageLength = (uint64_t) encryptedLength;
@@ -102,8 +106,8 @@ namespace yojimbo
 
         int result = crypto_aead_chacha20poly1305_decrypt( decryptedMessage, &decryptedLength,
                                                            NULL,
-                                                           encryptedMessage, encryptedMessageLength,
-                                                           additional, additionalLength,
+                                                           encryptedMessage, (unsigned long long) encryptedMessageLength,
+                                                           additional, (unsigned long long) additionalLength,
                                                            nonce, key );
 
         decryptedMessageLength = (uint64_t) decryptedLength;
