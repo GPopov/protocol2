@@ -68,6 +68,7 @@ struct TestPacketA : public protocol2::Packet
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
+        serialize_check( stream, 0x12341234 );
         serialize_int( stream, a, -10, 10 );
         serialize_int( stream, b, -20, 20 );
         serialize_int( stream, c, -30, 30 );
@@ -103,6 +104,7 @@ struct TestPacketB : public protocol2::Packet
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
+        serialize_check( stream, 0x12341234 );
         serialize_int( stream, numItems, 0, MaxItems );
         for ( int i = 0; i < numItems; ++i )
             serialize_int( stream, items[i], -100, +100 );
@@ -156,6 +158,7 @@ struct TestPacketC : public protocol2::Packet
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
+        serialize_check( stream, 0x12341234 );
         serialize_float( stream, position.x );
         serialize_float( stream, position.y );
         serialize_float( stream, position.z );
