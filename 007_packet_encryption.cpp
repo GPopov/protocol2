@@ -30,6 +30,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <time.h>
 
 using namespace yojimbo;
@@ -329,17 +331,17 @@ int main()
             printf( "----------------------------------------------------------\n" );
         }
 
-        printf( "client sent %lld encrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN ) );
-        printf( "client sent %lld unencrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN ) );
-        printf( "client received %lld encrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ ) );
-        printf( "client received %lld unencrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ ) );
+        printf( "client sent %" PRIu64 " encrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN ) );
+        printf( "client sent %" PRIu64 " unencrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN ) );
+        printf( "client received %" PRIu64 " encrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ ) );
+        printf( "client received %" PRIu64 " unencrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ ) );
 
         printf( "----------------------------------------------------------\n" );
 
-        printf( "server sent %lld encrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN ) );
-        printf( "server sent %lld unencrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN ) );
-        printf( "server received %lld encrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ ) );
-        printf( "server received %lld unencrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ ) );
+        printf( "server sent %" PRIu64 " encrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN ) );
+        printf( "server sent %" PRIu64 " unencrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN ) );
+        printf( "server received %" PRIu64 " encrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ ) );
+        printf( "server received %" PRIu64 " unencrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ ) );
 
         printf( "----------------------------------------------------------\n" );
 
