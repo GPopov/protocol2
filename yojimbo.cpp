@@ -320,8 +320,8 @@ namespace yojimbo
                         uint8_t key[KeyBytes];
                         uint8_t nonce[NonceBytes];
 
-						memset( key, 0, KeyBytes );
-						memset( nonce, 0, NonceBytes );
+						memset( key, 1, KeyBytes );
+						memset( nonce, 1, NonceBytes );
 
                         //memcpy( key, encryptionMapping->sendKey, KeyBytes );
                         //memcpy( nonce, &entry.sequence, NonceBytes );
@@ -423,8 +423,8 @@ namespace yojimbo
                 uint8_t key[KeyBytes];
                 uint8_t nonce[NonceBytes];
 
-				memset( key, 0, KeyBytes );
-				memset( nonce, 0, NonceBytes );
+				memset( key, 1, KeyBytes );
+				memset( nonce, 1, NonceBytes );
                 //memcpy( key, encryptionMapping->receiveKey, KeyBytes );
                 //memcpy( nonce, &sequence, NonceBytes );
 

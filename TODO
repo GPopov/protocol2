@@ -78,8 +78,6 @@ DONE
 
     Have to find it. Can't put this code out there without this.
 
-TODO
-
     With the simplified code, the decrypts work in windows and mac, but now fail on linux.
 
     Could it be that linux does not like:
@@ -89,3 +87,10 @@ TODO
         b) decrypt in place?
 
     Lets try some experiments...
+
+TODO
+
+    Seems like linux just doesn't want to decrypt at all. Broken libsodium?
+
+    Add a test for sodium packet encrypt/decrypt in lib sodium.
+    
