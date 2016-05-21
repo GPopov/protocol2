@@ -94,6 +94,14 @@ DONE
 
     Passes. I now suspect stack trashing and/or memory trashing.
 
+    Try not using the stupid yojimbo allocator. See if that fixes it.
+
+    Long shot. Didn't seem to help at all.
+
+    I really don't know what is going on.
+
 TODO
 
-    Try not using the stupid yojimbo allocator. See if that fixes it.
+    This is fucked. =p
+
+

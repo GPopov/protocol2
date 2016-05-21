@@ -260,6 +260,17 @@ namespace yojimbo
 //    static const int ENCRYPTED_PACKET_FLAG = (1<<7);
 #endif // if YOJIMBO_SECURE
 
+    void PrintBytes( const uint8_t * data, int data_bytes )
+    {
+        for ( int i = 0; i < data_bytes; ++i )
+        {
+            printf( "%x", (int) data[i] );
+            if ( i != data_bytes - 1 )
+                printf( "-" );
+        }
+        printf( " (%d bytes)\n", data_bytes );
+    }
+
     void SocketInterface::WritePackets( double /*time*/ )
     {
         assert( m_allocator );
@@ -277,7 +288,7 @@ namespace yojimbo
             queue_consume( m_sendQueue, 1 );
 
 #if YOJIMBO_SECURE
-            const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
+            const bool encrypt = true; //IsEncryptedPacketType( entry.packet->GetType() );
             /*
 			uint8_t prefix[8];
 			memcpy( prefix, &entry.sequence, 8 );
@@ -342,6 +353,10 @@ namespace yojimbo
                                       encryptedPacketSize, 
                                       nonce, key ) )
                         {
+                            printf( "encrypted packet: " );
+
+                            PrintBytes( m_packetBuffer, encryptedPacketSize );
+
                             packetSize = /*prefixBytes +*/ encryptedPacketSize;
 
                             assert( packetSize <= m_absoluteMaxPacketSize );
@@ -397,6 +412,8 @@ namespace yojimbo
             if ( !packetBytes )
                 break;
 
+            assert( packetBytes > 0 );
+
             if ( queue_size( m_receiveQueue ) == (size_t) m_receiveQueueSize )
             {
                 m_counters[SOCKET_INTERFACE_COUNTER_RECEIVE_QUEUE_OVERFLOW]++;
@@ -409,7 +426,7 @@ namespace yojimbo
 
             const bool encrypted = true; // ( prefixByte & ENCRYPTED_PACKET_FLAG ) != 0;
 
-            int numPrefixBytes = 8;
+            //int numPrefixBytes = 8;
 				   
             if ( encrypted )
             {
@@ -420,8 +437,8 @@ namespace yojimbo
                     continue;
                 }
 
-                uint64_t sequence;
-				memcpy( &sequence, m_packetBuffer, 8 );
+                //uint64_t sequence;
+				//memcpy( &sequence, m_packetBuffer, 8 );
 
                 uint8_t key[KeyBytes];
                 uint8_t nonce[NonceBytes];
@@ -447,19 +464,20 @@ namespace yojimbo
                                nonce, key ) )
                                */
 
-                uint8_t output[2048];
-
                 if ( !Decrypt( m_packetBuffer, 
                                packetBytes, 
-                               output,
+                               m_packetBuffer,
                                decryptedPacketBytes, 
                                nonce, key ) )
                 {
+                    printf( "packet decrypt failure: \n" );
+                    PrintBytes( m_packetBuffer, packetBytes );
+                    exit(1);
                     m_counters[SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES]++;
                     continue;
                 }
 
-                packetBytes = numPrefixBytes + decryptedPacketBytes;
+                packetBytes = decryptedPacketBytes; //numPrefixBytes + decryptedPacketBytes;
             }
 
 #endif // #if YOJMIBO_SECURE
@@ -471,8 +489,10 @@ namespace yojimbo
             info.packetFactory = m_packetFactory;
 #if YOJIMBO_SECURE
             info.prefixBytes = 0;//numPrefixBytes;
-            info.rawFormat = encrypted;
+            info.rawFormat = 1;//encrypted;
+            /*
             info.allowedPacketTypes = encrypted ? m_packetTypeIsEncrypted : m_packetTypeIsUnencrypted;
+            */
 #endif // #if YOJIMBO_SECURE
 
             int readError;
@@ -495,7 +515,7 @@ namespace yojimbo
             }
 
             PacketEntry entry;
-            entry.sequence = 0;
+            entry.sequence = 0;         // todo: store the sequence in here?
             entry.packet = packet;
             entry.address = address;
             queue_push_back( m_receiveQueue, entry );
