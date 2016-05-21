@@ -1,16 +1,3 @@
 DONE
 
-    serialize_check with a uint32_t passed in was annoying.
-
-    Changed it to pass in a string which is hashed, this way you can print out cool stuff like which check failed.
-
-    Which is very helpful for debugging...
-
-    I suspect I need to clear out the memory after the decrypt. It's extra bits getting fed into the bitpacker at the end from encryption!
-    
-    It genuinely does look like a bug in libsodium such that the packet is having the last byte corrupted.
-
 TODO
-
-    Next goal has to be to isolate this bug in a test harness.
-

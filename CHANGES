@@ -1,4 +1,30 @@
 
+Saturday May 21st, 2016
+=======================
+
+    serialize_check with a uint32_t passed in was annoying.
+
+    Changed it to pass in a string which is hashed, this way you can print out cool stuff like which check failed.
+
+    Which is very helpful for debugging...
+
+    I suspect I need to clear out the memory after the decrypt. It's extra bits getting fed into the bitpacker at the end from encryption!
+    
+    It genuinely does look like a bug in libsodium such that the packet is having the last byte corrupted.
+
+    OK. It was alignment of the encrypt/decrypt buffer.
+
+    This very well may be a bug in libsodium but I don't care.
+
+    Fixed by making sure packet encrypt/decrypt buffer is always aligned.
+
+    This required a lot of rework of my read/write packet functions to split into optimal implementations for all three cases.
+
+    Now it works fine.
+
+    Testing across all platforms again, then ready for release to patreon supporters.
+
+
 Friday May 20th, 2016
 =====================
 

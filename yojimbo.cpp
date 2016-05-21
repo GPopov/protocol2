@@ -264,17 +264,6 @@ namespace yojimbo
     static const int ENCRYPTED_PACKET_FLAG = (1<<7);
 #endif // if YOJIMBO_SECURE
 
-    static void PrintBytes( const uint8_t * data, int data_bytes )
-    {
-        for ( int i = 0; i < data_bytes; ++i )
-        {
-            printf( "%02x", (int) data[i] );
-            if ( i != data_bytes - 1 )
-                printf( "-" );
-        }
-        printf( " (%d bytes)", data_bytes );
-    }
-
     void SocketInterface::WritePackets( double /*time*/ )
     {
         assert( m_allocator );
@@ -334,10 +323,6 @@ namespace yojimbo
                             packetBytes = prefixBytes + encryptedPacketSize;
 
                             assert( packetBytes <= m_absoluteMaxPacketSize );
-
-                            printf( "send %" PRIx64 ": ", entry.sequence );
-                            PrintBytes( m_packetBuffer, packetBytes );
-                            printf( "\n" );
 
                             m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );
 
@@ -405,7 +390,6 @@ namespace yojimbo
                 m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );
 
                 m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
-                m_counters[SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN]++;    
             }
             else
             {
@@ -415,7 +399,6 @@ namespace yojimbo
             m_packetFactory->DestroyPacket( entry.packet );
 
 #endif // #if YOJIMBO_SECURE
-
         }
     }
 
@@ -447,8 +430,6 @@ namespace yojimbo
 
             const bool encrypted = ( prefixByte & ENCRYPTED_PACKET_FLAG ) != 0;
 
-            int numPrefixBytes = 1;
-				   
             if ( encrypted )
             {
                 EncryptionMapping * encryptionMapping = FindEncryptionMapping( address );
@@ -460,21 +441,22 @@ namespace yojimbo
 
                 const int sequenceBytes = GetPacketSequenceBytes( prefixByte );
 
-                numPrefixBytes += sequenceBytes;
+                const int prefixBytes = 1 + sequenceBytes;
+
+                if ( packetBytes <= prefixBytes + MacBytes )
+                {
+                    m_counters[SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES]++;
+                    continue;
+                }
 
                 uint64_t sequence = DecompressPacketSequence( prefixByte, m_packetBuffer + 1 );
 
                 int decryptedPacketBytes;
 
-                printf( "recv %" PRIx64 ": ", sequence );
-                PrintBytes( m_packetBuffer, packetBytes );
-                printf( "\n" );
-
-                //memset( m_scratchBuffer, 0, m_absoluteMaxPacketSize );
-                memcpy( m_scratchBuffer, m_packetBuffer + numPrefixBytes, packetBytes - numPrefixBytes );
+                memcpy( m_scratchBuffer, m_packetBuffer + prefixBytes, packetBytes - prefixBytes );
 
                 if ( !Decrypt( m_scratchBuffer,
-                               packetBytes - numPrefixBytes, 
+                               packetBytes - prefixBytes, 
                                m_scratchBuffer,
                                decryptedPacketBytes, 
                                (uint8_t*)&sequence, encryptionMapping->receiveKey ) )
@@ -483,41 +465,76 @@ namespace yojimbo
                     continue;
                 }
 
-                packetBytes = numPrefixBytes + decryptedPacketBytes;
+                protocol2::PacketInfo info;
+                
+                info.context = m_context;
+                info.protocolId = m_protocolId;
+                info.packetFactory = m_packetFactory;
+                info.allowedPacketTypes = m_packetTypeIsEncrypted;
+                info.rawFormat = 1;
 
-                memcpy( m_packetBuffer + numPrefixBytes, m_scratchBuffer, decryptedPacketBytes );
-                //memset( m_packetBuffer + packetBytes, 0, m_absoluteMaxPacketSize - packetBytes );
+                int readError;
+                protocol2::Packet *packet = protocol2::ReadPacket( info, m_scratchBuffer, decryptedPacketBytes, NULL, &readError );
+                if ( packet )
+                {
+                    m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
+                    m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ]++;    
+                }
+                else
+                {
+                    m_counters[SOCKET_INTERFACE_COUNTER_READ_PACKET_ERRORS]++;
+                    continue;
+                }
 
-                printf( "decrypted %" PRIx64 ": ", sequence );
-                PrintBytes( m_packetBuffer, packetBytes );
-                printf( "\n" );
+                PacketEntry entry;
+                entry.sequence = 0;
+                entry.packet = packet;
+                entry.address = address;
+                queue_push_back( m_receiveQueue, entry );
+            }
+            else
+            {
+                protocol2::PacketInfo info;
+                
+                info.context = m_context;
+                info.protocolId = m_protocolId;
+                info.packetFactory = m_packetFactory;
+                info.allowedPacketTypes = m_packetTypeIsUnencrypted;
+                info.prefixBytes = 1;
+
+                int readError;
+                protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
+                if ( packet )
+                {
+                    m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
+                    m_counters[SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ]++;    
+                }
+                else
+                {
+                    m_counters[SOCKET_INTERFACE_COUNTER_READ_PACKET_ERRORS]++;
+                    continue;
+                }
+
+                PacketEntry entry;
+                entry.sequence = 0;
+                entry.packet = packet;
+                entry.address = address;
+                queue_push_back( m_receiveQueue, entry );
             }
 
-#endif // #if YOJMIBO_SECURE
+#else // #if YOJIMBO_SECURE
 
             protocol2::PacketInfo info;
             
             info.context = m_context;
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
-#if YOJIMBO_SECURE
-            info.prefixBytes = numPrefixBytes;
-            info.rawFormat = encrypted;
-            info.allowedPacketTypes = encrypted ? m_packetTypeIsEncrypted : m_packetTypeIsUnencrypted;
-#endif // #if YOJIMBO_SECURE
 
             int readError;
             protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
             if ( packet )
             {
                 m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
-
-#if YOJIMBO_SECURE
-                if ( encrypted )
-                    m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ]++;    
-                else
-                    m_counters[SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ]++;    
-#endif // #if YOJIMBO_SECURE
             }
             else
             {
@@ -530,6 +547,8 @@ namespace yojimbo
             entry.packet = packet;
             entry.address = address;
             queue_push_back( m_receiveQueue, entry );
+
+#endif // #if YOJIMBO_SECURE
         }
     }
 
