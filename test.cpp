@@ -615,6 +615,53 @@ void test_packet_sequence()
     }
 }
 
+#if YOJIMBO_SECURE
+
+void test_packet_encryption()
+{
+    printf( "test_packet_encryption\n" );
+
+    using namespace yojimbo;
+
+    uint8_t packet[1024];
+  
+    RandomBytes( packet, sizeof( packet ) );
+  
+    uint8_t key[KeyBytes];
+    uint8_t nonce[NonceBytes];
+
+    memset( key, 1, sizeof( key ) );
+    memset( nonce, 1, sizeof( nonce ) );
+
+    uint8_t encrypted_packet[2048];
+
+    RandomBytes( key, sizeof( key ) );
+    RandomBytes( nonce, sizeof( nonce ) );
+
+    int encrypted_length;
+    if ( !Encrypt( packet, sizeof( packet ), encrypted_packet, encrypted_length, nonce, key ) )
+    {
+        printf( "error: failed to encrypt\n" );
+        exit(1);
+    }
+
+    uint8_t decrypted_packet[2048];
+    int decrypted_length;
+    if ( !Decrypt( encrypted_packet, encrypted_length, decrypted_packet, decrypted_length, nonce, key ) )
+    {
+        printf( "error: failed to decrypt\n" );
+        exit(1);
+    }
+
+    if ( decrypted_length != sizeof( packet ) || memcmp( packet, decrypted_packet, sizeof( packet ) ) != 0 )
+    {
+        printf( "error: decrypted packet does not match original packet\n" );
+        exit(1);
+    }
+}
+
+#endif // #if YOJIMBO_SECURE
+
 int main()
 {
     test_bitpacker();   
@@ -623,5 +670,8 @@ int main()
     test_address_ipv4();
     test_address_ipv6();
     test_packet_sequence();
+#if YOJIMBO_SECURE
+    test_packet_encryption();
+#endif // #if YOJIMBO_SECURE
     return 0;
 }

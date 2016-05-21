@@ -19,7 +19,7 @@ project "test"
     language "C++"
     kind "ConsoleApp"
     files { "test.cpp", "protocol2.h", "network2.h" }
-    links { "yojimbo" }
+    links { "yojimbo", "sodium" }
 
 project "yojimbo"
     language "C++"
