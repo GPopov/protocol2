@@ -277,7 +277,7 @@ namespace yojimbo
             const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
 			uint8_t prefix[8];
 			memcpy( prefix, &entry.sequence, 8 );
-			int prefixBytes = 2;
+			int prefixBytes = 8;
 			/*
 			uint8_t prefix[16] = { 0 };
             int prefixBytes = 1;
@@ -397,7 +397,7 @@ namespace yojimbo
 
             const bool encrypted = true; // ( prefixByte & ENCRYPTED_PACKET_FLAG ) != 0;
 
-            int numPrefixBytes = 2;
+            int numPrefixBytes = 8;
 				   
             if ( encrypted )
             {

@@ -68,8 +68,6 @@ DONE
     
     No dice. There is nothing wrong with the sequence number compress/decompress.
 
-TODO
-
     I'm doing something wrong, either undefined behavior (three different compilers bitching about something = MY FAULT)
 
     or memory trash
@@ -79,3 +77,15 @@ TODO
     Not sure yet!
 
     Have to find it. Can't put this code out there without this.
+
+TODO
+
+    With the simplified code, the decrypts work in windows and mac, but now fail on linux.
+
+    Could it be that linux does not like:
+
+        a) unaligned decrypt
+
+        b) decrypt in place?
+
+    Lets try some experiments...
