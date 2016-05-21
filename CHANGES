@@ -24,6 +24,10 @@ Saturday May 21st, 2016
 
     Testing across all platforms again, then ready for release to patreon supporters.
 
+    A bunch more work getting release build clean across all three platforms.
+
+    Shortly it is going to be important to setup a Jenkins build (maybe with Docker...) to test the building of this library under different setups.
+
 
 Friday May 20th, 2016
 =====================
