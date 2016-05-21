@@ -1,4 +1,4 @@
-/*
+    /*
     Example source code for "Packet Encryption"
 
     Copyright © 2016, The Network Protocol Company, Inc.
@@ -68,13 +68,9 @@ struct TestPacketA : public protocol2::Packet
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        serialize_check( stream, "start of TestPacketA" );
-
         serialize_int( stream, a, -10, 10 );
         serialize_int( stream, b, -20, 20 );
         serialize_int( stream, c, -30, 30 );
-        
-        serialize_check( stream, "end of TestPacketA" );
         
         return true;
     }
@@ -108,13 +104,9 @@ struct TestPacketB : public protocol2::Packet
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        serialize_check( stream, "start of TestPacketB" );
-
         serialize_int( stream, numItems, 0, MaxItems );
         for ( int i = 0; i < numItems; ++i )
             serialize_int( stream, items[i], -100, +100 );
-
-        serialize_check( stream, "end of TestPacketB" );
 
         return true;
     }
@@ -166,8 +158,6 @@ struct TestPacketC : public protocol2::Packet
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        serialize_check( stream, "start of TestPacketC" );
-
         serialize_float( stream, position.x );
         serialize_float( stream, position.y );
         serialize_float( stream, position.z );
@@ -191,8 +181,6 @@ struct TestPacketC : public protocol2::Packet
                 velocity.z = 0.0f;
             }
         }
-
-        serialize_check( stream, "end of TestPacketC" );
 
         return true;
     }
@@ -239,14 +227,11 @@ public:
     {
         EnablePacketEncryption();
 
-		// temporary
-		/*
         DisableEncryptionForPacketType( TEST_PACKET_A );
 
         assert( IsEncryptedPacketType( TEST_PACKET_A ) == false );
         assert( IsEncryptedPacketType( TEST_PACKET_B ) == true );
         assert( IsEncryptedPacketType( TEST_PACKET_C ) == true );
-		*/
     }
 
     ~TestNetworkInterface()
@@ -287,7 +272,7 @@ int main()
         GenerateKey( server_to_client_key );
 
         uint64_t clientSequence = 0;
-//        uint64_t serverSequence = 0;
+        uint64_t serverSequence = 0;
 
         clientInterface.AddEncryptionMapping( serverAddress, client_to_server_key, server_to_client_key );
         serverInterface.AddEncryptionMapping( clientAddress, server_to_client_key, client_to_server_key );
@@ -309,10 +294,10 @@ int main()
             printf( "t = %f\n", time );
 
             protocol2::Packet * clientToServerPacket = clientInterface.CreatePacket( rand() % TEST_PACKET_NUM_TYPES );
-//            protocol2::Packet * serverToClientPacket = serverInterface.CreatePacket( rand() % TEST_PACKET_NUM_TYPES );
+            protocol2::Packet * serverToClientPacket = serverInterface.CreatePacket( rand() % TEST_PACKET_NUM_TYPES );
 
             clientInterface.SendPacket( serverAddress, clientToServerPacket, clientSequence++ );
-//            serverInterface.SendPacket( clientAddress, serverToClientPacket, serverSequence++ );
+            serverInterface.SendPacket( clientAddress, serverToClientPacket, serverSequence++ );
 
             clientInterface.WritePackets( time );
             serverInterface.WritePackets( time );
@@ -320,7 +305,6 @@ int main()
             clientInterface.ReadPackets( time );
             serverInterface.ReadPackets( time );
 
-            /*
             while ( true )
             {
                 Address address;
@@ -332,7 +316,6 @@ int main()
 
                 clientInterface.DestroyPacket( packet );
             }
-            */
 
             while ( true )
             {

@@ -366,10 +366,10 @@ namespace yojimbo
                 info.context = m_context;
                 info.protocolId = m_protocolId;
                 info.packetFactory = m_packetFactory;
+                info.rawFormat = false;
                 info.prefixBytes = 1;
-                info.rawFormat = true;
 
-                int packetBytes = protocol2::WritePacket( info, entry.packet, m_scratchBuffer, m_maxPacketSize );
+                int packetBytes = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
 
                 if ( packetBytes > 0 )
                 {
