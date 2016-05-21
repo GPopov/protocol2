@@ -264,7 +264,7 @@ namespace yojimbo
     {
         for ( int i = 0; i < data_bytes; ++i )
         {
-            printf( "%x", (int) data[i] );
+            printf( "%02x", (int) data[i] );
             if ( i != data_bytes - 1 )
                 printf( "-" );
         }
@@ -347,6 +347,10 @@ namespace yojimbo
                                       encryptedPacketSize, 
                                       nonce, key ) )
                                       */
+
+                        // hack
+                        packetSize = 2;
+
                         if ( Encrypt( m_packetBuffer,
                                       packetSize,
                                       m_packetBuffer,
@@ -479,6 +483,8 @@ namespace yojimbo
                                nonce, key ) )
                 {
                     printf( " decrypt failure: " );
+
+                    PrintBytes( m_packetBuffer, packetBytes );
 
                     printf( " | key: " );
                     PrintBytes( key, KeyBytes );
