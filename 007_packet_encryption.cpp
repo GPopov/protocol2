@@ -309,10 +309,10 @@ int main()
             printf( "t = %f\n", time );
 
             protocol2::Packet * clientToServerPacket = clientInterface.CreatePacket( rand() % TEST_PACKET_NUM_TYPES );
-            protocol2::Packet * serverToClientPacket = serverInterface.CreatePacket( rand() % TEST_PACKET_NUM_TYPES );
+//            protocol2::Packet * serverToClientPacket = serverInterface.CreatePacket( rand() % TEST_PACKET_NUM_TYPES );
 
             clientInterface.SendPacket( serverAddress, clientToServerPacket, clientSequence++ );
-            serverInterface.SendPacket( clientAddress, serverToClientPacket, serverSequence++ );
+//            serverInterface.SendPacket( clientAddress, serverToClientPacket, serverSequence++ );
 
             clientInterface.WritePackets( time );
             serverInterface.WritePackets( time );
@@ -320,6 +320,7 @@ int main()
             clientInterface.ReadPackets( time );
             serverInterface.ReadPackets( time );
 
+            /*
             while ( true )
             {
                 Address address;
@@ -331,6 +332,7 @@ int main()
 
                 clientInterface.DestroyPacket( packet );
             }
+            */
 
             while ( true )
             {
