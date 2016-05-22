@@ -118,7 +118,7 @@ if not os.is "windows" then
         execute = function ()
             _ACTION = "clean"
             premake.action.call( "clean" )
-            os.execute "zip -9r \"Building a Game Network Protocol.zip\" *.cpp *.h vectorial premake5.lua"
+            os.execute "zip -9r \"Building a Game Network Protocol.zip\" *.cpp *.h premake5.lua vectorial sodium sodium.lib"
         end
     }
 

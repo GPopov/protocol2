@@ -287,7 +287,6 @@ int main()
         GenerateKey( server_to_client_key );
 
         uint64_t clientSequence = 0;
-        uint64_t serverSequence = 0;
 
         clientInterface.AddEncryptionMapping( serverAddress, client_to_server_key, server_to_client_key );
         serverInterface.AddEncryptionMapping( clientAddress, server_to_client_key, client_to_server_key );
@@ -309,30 +308,14 @@ int main()
             printf( "t = %f\n", time );
 
             protocol2::Packet * clientToServerPacket = clientInterface.CreatePacket( rand() % TEST_PACKET_NUM_TYPES );
-//            protocol2::Packet * serverToClientPacket = serverInterface.CreatePacket( rand() % TEST_PACKET_NUM_TYPES );
 
             clientInterface.SendPacket( serverAddress, clientToServerPacket, clientSequence++ );
-//            serverInterface.SendPacket( clientAddress, serverToClientPacket, serverSequence++ );
 
             clientInterface.WritePackets( time );
             serverInterface.WritePackets( time );
 
             clientInterface.ReadPackets( time );
             serverInterface.ReadPackets( time );
-
-            /*
-            while ( true )
-            {
-                Address address;
-                Packet * packet = clientInterface.ReceivePacket( address );
-                if ( !packet )
-                    break;
-                
-                printf( "client received packet type %d\n", packet->GetType() );
-
-                clientInterface.DestroyPacket( packet );
-            }
-            */
 
             while ( true )
             {
@@ -353,18 +336,12 @@ int main()
 
         printf( "client sent %" PRIu64 " encrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN ) );
         printf( "client sent %" PRIu64 " unencrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN ) );
-        printf( "client received %" PRIu64 " encrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ ) );
-        printf( "client received %" PRIu64 " unencrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ ) );
         printf( "client had %" PRIu64 " packet encrypt failures\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES ) );
-        printf( "client had %" PRIu64 " packet decrypt failures\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES ) );
 
         printf( "----------------------------------------------------------\n" );
 
-        printf( "server sent %" PRIu64 " encrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN ) );
-        printf( "server sent %" PRIu64 " unencrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN ) );
         printf( "server received %" PRIu64 " encrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ ) );
         printf( "server received %" PRIu64 " unencrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ ) );
-        printf( "server had %" PRIu64 " packet encrypt failures\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES ) );
         printf( "server had %" PRIu64 " packet decrypt failures\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES ) );
 
         printf( "----------------------------------------------------------\n" );

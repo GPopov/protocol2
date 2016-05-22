@@ -349,6 +349,14 @@ namespace yojimbo
                             PrintBytes( m_packetBuffer, packetBytes );
                             printf( "\n" );
 
+                            printf( "nonce " );
+                            PrintBytes( (uint8_t*) &entry.sequence, NonceBytes );
+                            printf( "\n" );
+
+                            printf( "key " );
+                            PrintBytes( (uint8_t*) &entry.sequence, KeyBytes );
+                            printf( "\n" );
+
                             m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );
 
                             m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
