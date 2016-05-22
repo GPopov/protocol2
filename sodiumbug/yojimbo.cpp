@@ -455,10 +455,8 @@ namespace yojimbo
 
                 packetBytes = numPrefixBytes + decryptedPacketBytes;
 
-                memset( m_packetBuffer + packetBytes, 0, MacBytes );
-
                 printf( "decrypted %" PRIx64 ": ", sequence );
-                PrintBytes( m_packetBuffer, packetBytes + MacBytes );
+                PrintBytes( m_packetBuffer, packetBytes );
                 printf( "\n" );
             }
 
