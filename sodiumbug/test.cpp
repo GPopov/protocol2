@@ -46,44 +46,88 @@ void PrintBytes( const uint8_t * data, int data_bytes )
 
 #if 0
 
-packet 8: 00-00-02-fc-b8-13-34-72-73-ea-c3-a0-55-cd-43-c4-fa-d4-c3-70-00-c7-83-01-6f-27-80-e1-04-03-84-00-e0-77-d9-d3-e2-ac-08-99 (40 bytes)
-send 8: 80-08-b4-21-af-e7-cf-92-e5-44-d2-2f-4d-7e-39-6f-f8-ad-1a-63-5a-85-9d-c5-af-a7-10-ab-e5-9c-9f-e2-dc-73-4a-d5-30-ed-bf-77-99-f8-71-8b-3b-1b-17-a0-7a-42-b9-0c-12-4d-2a-62 (56 bytes)
-nonce 08-00-00-00-00-00-00-00 (8 bytes)
-key 08-00-00-00-00-00-00-00-02-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-01-50-c3-00-00 (32 bytes)
-recv 8: 80-08-b4-21-af-e7-cf-92-e5-44-d2-2f-4d-7e-39-6f-f8-ad-1a-63-5a-85-9d-c5-af-a7-10-ab-e5-9c-9f-e2-dc-73-4a-d5-30-ed-bf-77-99-f8-71-8b-3b-1b-17-a0-7a-42-b9-0c-12-4d-2a-62 (56 bytes)
-decrypted 8: 80-08-02-fc-b8-13-34-72-73-ea-c3-a0-55-cd-43-c4-fa-d4-c3-70-00-c7-83-01-6f-27-80-e1-04-03-84-00-e0-77-4a-d5-30-ed-bf-77 (40 bytes)
-serialize check failed: 'end of TestPacketC'. expected d3d977e0, got d54a77e0
+----------------------------------------------------------
+t = 0.700000
+packet 7: 00-00-01-cb-b4-13-34-d0-4d-18-dd-31-8a-8d-d0-0c-1f-98-5f-d7-d8-22-c0-10-d3-7b-d9-d3-e2-ac-08-99 (32 bytes)
+send 7: 80-07-c1-fc-52-10-9e-04-bd-64-fd-ac-8f-73-4f-21-56-af-94-4c-f0-b7-04-ab-d1-5a-0b-bb-9e-67-5f-03-a6-24-3e-46-b0-27-1a-c2-9a-c6-15-4a-ae-61-44-44 (48 bytes)
+nonce 07-00-00-00-00-00-00-00 (8 bytes)
+key ff-1b-c0-55-79-5f-af-60-71-ba-4a-c3-07-52-52-ec-af-26-40-39-76-88-cd-ae-89-98-b1-cb-cd-18-9a-c6 (32 bytes)
+recv 7: 80-07-c1-fc-52-10-9e-04-bd-64-fd-ac-8f-73-4f-21-56-af-94-4c-f0-b7-04-ab-d1-5a-0b-bb-9e-67-5f-03-a6-24-3e-46-b0-27-1a-c2-9a-c6-15-4a-ae-61-44-44 (48 bytes)
+decrypted 7: 80-07-01-cb-b4-13-34-d0-4d-18-dd-31-8a-8d-d0-0c-1f-98-5f-d7-d8-22-c0-10-d3-7b-d9-d3-e2-ac-08-99 (32 bytes)
+server received packet type 1
+----------------------------------------------------------
 
 #endif
 
-void test_packet_encryption()
+using namespace yojimbo;
+
+int main()
 {
-    printf( "test_packet_encryption\n" );
+    if ( !InitializeCrypto() )
+    {
+        printf( "failed to initialize crypto\n" );
+        return 1;
+    }
 
-    using namespace yojimbo;
+    const int packet_length = 32;
 
-    InitializeCrypto();
+    uint8_t packet[1024] = { 0x00, 0x00, 0x01, 0xcb, 0xb4, 0x13, 0x34, 0xd0, 0x4d, 0x18, 0xdd, 0x31, 0x8a, 0x8d, 0xd0, 0x0c, 0x1f, 0x98, 0x5f, 0xd7, 0xd8, 0x22, 0xc0, 0x10, 0xd3, 0x7b, 0xd9, 0xd3, 0xe2, 0xac, 0x08, 0x99 };
 
-    uint8_t packet[1024];
+    const int prefix = 2;
   
-    int packet_length = 1;
-    memset( packet, 0, sizeof( packet ) );
-    packet[0] = 1;  
-  
-    uint8_t key[KeyBytes];
-    uint8_t nonce[NonceBytes];
+    printf( "packet " );
+    PrintBytes( packet, packet_length );
+    printf( "\n" );
 
-    memset( key, 1, sizeof( key ) );
-    memset( nonce, 1, sizeof( nonce ) );
+    uint8_t key[] = { 0xff, 0x1b, 0xc0, 0x55, 0x79, 0x5f, 0xaf, 0x60, 
+                      0x71, 0xba, 0x4a, 0xc3, 0x07, 0x52, 0x52, 0xec, 
+                      0xaf, 0x26, 0x40, 0x39, 0x76, 0x88, 0xcd, 0xae, 
+                      0x89, 0x98, 0xb1, 0xcb, 0xcd, 0x18, 0x9a, 0xc6 };
 
-    uint8_t encrypted_packet[2048];
+    uint8_t nonce[] = { 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+    uint8_t encrypted_packet[1024];
+    memset( encrypted_packet, 0, sizeof( encrypted_packet ) );
 
     int encrypted_length;
-    if ( !Encrypt( packet, packet_length, encrypted_packet, encrypted_length, nonce, key ) )
+    if ( !Encrypt( packet + prefix, packet_length - prefix, encrypted_packet + prefix, encrypted_length, nonce, key ) )
     {
         printf( "error: failed to encrypt\n" );
-        exit(1);
+        return 1;
     }
+
+    printf( "encrypted " );
+    PrintBytes( encrypted_packet, encrypted_length + prefix );
+    printf( "\n" );
+
+    assert( encrypted_length + prefix == packet_length + MacBytes );
+
+    uint8_t decrypted_packet[1024];
+    memset( decrypted_packet, 0, sizeof( decrypted_packet ) );
+
+    int decrypted_length;
+    if ( !Decrypt( encrypted_packet + prefix, encrypted_length, decrypted_packet + prefix, decrypted_length, nonce, key ) )
+    {
+        printf( "error: failed to decrypt\n" );
+        return 1;
+    }
+
+    printf( "decrypted " );
+    PrintBytes( decrypted_packet, decrypted_length + prefix );
+    printf( "\n" );
+
+    assert( decrypted_length == packet_length - prefix );
+
+    if ( memcmp( decrypted_packet, packet, packet_length ) == 0 )
+    {
+        printf( "test passed. bug not reproduced :(\n" );
+    }
+    else
+    {
+        printf( "bug reproduced!\n" );
+    }
+
+#if 0
 
     const int expected_encrypted_length = 17;
     const uint8_t expected_encrypted_packet[] = { 0xfa, 0x6c, 0x91, 0xf7, 0xef, 0xdc, 0xed, 0x22, 0x09, 0x23, 0xd5, 0xbf, 0xa1, 0xe9, 0x17, 0x70, 0x14 };
@@ -113,10 +157,8 @@ void test_packet_encryption()
         printf( "error: decrypted packet does not match original packet\n" );
         exit(1);
     }
-}
 
-int main()
-{
-    test_packet_encryption();
+#endif
+
     return 0;
 }
