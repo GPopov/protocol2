@@ -75,7 +75,7 @@ int main()
 
     const int prefix_length = 2;
 
-//    const int prefix[16] = { 0x80, 0x07 };
+    const int prefix[16] = { 0x80, 0x07 };
   
     printf( "packet " );
     PrintBytes( packet, packet_length );
@@ -91,36 +91,39 @@ int main()
     uint8_t encrypted_packet[1024];
     memset( encrypted_packet, 0, sizeof( encrypted_packet ) );
 
+    memcpy( encrypted_packet, packet, packet_length );
+
     int encrypted_length;
-    if ( !Encrypt( packet + prefix_length, packet_length - prefix_length, encrypted_packet + prefix_length, encrypted_length, nonce, key ) )
+    if ( !Encrypt( encrypted_packet + prefix_length, packet_length - prefix_length, encrypted_packet + prefix_length, encrypted_length, nonce, key ) )
     {
         printf( "error: failed to encrypt\n" );
         return 1;
     }
 
-//    memcpy( packet, prefix, prefix_length );
+    memcpy( encrypted_packet, prefix, prefix_length );
+    encrypted_length += prefix_length;
 
     printf( "encrypted " );
-    PrintBytes( encrypted_packet, encrypted_length + prefix_length );
+    PrintBytes( encrypted_packet, encrypted_length );
     printf( "\n" );
-
-    assert( encrypted_length + prefix_length == packet_length + MacBytes );
 
     uint8_t decrypted_packet[1024];
     memset( decrypted_packet, 0, sizeof( decrypted_packet ) );
+    memcpy( decrypted_packet, encrypted_packet, encrypted_length );
 
     int decrypted_length;
-    if ( !Decrypt( encrypted_packet + prefix_length, encrypted_length, decrypted_packet + prefix_length, decrypted_length, nonce, key ) )
+    if ( !Decrypt( decrypted_packet + prefix_length, encrypted_length - prefix_length, decrypted_packet + prefix_length, decrypted_length, nonce, key ) )
     {
         printf( "error: failed to decrypt\n" );
         return 1;
     }
 
+    decrypted_length += prefix_length;
+    memset( decrypted_packet, 0, prefix_length );
+
     printf( "decrypted " );
     PrintBytes( decrypted_packet, decrypted_length + prefix_length );
     printf( "\n" );
-
-    assert( decrypted_length == packet_length - prefix_length );
 
     if ( memcmp( decrypted_packet, packet, packet_length ) == 0 )
     {
