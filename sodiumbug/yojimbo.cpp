@@ -354,7 +354,7 @@ namespace yojimbo
                             printf( "\n" );
 
                             printf( "key " );
-                            PrintBytes( (uint8_t*) &entry.sequence, KeyBytes );
+                            PrintBytes( (uint8_t*) encryptionMapping->sendKey, KeyBytes );
                             printf( "\n" );
 
                             m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );

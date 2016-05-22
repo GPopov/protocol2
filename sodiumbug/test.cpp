@@ -46,13 +46,13 @@ void PrintBytes( const uint8_t * data, int data_bytes )
 
 #if 0
 
-packet 6: 00-00-02-fc-b8-13-34-00-ec-3d-c0-70-99-23-c2-10-ce-25-c4-d4-65-21-85-41-86-e9-82-61-f2-61-81-00-e0-77-d9-d3-e2-ac-08-99 (40 bytes)
-send 6: 80-06-37-1b-ca-7f-ca-d7-2e-46-02-8b-ae-c8-ee-de-30-64-4c-e8-7a-ae-05-e3-c9-5f-e0-ac-a4-9c-d6-77-9b-98-31-cf-61-91-b3-39-f6-9b-c2-14-e8-de-7b-a7-ff-17-0a-35-c9-cd-f7-75 (56 bytes)
-nonce 06-00-00-00-00-00-00-00 (8 bytes)
-key 06-00-00-00-00-00-00-00-02-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-01-50-c3-00-00 (32 bytes)
-recv 6: 80-06-37-1b-ca-7f-ca-d7-2e-46-02-8b-ae-c8-ee-de-30-64-4c-e8-7a-ae-05-e3-c9-5f-e0-ac-a4-9c-d6-77-9b-98-31-cf-61-91-b3-39-f6-9b-c2-14-e8-de-7b-a7-ff-17-0a-35-c9-cd-f7-75 (56 bytes)
-decrypted 6: 80-06-02-fc-b8-13-34-00-ec-3d-c0-70-99-23-c2-10-ce-25-c4-d4-65-21-85-41-86-e9-82-61-f2-61-81-00-e0-77-31-cf-61-91-b3-39-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00 (56 bytes)
-serialize check failed: 'end of TestPacketC'. expected d3d977e0, got cf3177e0
+packet 8: 00-00-02-fc-b8-13-34-72-73-ea-c3-a0-55-cd-43-c4-fa-d4-c3-70-00-c7-83-01-6f-27-80-e1-04-03-84-00-e0-77-d9-d3-e2-ac-08-99 (40 bytes)
+send 8: 80-08-b4-21-af-e7-cf-92-e5-44-d2-2f-4d-7e-39-6f-f8-ad-1a-63-5a-85-9d-c5-af-a7-10-ab-e5-9c-9f-e2-dc-73-4a-d5-30-ed-bf-77-99-f8-71-8b-3b-1b-17-a0-7a-42-b9-0c-12-4d-2a-62 (56 bytes)
+nonce 08-00-00-00-00-00-00-00 (8 bytes)
+key 08-00-00-00-00-00-00-00-02-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-01-50-c3-00-00 (32 bytes)
+recv 8: 80-08-b4-21-af-e7-cf-92-e5-44-d2-2f-4d-7e-39-6f-f8-ad-1a-63-5a-85-9d-c5-af-a7-10-ab-e5-9c-9f-e2-dc-73-4a-d5-30-ed-bf-77-99-f8-71-8b-3b-1b-17-a0-7a-42-b9-0c-12-4d-2a-62 (56 bytes)
+decrypted 8: 80-08-02-fc-b8-13-34-72-73-ea-c3-a0-55-cd-43-c4-fa-d4-c3-70-00-c7-83-01-6f-27-80-e1-04-03-84-00-e0-77-4a-d5-30-ed-bf-77 (40 bytes)
+serialize check failed: 'end of TestPacketC'. expected d3d977e0, got d54a77e0
 
 #endif
 
