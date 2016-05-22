@@ -73,7 +73,9 @@ int main()
 
     uint8_t packet[1024] = { 0x00, 0x00, 0x01, 0xcb, 0xb4, 0x13, 0x34, 0xd0, 0x4d, 0x18, 0xdd, 0x31, 0x8a, 0x8d, 0xd0, 0x0c, 0x1f, 0x98, 0x5f, 0xd7, 0xd8, 0x22, 0xc0, 0x10, 0xd3, 0x7b, 0xd9, 0xd3, 0xe2, 0xac, 0x08, 0x99 };
 
-    const int prefix = 2;
+    const int prefix_length = 2;
+
+//    const int prefix[16] = { 0x80, 0x07 };
   
     printf( "packet " );
     PrintBytes( packet, packet_length );
@@ -90,33 +92,35 @@ int main()
     memset( encrypted_packet, 0, sizeof( encrypted_packet ) );
 
     int encrypted_length;
-    if ( !Encrypt( packet + prefix, packet_length - prefix, encrypted_packet + prefix, encrypted_length, nonce, key ) )
+    if ( !Encrypt( packet + prefix_length, packet_length - prefix_length, encrypted_packet + prefix_length, encrypted_length, nonce, key ) )
     {
         printf( "error: failed to encrypt\n" );
         return 1;
     }
 
+//    memcpy( packet, prefix, prefix_length );
+
     printf( "encrypted " );
-    PrintBytes( encrypted_packet, encrypted_length + prefix );
+    PrintBytes( encrypted_packet, encrypted_length + prefix_length );
     printf( "\n" );
 
-    assert( encrypted_length + prefix == packet_length + MacBytes );
+    assert( encrypted_length + prefix_length == packet_length + MacBytes );
 
     uint8_t decrypted_packet[1024];
     memset( decrypted_packet, 0, sizeof( decrypted_packet ) );
 
     int decrypted_length;
-    if ( !Decrypt( encrypted_packet + prefix, encrypted_length, decrypted_packet + prefix, decrypted_length, nonce, key ) )
+    if ( !Decrypt( encrypted_packet + prefix_length, encrypted_length, decrypted_packet + prefix_length, decrypted_length, nonce, key ) )
     {
         printf( "error: failed to decrypt\n" );
         return 1;
     }
 
     printf( "decrypted " );
-    PrintBytes( decrypted_packet, decrypted_length + prefix );
+    PrintBytes( decrypted_packet, decrypted_length + prefix_length );
     printf( "\n" );
 
-    assert( decrypted_length == packet_length - prefix );
+    assert( decrypted_length == packet_length - prefix_length );
 
     if ( memcmp( decrypted_packet, packet, packet_length ) == 0 )
     {
@@ -126,39 +130,6 @@ int main()
     {
         printf( "bug reproduced!\n" );
     }
-
-#if 0
-
-    const int expected_encrypted_length = 17;
-    const uint8_t expected_encrypted_packet[] = { 0xfa, 0x6c, 0x91, 0xf7, 0xef, 0xdc, 0xed, 0x22, 0x09, 0x23, 0xd5, 0xbf, 0xa1, 0xe9, 0x17, 0x70, 0x14 };
-    if ( encrypted_length != expected_encrypted_length || memcmp( expected_encrypted_packet, encrypted_packet, encrypted_length ) != 0 )
-    {
-        printf( "\npacket encryption failure!\n\n" );
-
-        printf( " expected: " );
-        PrintBytes( expected_encrypted_packet, expected_encrypted_length );
-        printf( "\n" );
-
-        printf( "      got: " );
-        PrintBytes( encrypted_packet, encrypted_length );
-        printf( "\n\n" );
-    }
-
-    uint8_t decrypted_packet[2048];
-    int decrypted_length;
-    if ( !Decrypt( encrypted_packet, encrypted_length, decrypted_packet, decrypted_length, nonce, key ) )
-    {
-        printf( "error: failed to decrypt\n" );
-        exit(1);
-    }
-
-    if ( decrypted_length != packet_length || memcmp( packet, decrypted_packet, packet_length ) != 0 )
-    {
-        printf( "error: decrypted packet does not match original packet\n" );
-        exit(1);
-    }
-
-#endif
 
     return 0;
 }
