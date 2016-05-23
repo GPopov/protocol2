@@ -268,6 +268,8 @@ void PrintBytes( const uint8_t * data, int data_bytes )
 
 int main()
 {
+    printf( "\nsecuring dedicated servers\n\n" );
+
     Matcher matcher;
 
     uint64_t clientId = 1;
@@ -280,13 +282,15 @@ int main()
     int numServerAddresses;
     Address serverAddresses[MaxServersPerToken];
 
+    printf( "requesting match\n\n" );
+
     if ( !matcher.RequestMatch( clientId, tokenData, tokenNonce, clientToServerKey, serverToClientKey, numServerAddresses, serverAddresses ) )
     {
         printf( "error: request match failed\n" );
         return 1;
     }
 
-    printf( "token:\n" );
+    printf( "connect token: " );
     PrintBytes( tokenData, TokenBytes );
     printf( "\n" );
 
