@@ -1,4 +1,81 @@
 
+Monday May 23rd, 2016
+=====================
+
+    But isn't storing a list of already used tokens, eg. pegging tokens to a particular address
+
+    Isn't that basically the same as a data structure mapping challenges to responses?
+
+    In a way yes, but it's better because:
+
+    a) server doesn't store large bits of data, only a small list of 256 entries or so
+
+    b) it is necessary to avoid replay attacks on tokens from different addresses, so this *is*
+       required, eg. you must not let the same token get reused with different addreses/ports.
+
+    I think the server needs to discover its true address, eg. bound socket address, and then it
+    reports this to the matchmaker when it says hello.
+
+    Important, just implement the actual matcher with std::map, don't fuck around.
+
+    Start with the implementation of the matcher. What does it look like?
+
+    Sketched out enough of the matcher to connect to a single server. This is enough to move to the next part, the client/server protocol.
+
+    Once the basic connection is working to one server, generalize it to *thousands* :)
+
+    Extended to implement the whole connection request and decrypting back to a token with private key.
+
+    This is enough structure for the server to communicate back to the client what they need to start a connect.
+
+    Moving on.
+
+
+Sunday May 22nd, 2016
+=====================
+
+    What is needed to get the secure server working?
+
+    A mock up of a backend that builds a token for the client request (nonce must be incrementing #)
+
+    A function that decrypts a token with private key + nonce and checks that it is valid.
+
+    Server needs to check the token has not expired.
+
+    The server needs to know its own IP address : port, so it can check it is in the whitelist.
+
+       => Just punt on this and provide a way for the server to set it's address for now
+
+       => Later on the server can get this from its socket
+       
+    ---------
+
+    What about token replay attacks?
+
+    Firstly, make the token expire within 5-10 seconds, so there is a small window for attack.
+
+    Next, maintain a short list of tokens that have already "been used", eg. hash these tokens to 64bit
+    and maintain a short list of the last 256 tokens that have been used. Scan this list
+
+    ---------
+
+    What you want to do is to peg a specific token down to the address that used it first.
+
+    So only one address : port combination can use each valid token. If it's used again it gets ignored.
+
+    If it's used again by the same address : port as requested it, well that's the point, it's a connection request.
+
+    So make it not in the senders interest to share the token with others...
+
+    ---------
+
+    Need a data structure to store the encryption mapping (simple edict style array is fine, or a hash table ideally)
+
+    This encryption mapping is safe, because it is behind token protection, eg. 
+
+    ---------
+
+
 Saturday May 21st, 2016
 =======================
 
