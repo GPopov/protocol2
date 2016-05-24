@@ -1,9 +1,4 @@
 DONE
 
 TODO
-    
-    Bring across client/server code, but review it as it's brought across and convert the packets from stupid_c_case to camelCaseStyle for uniformity.
 
-    Get one client sending a connection request (from the matcher)
-
-    Call the client connect "SecureConnect" so it can co-exist with the normal connection in the eventual Yojimbo lib.

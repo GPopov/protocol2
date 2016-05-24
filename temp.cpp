@@ -20,6 +20,7 @@ uint64_t GenerateSalt()
     RandomBytes( (uint8_t*) &salt, sizeof( uint64_t ) );
     return salt;
 }
+
 enum PacketTypes
 {
     PACKET_CONNECTION_REQUEST,                      // client requests a connection.

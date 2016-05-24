@@ -1,4 +1,27 @@
 
+Tuesday May 24th, 2016
+======================
+
+    Bring across client/server packet types, but review it as it's brought across and convert the packets from stupid_c_case to camelCaseStyle for uniformity.
+
+    Bring across the server code as much as possible. Strip out the challenge hash entirely.
+
+    Design the new challenge token. 
+
+    Needs to to encrypt:
+
+        - the client id of the connection
+        - the IP the connection request came from (to be checked against the IP that sends the challenge response)
+        - the HMAC of the original connection request, so this challenge can quickly be tested against previously used connect tokens (stop replay attacks)
+        - the private keys for communication between client and server
+
+    Needs to have unencrypted:
+
+        - nonce for decryption (increment with each challenge response sent)
+
+    Implemented and tested. Done for today.
+
+
 Monday May 23rd, 2016
 =====================
 
