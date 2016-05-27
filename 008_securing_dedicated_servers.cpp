@@ -908,8 +908,6 @@ protected:
         if ( !connectionChallengePacket )
             return;
 
-        m_challengeTokenNonce++;
-
         memcpy( connectionChallengePacket->challengeTokenNonce, (uint8_t*) &m_challengeTokenNonce, NonceBytes );
 
         if ( !EncryptChallengeToken( challengeToken, connectionChallengePacket->challengeTokenData, NULL, 0, connectionChallengePacket->challengeTokenNonce, private_key ) )
@@ -926,6 +924,8 @@ protected:
             exit(1);
             return;
         }
+
+        m_challengeTokenNonce++;
 
         m_networkInterface->SendPacket( address, connectionChallengePacket );
     }
@@ -1072,13 +1072,13 @@ class Client
 
     uint64_t m_clientId;                                                // client id as per-connect call
 
-    uint8_t m_connectTokenData[ConnectTokenBytes];                      // encrypted connect token data for connection request packet
+    uint8_t m_connectTokenData[ConnectTokenBytes] __attribute__ ((aligned (16)));
 
-    uint8_t m_connectTokenNonce[NonceBytes];                            // nonce required to send to server so it can decrypt connect token
+    uint8_t m_connectTokenNonce[NonceBytes] __attribute__ ((aligned (16)));
 
-    uint8_t m_challengeTokenData[ChallengeTokenBytes];                  // encrypted challenge token data for challenge response packet
+    uint8_t m_challengeTokenData[ChallengeTokenBytes] __attribute__ ((aligned (16)));
 
-    uint8_t m_challengeTokenNonce[NonceBytes];                          // nonce required to send to server so it can decrypt challenge token
+    uint8_t m_challengeTokenNonce[NonceBytes] __attribute__ ((aligned (16)));
 
 public:
 
