@@ -920,13 +920,13 @@ protected:
         if ( !connectionChallengePacket )
             return;
 
-        if ( !EncryptChallengeToken( challengeToken, connectionChallengePacket->challengeTokenData, NULL, 0, (uint8_t*) &m_challengeTokenNonce, private_key ) )
+        memcpy( connectionChallengePacket->challengeTokenNonce, (uint8_t*) &m_challengeTokenNonce, NonceBytes );
+
+        if ( !EncryptChallengeToken( challengeToken, connectionChallengePacket->challengeTokenData, NULL, 0, connectionChallengePacket->challengeTokenNonce, private_key ) )
         {
             printf( "failed to encrypt challenge token\n" );
             return;
         }
-
-        memcpy( connectionChallengePacket->challengeTokenNonce, &m_challengeTokenNonce, NonceBytes );
 
         m_challengeTokenNonce++;
 

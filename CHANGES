@@ -1,4 +1,74 @@
 
+Friday May 27th, 2016
+=====================
+
+    Now think about what the server needs to do when it receives that connection request.
+
+    First it needs to decrypt the token with the private key and nonce.
+
+    If the token is invalid, ignore the connection request.
+
+    If the token is valid, check that the server address is in the whitelist, if not, ignore the connection request.
+
+    If the token client id is zero then ignore the connection request.
+
+    Check the expiry timestamp of the connection request. If it is expired, ignore the connection request.
+
+    At this point the connection request is valid.
+
+    Setup the encryption mapping for the client/server pending connection.
+
+    Is the server currently full? Reply with connection denied packet.
+
+    If the particular client id is already connected, ignore the connection request. (is this the best thing to do? why not deny w. reason already connected?)
+
+    Next take the HMAC of the connect token (first 16 bytes), and see if there is any entry for that HMAC (constant time)
+
+    If there is a previous entry, check that it has the same address as this packet from address. If not, ignore the connection request.
+
+    If there is no entry, add it and insert the network address the connection request came from with the HMAC.
+
+    Now construct a challenge response token object.
+
+    Encyrypt this challenge response token and bump the challenge response token nonce.
+
+    Send a challenge response packet back to the client.
+
+    Is there a crypto attack on challenge response encryption, because different servers will encode the same data with difference nonces?
+
+    No. The data has the server address in it, so data being encrypted is different on each machine.
+
+    Perhaps also throw in some random bytes crap inside the challenge token?
+
+    Yes. Threw in 32 bytes of random shit in the connect token and the challenge token.
+
+    Now it's time to handle the challenge packet on the client.
+
+    Process it and reply with tha challenge response packet.
+
+    Now process the challenge response on the server.
+
+    What needs to be done?
+
+    Decrypt the challenge response token.
+
+    Ignore if it doesn't decrypt.
+
+    If it does decrypt:
+
+    Make sure client address matches. If not, ignore.
+
+    Make sure server address matches. If not, ignore.
+
+    Now inside the challenge token data should be enough information to establish connection.
+
+    It's always possible at this point that the server could be full, so reply with connection denied if that's the case.
+
+    Works perfectly on MacOSX now.
+
+    Fails on linux. WTF
+
+
 Thursday May 26th, 2016
 =======================
 
