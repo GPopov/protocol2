@@ -1431,6 +1431,8 @@ int main()
 
     printf( "requesting match\n\n" );
 
+    GenerateKey( private_key );
+
     if ( !matcher.RequestMatch( clientId, connectTokenData, connectTokenNonce, clientToServerKey, serverToClientKey, numServerAddresses, serverAddresses ) )
     {
         printf( "error: request match failed\n" );
