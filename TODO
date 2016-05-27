@@ -2,10 +2,24 @@ DONE
 
     Get it working across MacOSX, Linux, Windows.
 
-TODO
-
     On linux the challenge token inside the encrypted packet is getting corrupted somehow.
 
-    Is this another case of decryption not working on linux unless it's aligned properly? I think this is a compiler bug...
+    Confirm that the challenge token is basically getting corrupted. The client receives it fucked up.
+
+    I think there are bugs in libsodium on this platform. I am certain I am using it incorrectly.
+
+    Is this another case of decryption not working on linux unless it's aligned properly? I think this is a compiler bug or a bug in sodium.
+
+    Worth testing on windows now. If it corrupts on windows it's probably my fault.
+
+    It won't though, which means it's linux's fault. Hah. =p
+
+    Yes. Works fine on linux. I'm blaming my linux distribution + GCC. Upgrade?
+
+    No dice. It's debian 8.4, which is the latest stable. Can't blame the linux like that.
+
+    What about GCC? Is it a GCC specific bug or issue?
+
+TODO
 
     Once it's working everywhere, copy across to 009_basic_matchmaking.cpp and strip down the matcher to have less stuff in it in 008_*.cpp
