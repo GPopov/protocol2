@@ -1,14 +1,33 @@
 DONE
 
-    Next step, bring across the network interface from secure packets and set only the connection request packet as unencrypted.
-
-    Now bring across the bulk of the client and start disabling bits and converting over.
-
-    Client brought over.
-
-    Extended "Connect" to take extra arguments it needs.
-
 TODO
 
-    Now stash these args as data inside client so it knows how to send a proper connection request packet.
-    
+    Now think about what the server needs to do when it receives that connection request.
+
+    First it needs to decrypt the token with the private key and nonce.
+
+    If the token is invalid, ignore the connection request.
+
+    If the token is valid, check that the server address is in the whitelist, if not, ignore the connection request.
+
+    If the token client id is zero then ignore the connection request.
+
+    Check the expiry timestamp of the connection request. If it is expired, ignore the connection request.
+
+    At this point the connection request is valid.
+
+    Is the server currently full? Reply with connection denied packet.
+
+    If the particular client id is already connected, ignore the connection request. (is this the best thing to do? why not deny w. reason already connected?)
+
+    Next take the HMAC of the connect token (first 16 bytes), and see if there is any entry for that HMAC (constant time)
+
+    If there is a previous entry, check that it has the same address as this packet from address. If not, ignore the connection request.
+
+    If there is no entry, add it and insert the network address the connection request came from with the HMAC.
+
+    Now construct a challenge response token object.
+
+    Encyrypt this challenge response token and bump the challenge response token nonce.
+
+    Send a challenge response packet back to the client.

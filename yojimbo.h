@@ -72,6 +72,8 @@ namespace yojimbo
 
         virtual bool RemoveEncryptionMapping( const network2::Address & address ) = 0;
 
+        virtual void ResetEncryptionMappings() = 0;
+
 #endif // #if YOJIMBO_SECURE
     };
 
@@ -198,6 +200,8 @@ namespace yojimbo
 
         void SetContext( void * context );
 
+#if YOJIMBO_SECURE
+
         void EnablePacketEncryption();
 
         void DisableEncryptionForPacketType( int type );
@@ -207,6 +211,10 @@ namespace yojimbo
         bool AddEncryptionMapping( const network2::Address & address, const uint8_t * sendKey, const uint8_t * receiveKey );
 
         bool RemoveEncryptionMapping( const network2::Address & address );
+
+        void ResetEncryptionMappings();
+
+#endif // #if YOJIMBO_SECURE
 
         uint64_t GetCounter( int index ) const;
     };

@@ -37,6 +37,22 @@ Thursday May 26th, 2016
 
     Added serialize_address so it's not annoying to serialize addresses.
 
+    Next step, bring across the network interface from secure packets and set only the connection request packet as unencrypted.
+
+    Now bring across the bulk of the client and start disabling bits and converting over.
+
+    Client brought over.
+
+    Extended "Connect" to take extra arguments it needs.
+
+    Now stash these args as data inside client so it knows how to send a proper connection request packet.
+
+    Need to implement some code to clear the encryption mapping in a network interface.
+
+    Now actually send across the proper connection request packet.
+
+    Done.
+
 
 Tuesday May 24th, 2016
 ======================

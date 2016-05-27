@@ -617,6 +617,11 @@ namespace yojimbo
         return false;
     }
 
+    void SocketInterface::ResetEncryptionMappings()
+    {
+        m_numEncryptionMappings = 0;
+    }
+
 #endif // #if YOJIMBO_SECURE
 
     uint64_t SocketInterface::GetCounter( int index ) const

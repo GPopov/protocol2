@@ -911,15 +911,17 @@ class Client
 
     Address m_serverAddress;                                            // server address we are connecting or connected to.
 
-    uint64_t m_clientSalt;                                              // client salt. randomly generated on each call to connect.
-
-    uint64_t m_challengeSalt;                                           // challenge salt sent back from server in connection challenge.
-
     double m_lastPacketSendTime;                                        // time we last sent a packet to the server.
 
     double m_lastPacketReceiveTime;                                     // time we last received a packet from the server (used for timeouts).
 
     NetworkInterface * m_networkInterface;                              // network interface the client uses to send and receive packets.
+
+    uint64_t m_clientId;                                                // client id as per-connect call
+
+    uint8_t m_connectTokenData[ConnectTokenBytes];                      // encrypted connect token data for connection request packet
+
+    uint8_t m_connectTokenNonce[NonceBytes];                            // nonce required to send to server so it can decrypt encrypted connect token
 
 public:
 
@@ -936,20 +938,22 @@ public:
 
     void Connect( const Address & address, 
                   double time, 
-                  uint64_t /*clientId*/, 
-                  const uint8_t * /*connectTokenData*/, 
-                  const uint8_t * /*connectTokenNonce*/,
-                  const uint8_t * /*clientToServerKey*/,
-                  const uint8_t * /*serverToClientKey*/ )
+                  uint64_t clientId,
+                  const uint8_t * connectTokenData, 
+                  const uint8_t * connectTokenNonce,
+                  const uint8_t * clientToServerKey,
+                  const uint8_t * serverToClientKey )
     {
         Disconnect( time );
-        // todo
-//        m_clientSalt = GenerateSalt();
-//        m_challengeSalt = 0;
         m_serverAddress = address;
         m_clientState = CLIENT_STATE_SENDING_CONNECTION_REQUEST;
         m_lastPacketSendTime = time - 1.0f;
         m_lastPacketReceiveTime = time;
+        m_clientId = clientId;
+        memcpy( m_connectTokenData, connectTokenData, ConnectTokenBytes );
+        memcpy( m_connectTokenNonce, connectTokenNonce, NonceBytes );
+        m_networkInterface->ResetEncryptionMappings();
+        m_networkInterface->AddEncryptionMapping( m_serverAddress, clientToServerKey, serverToClientKey );
     }
 
     bool IsConnecting() const
@@ -971,7 +975,7 @@ public:
     {
         if ( m_clientState == CLIENT_STATE_CONNECTED )
         {
-            printf( "client-side disconnect: (client salt = %" PRIx64 ", challenge salt = %" PRIx64 ")\n", m_clientSalt, m_challengeSalt );
+            printf( "client-side disconnect: (client id = %" PRIx64 ")\n", m_clientId );
             ConnectionDisconnectPacket * packet = (ConnectionDisconnectPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DISCONNECT );
             SendPacketToServer( packet, time );
         }
@@ -994,7 +998,8 @@ public:
 
                 ConnectionRequestPacket * packet = (ConnectionRequestPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_REQUEST );
 
-                // todo: bunch of stuff!!!!!
+                memcpy( packet->connectTokenData, m_connectTokenData, ConnectTokenBytes );
+                memcpy( packet->connectTokenNonce, m_connectTokenNonce, NonceBytes );
 
                 SendPacketToServer( packet, time );
             }
@@ -1011,8 +1016,7 @@ public:
 
                 ConnectionResponsePacket * packet = (ConnectionResponsePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_RESPONSE );
 
-                // todo: setup connection response
-                //packet->challenge_salt = m_challengeSalt;
+                // ...
                 
                 SendPacketToServer( packet, time );
             }
@@ -1116,12 +1120,15 @@ protected:
 
     void ResetConnectionData()
     {
+        assert( m_networkInterface );
         m_serverAddress = Address();
         m_clientState = CLIENT_STATE_DISCONNECTED;
-        m_clientSalt = 0;
-        m_challengeSalt = 0;
         m_lastPacketSendTime = -1000.0;
         m_lastPacketReceiveTime = -1000.0;
+        m_clientId = 0;
+        memset( m_connectTokenData, 0, ConnectTokenBytes );
+        memset( m_connectTokenNonce, 0, NonceBytes );
+        m_networkInterface->ResetEncryptionMappings();
     }
 
     void SendPacketToServer( Packet *packet, double time )
