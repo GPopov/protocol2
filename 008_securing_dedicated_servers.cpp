@@ -174,10 +174,7 @@ bool EncryptConnectToken( ConnectToken & token, uint8_t *encryptedMessage, const
     uint64_t encryptedLength;
 
     if ( !Encrypt_AEAD( message, ConnectTokenBytes - AuthBytes, encryptedMessage, encryptedLength, additional, additionalLength, nonce, key ) )
-    {
-        printf( "Encrypt_AEAD failed\n" );
         return false;
-    }
 
     assert( encryptedLength == ConnectTokenBytes );
 
@@ -192,10 +189,7 @@ bool DecryptConnectToken( const uint8_t * encryptedMessage, ConnectToken & decry
     uint8_t decryptedMessage[ConnectTokenBytes];
 
     if ( !Decrypt_AEAD( encryptedMessage, encryptedMessageLength, decryptedMessage, decryptedMessageLength, additional, additionalLength, nonce, key ) )
-    {
-        printf( "Decrypt_AEAD failed\n" );
         return false;
-    }
 
     assert( decryptedMessageLength == ConnectTokenBytes - AuthBytes );
 
@@ -295,10 +289,7 @@ bool EncryptChallengeToken( ChallengeToken & token, uint8_t *encryptedMessage, c
     uint64_t encryptedLength;
 
     if ( !Encrypt_AEAD( message, ChallengeTokenBytes - AuthBytes, encryptedMessage, encryptedLength, additional, additionalLength, nonce, key ) )
-    {
-        printf( "Encrypt_AEAD failed\n" );
         return false;
-    }
 
     assert( encryptedLength == ChallengeTokenBytes );
 
@@ -313,10 +304,7 @@ bool DecryptChallengeToken( const uint8_t * encryptedMessage, ChallengeToken & d
     uint8_t decryptedMessage[ChallengeTokenBytes];
 
     if ( !Decrypt_AEAD( encryptedMessage, encryptedMessageLength, decryptedMessage, decryptedMessageLength, additional, additionalLength, nonce, key ) )
-    {
-        printf( "Decrypt_AEAD failed\n" );
         return false;
-    }
 
     assert( decryptedMessageLength == ChallengeTokenBytes - AuthBytes );
 
@@ -939,6 +927,8 @@ protected:
         if ( !DecryptChallengeToken( packet.challengeTokenData, challengeToken, NULL, 0, packet.challengeTokenNonce, private_key ) )
         {
             printf( "failed to decrypt challenge token\n" );
+            // temp!
+            exit(1);
             return;
         }
 
