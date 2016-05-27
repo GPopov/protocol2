@@ -924,6 +924,10 @@ protected:
         PrintBytes( connectionChallengePacket->challengeTokenNonce, NonceBytes );
         printf( "\n" );
 
+        printf( "private key: " );
+        PrintBytes( private_key, KeyBytes );
+        printf( "\n" );
+
         ChallengeToken decryptedChallengeToken;
         if ( !DecryptChallengeToken( connectionChallengePacket->challengeTokenData, challengeToken, NULL, 0, connectionChallengePacket->challengeTokenNonce, private_key ) )
         {
@@ -951,6 +955,10 @@ protected:
 
             printf( "challenge nonce: " );
             PrintBytes( packet.challengeTokenNonce, NonceBytes );
+            printf( "\n" );
+
+            printf( "private key: " );
+            PrintBytes( private_key, KeyBytes );
             printf( "\n" );
 
             exit(1);
