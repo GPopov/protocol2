@@ -42,11 +42,13 @@ const uint32_t ProtocolId = 0x12341651;
 const int MaxClients = 64;
 const int ClientPort = 40000;
 const int ServerPort = 50000;
-//const float ConnectionRequestSendRate = 0.1f;
+const float ConnectionRequestSendRate = 0.1f;
 //const float ConnectionChallengeSendRate = 0.1f;
+const float ConnectionResponseSendRate = 0.1f;
 //const float ConnectionConfirmSendRate = 0.1f;
 const float ConnectionHeartBeatRate = 1.0f;
-//const float ConnectionRequestTimeOut = 5.0f;
+const float ConnectionRequestTimeOut = 5.0f;
+const float ChallengeResponseTimeOut = 5.0f;
 const float ConnectionTimeOut = 10.0f;
 
 const int ConnectTokenBytes = 1024;
@@ -888,6 +890,312 @@ public:
     {
         ClearSendQueue();
         ClearReceiveQueue();
+    }
+};
+
+enum ClientState
+{
+    CLIENT_STATE_DISCONNECTED,
+    CLIENT_STATE_SENDING_CONNECTION_REQUEST,
+    CLIENT_STATE_SENDING_CHALLENGE_RESPONSE,
+    CLIENT_STATE_CONNECTED,
+    CLIENT_STATE_CONNECTION_REQUEST_TIMED_OUT,
+    CLIENT_STATE_CHALLENGE_RESPONSE_TIMED_OUT,
+    CLIENT_STATE_CONNECTION_TIMED_OUT,
+    CLIENT_STATE_CONNECTION_DENIED
+};
+
+class Client
+{
+    ClientState m_clientState;                                          // current client state
+
+    Address m_serverAddress;                                            // server address we are connecting or connected to.
+
+    uint64_t m_clientSalt;                                              // client salt. randomly generated on each call to connect.
+
+    uint64_t m_challengeSalt;                                           // challenge salt sent back from server in connection challenge.
+
+    double m_lastPacketSendTime;                                        // time we last sent a packet to the server.
+
+    double m_lastPacketReceiveTime;                                     // time we last received a packet from the server (used for timeouts).
+
+    NetworkInterface * m_networkInterface;                              // network interface the client uses to send and receive packets.
+
+public:
+
+    Client( NetworkInterface & networkInterface )
+    {
+        m_networkInterface = &networkInterface;
+        ResetConnectionData();
+    }
+
+    ~Client()
+    {
+        m_networkInterface = NULL;
+    }
+
+    void Connect( const Address & address, double time )
+    {
+        Disconnect( time );
+        // todo
+//        m_clientSalt = GenerateSalt();
+//        m_challengeSalt = 0;
+        m_serverAddress = address;
+        m_clientState = CLIENT_STATE_SENDING_CONNECTION_REQUEST;
+        m_lastPacketSendTime = time - 1.0f;
+        m_lastPacketReceiveTime = time;
+    }
+
+    bool IsConnecting() const
+    {
+        return m_clientState == CLIENT_STATE_SENDING_CONNECTION_REQUEST || m_clientState == CLIENT_STATE_SENDING_CHALLENGE_RESPONSE;
+    }
+
+    bool IsConnected() const
+    {
+        return m_clientState == CLIENT_STATE_CONNECTED;
+    }
+
+    bool ConnectionFailed() const
+    {
+        return m_clientState > CLIENT_STATE_CONNECTED;
+    }
+
+    void Disconnect( double time )
+    {
+        if ( m_clientState == CLIENT_STATE_CONNECTED )
+        {
+            printf( "client-side disconnect: (client salt = %" PRIx64 ", challenge salt = %" PRIx64 ")\n", m_clientSalt, m_challengeSalt );
+            ConnectionDisconnectPacket * packet = (ConnectionDisconnectPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DISCONNECT );
+            SendPacketToServer( packet, time );
+        }
+
+        ResetConnectionData();
+    }
+
+    void SendPackets( double time )
+    {
+        switch ( m_clientState )
+        {
+            case CLIENT_STATE_SENDING_CONNECTION_REQUEST:
+            {
+                if ( m_lastPacketSendTime + ConnectionRequestSendRate > time )
+                    return;
+
+                char buffer[256];
+                const char *addressString = m_serverAddress.ToString( buffer, sizeof( buffer ) );
+                printf( "client sending connection request to server: %s\n", addressString );
+
+                ConnectionRequestPacket * packet = (ConnectionRequestPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_REQUEST );
+
+                // todo: bunch of stuff!!!!!
+
+                SendPacketToServer( packet, time );
+            }
+            break;
+
+            case CLIENT_STATE_SENDING_CHALLENGE_RESPONSE:
+            {
+                if ( m_lastPacketSendTime + ConnectionResponseSendRate > time )
+                    return;
+
+                char buffer[256];
+                const char *addressString = m_serverAddress.ToString( buffer, sizeof( buffer ) );
+                printf( "client sending challenge response to server: %s\n", addressString );
+
+                ConnectionResponsePacket * packet = (ConnectionResponsePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_RESPONSE );
+
+                // todo: setup connection response
+                //packet->challenge_salt = m_challengeSalt;
+                
+                SendPacketToServer( packet, time );
+            }
+            break;
+
+            case CLIENT_STATE_CONNECTED:
+            {
+                if ( m_lastPacketSendTime + ConnectionHeartBeatRate > time )
+                    return;
+
+                ConnectionHeartBeatPacket * packet = (ConnectionHeartBeatPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_HEARTBEAT );
+
+                SendPacketToServer( packet, time );
+            }
+            break;
+
+            default:
+                break;
+        }
+    }
+
+    void ReceivePackets( double time )
+    {
+        while ( true )
+        {
+            Address address;
+            Packet *packet = m_networkInterface->ReceivePacket( address );
+            if ( !packet )
+                break;
+            
+            switch ( packet->GetType() )
+            {
+                case PACKET_CONNECTION_DENIED:
+                    ProcessConnectionDenied( *(ConnectionDeniedPacket*)packet, address, time );
+                    break;
+
+                case PACKET_CONNECTION_CHALLENGE:
+                    ProcessConnectionChallenge( *(ConnectionChallengePacket*)packet, address, time );
+                    break;
+
+                case PACKET_CONNECTION_HEARTBEAT:
+                    ProcessConnectionHeartBeat( *(ConnectionHeartBeatPacket*)packet, address, time );
+                    break;
+
+                case PACKET_CONNECTION_DISCONNECT:
+                    ProcessConnectionDisconnect( *(ConnectionDisconnectPacket*)packet, address, time );
+                    break;
+
+                default:
+                    break;
+            }
+
+            m_networkInterface->DestroyPacket( packet );
+        }
+    }
+
+    void CheckForTimeOut( double time )
+    {
+        switch ( m_clientState )
+        {
+            case CLIENT_STATE_SENDING_CONNECTION_REQUEST:
+            {
+                if ( m_lastPacketReceiveTime + ConnectionRequestTimeOut < time )
+                {
+                    printf( "connection request to server timed out\n" );
+                    m_clientState = CLIENT_STATE_CONNECTION_REQUEST_TIMED_OUT;
+                    return;
+                }
+            }
+            break;
+
+            case CLIENT_STATE_SENDING_CHALLENGE_RESPONSE:
+            {
+                if ( m_lastPacketReceiveTime + ChallengeResponseTimeOut < time )
+                {
+                    printf( "challenge response to server timed out\n" );
+                    m_clientState = CLIENT_STATE_CHALLENGE_RESPONSE_TIMED_OUT;
+                    return;
+                }
+            }
+            break;
+
+            case CLIENT_STATE_CONNECTED:
+            {
+                if ( m_lastPacketReceiveTime + ConnectionTimeOut < time )
+                {
+                    printf( "keep alive timed out\n" );
+                    m_clientState = CLIENT_STATE_CONNECTION_TIMED_OUT;
+                    Disconnect( time );
+                    return;
+                }
+            }
+            break;
+
+            default:
+                break;
+        }
+    }
+
+protected:
+
+    void ResetConnectionData()
+    {
+        m_serverAddress = Address();
+        m_clientState = CLIENT_STATE_DISCONNECTED;
+        m_clientSalt = 0;
+        m_challengeSalt = 0;
+        m_lastPacketSendTime = -1000.0;
+        m_lastPacketReceiveTime = -1000.0;
+    }
+
+    void SendPacketToServer( Packet *packet, double time )
+    {
+        assert( m_clientState != CLIENT_STATE_DISCONNECTED );
+        assert( m_serverAddress.IsValid() );
+
+        m_networkInterface->SendPacket( m_serverAddress, packet );
+
+        m_lastPacketSendTime = time;
+    }
+
+    void ProcessConnectionDenied( const ConnectionDeniedPacket & /*packet*/, const Address & address, double /*time*/ )
+    {
+        if ( m_clientState != CLIENT_STATE_SENDING_CONNECTION_REQUEST )
+            return;
+
+        if ( address != m_serverAddress )
+            return;
+
+        char buffer[256];
+        const char * addressString = address.ToString( buffer, sizeof( buffer ) );
+        printf( "client received connection denied from server: %s\n", addressString );
+        m_clientState = CLIENT_STATE_CONNECTION_DENIED;
+    }
+
+    void ProcessConnectionChallenge( const ConnectionChallengePacket & /*packet*/, const Address & address, double time )
+    {
+        if ( m_clientState != CLIENT_STATE_SENDING_CONNECTION_REQUEST )
+            return;
+
+        if ( address != m_serverAddress )
+            return;
+
+        /*
+        char buffer[256];
+        const char * addressString = address.ToString( buffer, sizeof( buffer ) );
+        */
+        
+        // todo: stuff
+
+        //printf( "client received connection challenge from server: %s (challenge salt = %" PRIx64 ")\n", addressString, packet.challenge_salt );
+
+        // todo: WUT
+
+//        m_challengeSalt = packet.challenge_salt;
+
+        m_clientState = CLIENT_STATE_SENDING_CHALLENGE_RESPONSE;
+
+        m_lastPacketReceiveTime = time;
+    }
+
+    void ProcessConnectionHeartBeat( const ConnectionHeartBeatPacket & /*packet*/, const Address & address, double time )
+    {
+        if ( m_clientState < CLIENT_STATE_SENDING_CHALLENGE_RESPONSE )
+            return;
+
+        if ( address != m_serverAddress )
+            return;
+
+        if ( m_clientState == CLIENT_STATE_SENDING_CHALLENGE_RESPONSE )
+        {
+            char buffer[256];
+            const char * addressString = address.ToString( buffer, sizeof( buffer ) );
+            printf( "client is now connected to server: %s\n", addressString );
+            m_clientState = CLIENT_STATE_CONNECTED;
+        }
+
+        m_lastPacketReceiveTime = time;
+    }
+
+    void ProcessConnectionDisconnect( const ConnectionDisconnectPacket & /*packet*/, const Address & address, double time )
+    {
+        if ( m_clientState != CLIENT_STATE_CONNECTED )
+            return;
+
+        if ( address != m_serverAddress )
+            return;
+
+        Disconnect( time );
     }
 };
 

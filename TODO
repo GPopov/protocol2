@@ -1,5 +1,7 @@
 DONE
 
+    Next step, bring across the network interface from secure packets and set only the connection request packet as unencrypted.
+
 TODO
 
-    Next step, bring across the network interface from secure packets and set only the connection request packet as unencrypted.
+    Now bring across the bulk of the client and start disabling bits and converting over.
