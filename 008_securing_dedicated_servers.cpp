@@ -1052,6 +1052,7 @@ public:
 
     ClientServerNetworkInterface( ClientServerPacketFactory & packetFactory, uint16_t port ) : SocketInterface( memory_default_allocator(), packetFactory, ProtocolId, port )
     {
+        /*
         EnablePacketEncryption();
 
         DisableEncryptionForPacketType( PACKET_CONNECTION_REQUEST );
@@ -1062,6 +1063,7 @@ public:
         assert( IsEncryptedPacketType( PACKET_CONNECTION_RESPONSE ) == true );
         assert( IsEncryptedPacketType( PACKET_CONNECTION_HEARTBEAT ) == true );
         assert( IsEncryptedPacketType( PACKET_CONNECTION_DISCONNECT ) == true );
+        */
     }
 
     ~ClientServerNetworkInterface()
