@@ -37,10 +37,6 @@
 #include <stdlib.h>
 #include <memory.h>
 
-#if defined( __GNUC__ ) && !defined( __clang__ ) && !defined( __llvm__ )
-#pragma GCC optimize( "no-strict-aliasing" )
-#endif
-
 namespace yojimbo
 {
     bool InitializeCrypto()

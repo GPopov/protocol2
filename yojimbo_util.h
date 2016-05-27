@@ -29,6 +29,7 @@
 
 #include "yojimbo_config.h"
 #include <stdint.h>
+#include <assert.h>
 
 namespace yojimbo
 {

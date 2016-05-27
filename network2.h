@@ -860,7 +860,7 @@ namespace network2
         m_duplicates = percent;
     }
 
-    void Simulator::SendPacket( const Address & from, const Address & to, uint8_t *packetData, int packetSize )
+    void Simulator::SendPacket( const Address & from, const Address & to, uint8_t * packetData, int packetSize )
     {
         assert( from.IsValid() );
         assert( to.IsValid() );
@@ -912,7 +912,7 @@ namespace network2
         }
     }
 
-    uint8_t* Simulator::ReceivePacket( Address & from, Address & to, int & packetSize )
+    uint8_t * Simulator::ReceivePacket( Address & from, Address & to, int & packetSize )
     { 
         int oldestEntryIndex = -1;
         double oldestEntryTime = 0;

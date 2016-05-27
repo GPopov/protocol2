@@ -24,9 +24,6 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define NETWORK2_IMPLEMENTATION
-#define PROTOCOL2_IMPLEMENTATION
-
 #include "yojimbo.h"
 #include <stdio.h>
 #include <stdlib.h>

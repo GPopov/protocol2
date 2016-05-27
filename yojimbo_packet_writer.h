@@ -24,8 +24,37 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define PROTOCOL2_IMPLEMENTATION
-#define NETWORK2_IMPLEMENTATION
+#ifndef YOJIMBO_PACKET_WRITER_H
+#define YOJIMBO_PACKET_WRITER_H
 
 #include "protocol2.h"
-#include "network2.h"
+
+namespace yojimbo
+{
+    class PacketWriter
+    {
+    private:
+
+        /*
+        uint32_t protocolId;
+        int packetBytes;
+        int maxPacketSize;
+        int absoluteMaxPacketSize;
+        void * context;
+        protocol2::PacketFactory * packetFactory;
+        */
+
+        PacketWriter()
+        {
+            // ...
+        }
+
+        bool WritePacket( protocol2::Packet * packet, 
+                          int & packetBytes,
+                          uint64_t sequence,
+                          uint8_t * packetBuffer,
+                          uint8_t * scratchBuffer );
+    };
+}
+
+#endif // #ifndef YOJIMBO_PACKET_WRITER

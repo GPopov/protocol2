@@ -24,8 +24,51 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define PROTOCOL2_IMPLEMENTATION
-#define NETWORK2_IMPLEMENTATION
+#ifndef YOJIMBO_NETWORK_INTERFACE_H
+#define YOJIMBO_NETWORK_INTERFACE_H
 
-#include "protocol2.h"
-#include "network2.h"
+#include "yojimbo_config.h"
+
+namespace yojimbo
+{
+    class NetworkInterface
+    {
+    public:
+
+        virtual ~NetworkInterface() {}
+
+        virtual protocol2::Packet * CreatePacket( int type ) = 0;
+
+        virtual void DestroyPacket( protocol2::Packet * packet ) = 0;
+
+        virtual void SendPacket( const network2::Address & address, protocol2::Packet * packet, uint64_t sequence = 0 ) = 0;
+
+        virtual protocol2::Packet * ReceivePacket( network2::Address & from, uint64_t *sequence = NULL ) = 0;
+
+        virtual void WritePackets( double time ) = 0;
+
+        virtual void ReadPackets( double time ) = 0;
+
+        virtual int GetMaxPacketSize() const = 0;
+
+        virtual void SetContext( void * context ) = 0;
+
+#if YOJIMBO_SECURE
+
+        virtual void EnablePacketEncryption() = 0;
+
+        virtual void DisableEncryptionForPacketType( int type ) = 0;
+
+        virtual bool IsEncryptedPacketType( int type ) const = 0;
+
+        virtual bool AddEncryptionMapping( const network2::Address & address, const uint8_t * sendKey, const uint8_t * receiveKey ) = 0;
+
+        virtual bool RemoveEncryptionMapping( const network2::Address & address ) = 0;
+
+        virtual void ResetEncryptionMappings() = 0;
+
+#endif // #if YOJIMBO_SECURE
+    };
+}
+
+#endif // #ifndef YOJIMBO_H

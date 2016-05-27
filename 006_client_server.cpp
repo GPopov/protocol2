@@ -31,6 +31,12 @@
 #include <inttypes.h>
 #include <time.h>
 
+#define NETWORK2_IMPLEMENTATION
+#define PROTOCOL2_IMPLEMENTATION
+
+#include "network2.h"
+#include "protocol2.h"
+
 using namespace yojimbo;
 using namespace protocol2;
 using namespace network2;

@@ -1280,11 +1280,11 @@ namespace protocol2
                      int bufferSize, 
                      Object *header = NULL );
 
-    Packet* ReadPacket( const PacketInfo & info, 
-                        const uint8_t *buffer, 
-                        int bufferSize, 
-                        Object *header = NULL, 
-                        int *errorCode = NULL );
+    Packet * ReadPacket( const PacketInfo & info, 
+                         const uint8_t *buffer, 
+                         int bufferSize, 
+                         Object *header = NULL, 
+                         int *errorCode = NULL );
 
 #if PROTOCOL2_PACKET_AGGREGATION
 
@@ -1448,11 +1448,11 @@ namespace protocol2
         return h;
     }
 
-    inline int WritePacket( const PacketInfo & info, 
-                            Packet *packet,
-                            uint8_t *buffer, 
-                            int bufferSize, 
-                            Object *header )
+    int WritePacket( const PacketInfo & info, 
+                     Packet *packet,
+                     uint8_t *buffer, 
+                     int bufferSize, 
+                     Object *header )
     {
         assert( packet );
         assert( buffer );
@@ -1513,11 +1513,11 @@ namespace protocol2
         return stream.GetBytesProcessed();
     }
 
-    inline Packet* ReadPacket( const PacketInfo & info, 
-                               const uint8_t *buffer, 
-                               int bufferSize, 
-                               Object *header, 
-                               int *errorCode )
+    Packet* ReadPacket( const PacketInfo & info, 
+                        const uint8_t * buffer, 
+                        int bufferSize, 
+                        Object * header, 
+                        int * errorCode )
     {
         assert( buffer );
         assert( bufferSize > 0 );
@@ -1782,13 +1782,13 @@ cleanup:
 
     void ReadAggregatePacket( const PacketInfo & info,
                               int maxPacketsToRead, 
-                              Packet **packets, 
-                              const uint8_t *buffer, 
+                              Packet ** packets, 
+                              const uint8_t * buffer, 
                               int bufferSize, 
                               int & numPacketsRead, 
-                              Object *aggregatePacketHeader, 
-                              Object **packetHeaders, 
-                              int *errorCode )
+                              Object * aggregatePacketHeader, 
+                              Object ** packetHeaders, 
+                              int * errorCode )
     {
         assert( info.protocolId );
         assert( info.packetFactory );

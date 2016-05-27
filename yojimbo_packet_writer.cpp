@@ -24,8 +24,20 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define PROTOCOL2_IMPLEMENTATION
-#define NETWORK2_IMPLEMENTATION
+#include "yojimbo_packet_writer.h"
 
-#include "protocol2.h"
-#include "network2.h"
+#if YOJIMBO_SECURE
+#include <sodium.h>
+#endif // #if YOJIMBO_SECURE
+
+namespace yojimbo
+{
+    bool PacketWriter::WritePacket( protocol2::Packet * /*packet*/, 
+                                    int & /*packetBytes*/,
+                                    uint64_t /*sequence*/,
+                                    uint8_t * /*packetBuffer*/,
+                                    uint8_t * /*scratchBuffer*/ )
+    {
+        return true;
+    }
+}
