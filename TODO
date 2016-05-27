@@ -26,24 +26,46 @@ DONE
 
     If there is no entry, add it and insert the network address the connection request came from with the HMAC.
 
-TODO
-
     Now construct a challenge response token object.
 
     Encyrypt this challenge response token and bump the challenge response token nonce.
 
     Send a challenge response packet back to the client.
 
-    ----------
-
     Is there a crypto attack on challenge response encryption, because different servers will encode the same data with difference nonces?
 
     No. The data has the server address in it, so data being encrypted is different on each machine.
 
-    Perhaps also throw in some random bytes crap inside the challenge response?
+    Perhaps also throw in some random bytes crap inside the challenge token?
+
+    Yes. Threw in 32 bytes of random shit in the connect token and the challenge token.
+
+    Now it's time to handle the challenge packet on the client.
+
+    Process it and reply with tha challenge response packet.
+
+    Now process the challenge response on the server.
+
+    What needs to be done?
+
+    Decrypt the challenge response token.
+
+    Ignore if it doesn't decrypt.
+
+TODO
+
+    If it does decrypt:
+
+    Make sure client address matches. If not, ignore.
+
+    Make sure server address matches. If not, ignore.
+
+    ------------
+
+    Now inside the challenge token data should be enough information to establish connection.
+
+    It's always possible at this point that the server could be full, so reply with connection denied if that's the case.
 
     ----------
-
+    
     Need to properly implement encryption mapping array in network interface
-
-    ----------
