@@ -908,6 +908,8 @@ protected:
         if ( !connectionChallengePacket )
             return;
 
+        m_challengeTokenNonce++;
+
         memcpy( connectionChallengePacket->challengeTokenNonce, (uint8_t*) &m_challengeTokenNonce, NonceBytes );
 
         if ( !EncryptChallengeToken( challengeToken, connectionChallengePacket->challengeTokenData, NULL, 0, connectionChallengePacket->challengeTokenNonce, private_key ) )
@@ -916,7 +918,14 @@ protected:
             return;
         }
 
-        m_challengeTokenNonce++;
+        ChallengeToken decryptedChallengeToken;
+        if ( !DecryptChallengeToken( connectionChallengePacket->challengeTokenData, challengeToken, NULL, 0, connectionChallengePacket->challengeTokenNonce, private_key ) )
+        {
+            printf( "failed to decrypt challenge token (a)\n" );
+            // temp!
+            exit(1);
+            return;
+        }
 
         m_networkInterface->SendPacket( address, connectionChallengePacket );
     }
