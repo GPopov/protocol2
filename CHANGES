@@ -1,4 +1,43 @@
 
+Thursday May 26th, 2016
+=======================
+
+    Added a new article series after "Securing Dedicated Servers"
+
+    This means that in this article source I won't need to actually get into whitelist, dedis communicating to the matcher
+    their state and so on.
+
+    Once I finish the source code for dedicated servers I can fork it and move it across to the next article (009_basic_matchmaking)
+
+    This means I should be able to *quickly* finish 008_dedicated_servers.cpp vs. having it drag on with matchmaking stuff!
+
+    Now we need to get the challenge/response working, including the list of already used connect token HMAC -> address array.
+
+    In fact, this in the next thing to design. The functions for the used token array. Make sure the timeout is built in.
+
+    {
+        hmac
+        address
+    }
+
+    Bother with timeouts at all for the hashes?
+
+    Perhaps just have a constant time algorithm that replaces the *oldest* hash entry, and keep it small, eg. 256 entries.
+
+    That way if a collision does happen, the oldest hash entry will eventually cycle out. Probability of a collision is exceptionally small.
+
+    I think the HMAC is 16 bytes. I mean that's an astronomically unlikely sized number to get a collision, plus I'm using a crytographically
+    secure hash function here. We are not going to get a collision. Don't even worry about it.
+
+    ------
+
+    Added the server address inside the challenge token so they can't be used in replay attacks.
+
+    Update test so the challenge token gets tested on the server address.
+
+    Added serialize_address so it's not annoying to serialize addresses.
+
+
 Tuesday May 24th, 2016
 ======================
 

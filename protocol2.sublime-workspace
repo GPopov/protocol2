@@ -4,6 +4,18 @@
 		"selected_items":
 		[
 			[
+				"server",
+				"serverAddresses"
+			],
+			[
+				"client",
+				"client_to_server_key"
+			],
+			[
+				"decr",
+				"decryptedMessageLength"
+			],
+			[
 				"CONNECTION",
 				"CONNECTION_DENIED_ALREADY_CONNECTED"
 			],
@@ -218,10 +230,6 @@
 			[
 				"time_",
 				"time_last_dropped_input"
-			],
-			[
-				"client",
-				"client_input_data"
 			],
 			[
 				"server_cet",
@@ -506,21 +514,13 @@
 			[
 				"ack",
 				"ackedFragment"
-			],
-			[
-				"CLIENH_",
-				"CLIENT_SERVER_PACKET_CONNECTION_CHALLENGE"
-			],
-			[
-				"m_num",
-				"m_numServerDataFragments"
 			]
 		]
 	},
 	"buffers":
 	[
 	],
-	"build_system": "Packages/User/C++11 (Server).sublime-build",
+	"build_system": "Packages/Makefile/Make.sublime-build",
 	"build_system_choices":
 	[
 		[
@@ -577,6 +577,22 @@
 			[
 				"Packages/C++/C++ Single File.sublime-build",
 				"Run"
+			]
+		],
+		[
+			[
+				[
+					"Packages/Makefile/Make.sublime-build",
+					""
+				],
+				[
+					"Packages/Makefile/Make.sublime-build",
+					"Clean"
+				]
+			],
+			[
+				"Packages/Makefile/Make.sublime-build",
+				""
 			]
 		],
 		[
@@ -698,8 +714,15 @@
 	],
 	"file_history":
 	[
+		"/Users/gaffer/Desktop/CONTRACT GOALS",
+		"/Users/gaffer/git/protocol2/protocol2.h",
+		"/Users/gaffer/git/protocol2/008_securing_dedicated_servers.cpp",
+		"/Users/gaffer/git/protocol2/temp.cpp",
+		"/Users/gaffer/git/protocol2/test.cpp",
 		"/Users/gaffer/git/protocol2/TODO",
+		"/Users/gaffer/git/protocol2/CHANGES",
 		"/Users/gaffer/git/protocol2/006_client_server.cpp",
+		"/Users/gaffer/git/protocol2/yojimbo_config.h",
 		"/Users/gaffer/git/protocol2/yojimbo.cpp",
 		"/Users/gaffer/git/protocol2/yojimbo.h",
 		"/Users/gaffer/git/protocol2/yojimbo_types.h",
@@ -713,14 +736,11 @@
 		"/Users/gaffer/git/protocol/src/Network/BSDSocket.h",
 		"/Users/gaffer/git/protocol/src/Protocol/ProtocolEnums.h",
 		"/Users/gaffer/git/protocol/src/Network/Enums.h",
-		"/Users/gaffer/git/protocol2/CHANGES",
 		"/Users/gaffer/git/protocol2/vectorial/simd4f_neon.h",
 		"/Users/gaffer/git/protocol2/vectorial/vec3f.h",
-		"/Users/gaffer/git/protocol2/protocol2.h",
 		"/Users/gaffer/git/protocol2/002_serialization_strategies.cpp",
 		"/Users/gaffer/git/protocol2/yojimbo_memory.cpp",
 		"/Users/gaffer/git/protocol2/003_packet_fragmentation_and_reassembly.cpp",
-		"/Users/gaffer/git/protocol2/yojimbo_config.h",
 		"/Users/gaffer/git/protocol2/untitled",
 		"/Users/gaffer/git/protocol/src/Core/Core.cpp",
 		"/Users/gaffer/git/protocol2/network2.h",
@@ -749,7 +769,6 @@
 		"/Users/gaffer/Desktop/Building a Game Network Protocol/premake5.lua",
 		"/Users/gaffer/git/protocol2/001_reading_and_writing_packets.cpp",
 		"/Users/gaffer/git/protocol2/006_reliable_packets.cpp",
-		"/Users/gaffer/git/protocol2/test.cpp",
 		"/Users/gaffer/Backup/netgame/02 - Virtual Connection over UDP/Net.h",
 		"/Users/gaffer/git/protocol2/premake4.lua",
 		"/Users/gaffer/.ssh/known_hosts",
@@ -822,10 +841,7 @@
 		"/Users/gaffer/git/protocol/src/Core/Core.h",
 		"/Users/gaffer/git/protocol2/001_serializing_packets.cpp",
 		"/Users/gaffer/git/protocol2/serializing_packets.cpp",
-		"/Users/gaffer/git/protocol/tests/Protocol/TestPackets.h",
-		"/Users/gaffer/git/protocol/src/Protocol/PacketFactory.h",
-		"/Users/gaffer/git/protocol/src/Protocol/Packet.h",
-		"/Users/gaffer/git/protocol/src/Protocol/Object.h"
+		"/Users/gaffer/git/protocol/tests/Protocol/TestPackets.h"
 	],
 	"find":
 	{
@@ -876,6 +892,13 @@
 		"case_sensitive": true,
 		"find_history":
 		[
+			"215",
+			"Encrypt",
+			"ChallengeToken",
+			"GenerateToken",
+			"TokenBytes",
+			"AuthBytes",
+			"TokenBytes",
 			"queue::",
 			"// todo",
 			"ConnectionRequestDenied",
@@ -996,14 +1019,7 @@
 			"printf",
 			"MaxChunkSize",
 			"uint32_t( ",
-			"m_scratch",
-			"total",
-			"`",
-			"ProcessFragment",
-			"MaxBufferedFragments",
-			"_TYPE",
-			"Serialization Strategies",
-			"006"
+			"m_scratch"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -1057,7 +1073,7 @@
 	],
 	"incremental_find":
 	{
-		"height": 25.0
+		"height": 23.0
 	},
 	"input":
 	{
@@ -1094,11 +1110,11 @@
 	{
 		"height": 0.0
 	},
-	"pinned_build_system": "Packages/User/C++11 (Server).sublime-build",
+	"pinned_build_system": "Packages/Makefile/Make.sublime-build",
 	"project": "protocol2.sublime-project",
 	"replace":
 	{
-		"height": 46.0
+		"height": 42.0
 	},
 	"save_all_on_build": true,
 	"select_file":
@@ -1108,12 +1124,36 @@
 		"selected_items":
 		[
 			[
-				"bsdsocket.",
-				"~/git/protocol/src/Network/BSDSocket.cpp"
+				"changes",
+				"CHANGES"
 			],
 			[
 				"todo",
 				"TODO"
+			],
+			[
+				"006",
+				"006_client_server.cpp"
+			],
+			[
+				"test.cpp",
+				"test.cpp"
+			],
+			[
+				"canges",
+				"CHANGES"
+			],
+			[
+				"yoj",
+				"yojimbo_config.h"
+			],
+			[
+				"008",
+				"008_securing_dedicated_servers.cpp"
+			],
+			[
+				"bsdsocket.",
+				"~/git/protocol/src/Network/BSDSocket.cpp"
 			],
 			[
 				"yo",
@@ -1144,20 +1184,8 @@
 				"yojimbo_memory.h"
 			],
 			[
-				"yoj",
-				"yojimbo_allocator.h"
-			],
-			[
 				"allocator",
 				"yojimbo_allocator.h"
-			],
-			[
-				"changes",
-				"CHANGES"
-			],
-			[
-				"006",
-				"006_client_server.cpp"
 			],
 			[
 				"yoh",
@@ -1302,10 +1330,6 @@
 			[
 				"001",
 				"001_reading_and_writing_packets.cpp"
-			],
-			[
-				"test.cpp",
-				"test.cpp"
 			],
 			[
 				"premake5.lua",
@@ -1610,14 +1634,6 @@
 			[
 				"plato.mh",
 				"platform.h"
-			],
-			[
-				"cliet.cpp",
-				"client.cpp"
-			],
-			[
-				"too",
-				"TODO"
 			]
 		],
 		"width": 0.0
