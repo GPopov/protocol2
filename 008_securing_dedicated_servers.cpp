@@ -310,7 +310,7 @@ bool DecryptChallengeToken( const uint8_t * encryptedMessage, ChallengeToken & d
     const int encryptedMessageLength = ChallengeTokenBytes;
 
     uint64_t decryptedMessageLength;
-    uint8_t decryptedMessage[ConnectTokenBytes];
+    uint8_t decryptedMessage[ChallengeTokenBytes];
 
     if ( !Decrypt_AEAD( encryptedMessage, encryptedMessageLength, decryptedMessage, decryptedMessageLength, additional, additionalLength, nonce, key ) )
     {
