@@ -1364,6 +1364,14 @@ protected:
         memcpy( m_challengeTokenData, packet.challengeTokenData, ChallengeTokenBytes );
         memcpy( m_challengeTokenNonce, packet.challengeTokenNonce, NonceBytes );
 
+        printf( "client challenge token: " );
+        PrintBytes( m_challengeTokenData, ChallengeTokenBytes );
+        printf( "\n" );
+
+        printf( "client challenge nonce: " );
+        PrintBytes( m_challengeTokenNonce, NonceBytes );
+        printf( "\n" );
+
         m_clientState = CLIENT_STATE_SENDING_CHALLENGE_RESPONSE;
 
         m_lastPacketReceiveTime = time;

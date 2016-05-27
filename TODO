@@ -1,7 +1,11 @@
 DONE
 
+    Get it working across MacOSX, Linux, Windows.
+
 TODO
 
-    Get it working across MacOSX, Linux, Windows.
+    On linux the challenge token inside the encrypted packet is getting corrupted somehow.
+
+    Is this another case of decryption not working on linux unless it's aligned properly? I think this is a compiler bug...
 
     Once it's working everywhere, copy across to 009_basic_matchmaking.cpp and strip down the matcher to have less stuff in it in 008_*.cpp
