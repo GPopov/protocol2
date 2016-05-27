@@ -917,11 +917,11 @@ protected:
         }
 
         printf( "challenge token: " );
-        PrintBytes( packet.challengeTokenData, ChallengeTokenBytes );
+        PrintBytes( connectionChallengePacket->challengeTokenData, ChallengeTokenBytes );
         printf( "\n" );
 
         printf( "challenge nonce: " );
-        PrintBytes( packet.challengeTokenNonce, ChallengeNonceBytes );
+        PrintBytes( connectionChallengePacket->challengeTokenNonce, NonceBytes );
         printf( "\n" );
 
         ChallengeToken decryptedChallengeToken;
@@ -950,7 +950,7 @@ protected:
             printf( "\n" );
 
             printf( "challenge nonce: " );
-            PrintBytes( packet.challengeTokenNonce, ChallengeNonceBytes );
+            PrintBytes( packet.challengeTokenNonce, NonceBytes );
             printf( "\n" );
 
             exit(1);
