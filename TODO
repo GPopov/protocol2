@@ -2,6 +2,13 @@ DONE
 
     Next step, bring across the network interface from secure packets and set only the connection request packet as unencrypted.
 
+    Now bring across the bulk of the client and start disabling bits and converting over.
+
+    Client brought over.
+
+    Extended "Connect" to take extra arguments it needs.
+
 TODO
 
-    Now bring across the bulk of the client and start disabling bits and converting over.
+    Now stash these args as data inside client so it knows how to send a proper connection request packet.
+    

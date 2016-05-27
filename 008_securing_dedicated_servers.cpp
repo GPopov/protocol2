@@ -934,7 +934,13 @@ public:
         m_networkInterface = NULL;
     }
 
-    void Connect( const Address & address, double time )
+    void Connect( const Address & address, 
+                  double time, 
+                  uint64_t /*clientId*/, 
+                  const uint8_t * /*connectTokenData*/, 
+                  const uint8_t * /*connectTokenNonce*/,
+                  const uint8_t * /*clientToServerKey*/,
+                  const uint8_t * /*serverToClientKey*/ )
     {
         Disconnect( time );
         // todo
@@ -1315,11 +1321,11 @@ int main()
 
         double time = 0.0;
 
-        //Client client( clientInterface );
+        Client client( clientInterface );
 
         Server server( serverInterface );
         
-        //client.SecureConnect( serverAddress, clientId, connectToken, connectNonce, clientToServerKey, serverToClientKey );
+        client.Connect( serverAddress, time, clientId, connectTokenData, connectTokenNonce, clientToServerKey, serverToClientKey );
 
         printf( "----------------------------------------------------------\n" );
 
@@ -1327,31 +1333,29 @@ int main()
         {
             printf( "t = %f\n", time );
 
-//            client.SendPackets( time );
+            client.SendPackets( time );
             server.SendPackets( time );
 
-//            clientInterface.WritePackets( time );
+            clientInterface.WritePackets( time );
             serverInterface.WritePackets( time );
 
-//            clientInterface.ReadPackets( time );
+            clientInterface.ReadPackets( time );
             serverInterface.ReadPackets( time );
 
-//            client.ReceivePackets( time );
+            client.ReceivePackets( time );
             server.ReceivePackets( time );
 
-//            client.CheckForTimeOut( time );
+            client.CheckForTimeOut( time );
             server.CheckForTimeOut( time );
 
-/*
             if ( client.ConnectionFailed() )
             {
-                printf( "error: client secure connect failed!\n" );
+                printf( "error: client connect failed!\n" );
                 break;
             }
 
             if ( client.IsConnected() )
                 client.Disconnect( time );
-*/
 
             time += 0.1f;
 
