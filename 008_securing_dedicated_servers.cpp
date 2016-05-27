@@ -101,14 +101,17 @@ struct ConnectToken
  
     uint8_t serverToClientKey[KeyBytes];                                // the key for encrypted communication from server -> client.
 
+    uint8_t random[KeyBytes];                                           // random data the client cannot possibly know.
+
     ConnectToken()
     {
         protocolId = 0;
         clientId = 0;
         expiryTimestamp = 0;
         numServerAddresses = 0;
-        memset( clientToServerKey, 0, sizeof( clientToServerKey ) );
-        memset( serverToClientKey, 0, sizeof( serverToClientKey ) );
+        memset( clientToServerKey, 0, KeyBytes );
+        memset( serverToClientKey, 0, KeyBytes );
+        memset( random, 0, KeyBytes );
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
@@ -127,6 +130,8 @@ struct ConnectToken
         serialize_bytes( stream, clientToServerKey, KeyBytes );
 
         serialize_bytes( stream, serverToClientKey, KeyBytes );
+
+        serialize_bytes( stream, random, KeyBytes );
 
         return true;
     }
@@ -149,6 +154,8 @@ void GenerateConnectToken( ConnectToken & token, uint64_t clientId, int numServe
     GenerateKey( token.clientToServerKey );    
 
     GenerateKey( token.serverToClientKey );
+
+    GenerateKey( token.random );
 }
 
 bool EncryptConnectToken( ConnectToken & token, uint8_t *encryptedMessage, const uint8_t *additional, int additionalLength, const uint8_t * nonce, const uint8_t * key )
@@ -216,12 +223,15 @@ struct ChallengeToken
  
     uint8_t serverToClientKey[KeyBytes];                                // the key for encrypted communication from server -> client.
 
+    uint8_t random[KeyBytes];                                           // random bytes the client cannot possibly know.
+
     ChallengeToken()
     {
         clientId = 0;
-        memset( connectTokenMac, 0, sizeof( connectTokenMac ) );
-        memset( clientToServerKey, 0, sizeof( clientToServerKey ) );
-        memset( serverToClientKey, 0, sizeof( serverToClientKey ) );
+        memset( connectTokenMac, 0, MacBytes );
+        memset( clientToServerKey, 0, KeyBytes );
+        memset( serverToClientKey, 0, KeyBytes );
+        memset( random, 0, KeyBytes );
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
@@ -237,6 +247,8 @@ struct ChallengeToken
         serialize_bytes( stream, clientToServerKey, KeyBytes );
 
         serialize_bytes( stream, serverToClientKey, KeyBytes );
+
+        serialize_bytes( stream, random, KeyBytes );
 
         return true;
     }
@@ -261,6 +273,8 @@ bool GenerateChallengeToken( const ConnectToken & connectToken, const Address & 
     memcpy( challengeToken.clientToServerKey, connectToken.clientToServerKey, KeyBytes );
 
     memcpy( challengeToken.serverToClientKey, connectToken.serverToClientKey, KeyBytes );
+
+    GenerateKey( challengeToken.random );
 
     return true;
 }
@@ -538,6 +552,8 @@ class Server
 {
     NetworkInterface * m_networkInterface;                              // network interface for sending and receiving packets.
 
+    uint64_t m_challengeTokenNonce;                                     // nonce used for encoding challenge tokens
+
     int m_numConnectedClients;                                          // number of connected clients
     
     bool m_clientConnected[MaxClients];                                 // true if client n is connected
@@ -558,6 +574,7 @@ public:
     {
         m_networkInterface = &networkInterface;
         m_numConnectedClients = 0;
+        m_challengeTokenNonce = 0;
         for ( int i = 0; i < MaxClients; ++i )
             ResetClientState( i );
     }
@@ -879,27 +896,28 @@ protected:
             return;
         }
 
-        // todo
+        ChallengeToken challengeToken;
+        if ( !GenerateChallengeToken( connectToken, address, m_serverAddress, packet.connectTokenData, challengeToken ) )
+        {
+            printf( "failed to generate challenge token\n" );
+            return;
+        }
 
-        /*
-        ServerChallengeEntry * entry = FindOrInsertChallenge( address, packet.client_salt, time );
-        if ( !entry )
+        ConnectionChallengePacket * connectionChallengePacket = (ConnectionChallengePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_CHALLENGE );
+        if ( !connectionChallengePacket )
             return;
 
-        assert( entry );
-        assert( entry->address == address );
-        assert( entry->client_salt == packet.client_salt );
-
-        if ( entry->last_packet_send_time + ChallengeSendRate < time )
+        if ( !EncryptChallengeToken( challengeToken, connectionChallengePacket->challengeTokenData, NULL, 0, (uint8_t*) &m_challengeTokenNonce, private_key ) )
         {
-            printf( "sending connection challenge to %s (challenge salt = %" PRIx64 ")\n", addressString, entry->challenge_salt );
-            ConnectionChallengePacket * connectionChallengePacket = (ConnectionChallengePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_CHALLENGE );
-            connectionChallengePacket->client_salt = packet.client_salt;
-            connectionChallengePacket->challenge_salt = entry->challenge_salt;
-            m_networkInterface->SendPacket( address, connectionChallengePacket );
-            entry->last_packet_send_time = time;
+            printf( "failed to encrypt challenge token\n" );
+            return;
         }
-        */
+
+        memcpy( connectionChallengePacket->challengeTokenNonce, &m_challengeTokenNonce, NonceBytes );
+
+        m_challengeTokenNonce++;
+
+        m_networkInterface->SendPacket( address, connectionChallengePacket );
     }
 
     void ProcessConnectionResponse( const ConnectionResponsePacket & /*packet*/, const Address & /*address*/, double /*time*/ )
