@@ -43,7 +43,6 @@ const int MaxClients = 64;
 const int ClientPort = 40000;
 const int ServerPort = 50000;
 const float ConnectionRequestSendRate = 0.1f;
-//const float ConnectionChallengeSendRate = 0.1f;
 const float ConnectionResponseSendRate = 0.1f;
 //const float ConnectionConfirmSendRate = 0.1f;
 const float ConnectionHeartBeatRate = 1.0f;
@@ -55,6 +54,7 @@ const int ConnectTokenBytes = 1024;
 const int ChallengeTokenBytes = 256;
 const int MaxServersPerConnectToken = 8;
 const int ConnectTokenExpirySeconds = 10;
+const int MaxConnectTokenEntries = MaxClients * 16;
 
 template <typename Stream> bool serialize_address_internal( Stream & stream, Address & address )
 {
@@ -521,6 +521,19 @@ struct ServerClientData
     }
 };
 
+struct ConnectTokenEntry
+{
+    double time;                                                       // time for this entry. used to replace the oldest entries once the connect token array fills up.
+    Address address;                                                   // address of the client that sent the connect token. binds a connect token to a particular address so it can't be exploited.
+    uint8_t mac[MacBytes];                                             // hmac of connect token. we use this to avoid replay attacks where the same token is sent repeatedly for different addresses.
+
+    ConnectTokenEntry()
+    {
+        time = 0.0;
+        memset( mac, 0, MacBytes );
+    }
+};
+
 class Server
 {
     NetworkInterface * m_networkInterface;                              // network interface for sending and receiving packets.
@@ -531,9 +544,13 @@ class Server
     
     uint64_t m_clientId[MaxClients];                                    // array of client id values per-client
     
+    Address m_serverAddress;                                            // the external IP address of this server (what clients will be sending packets to)
+
     Address m_clientAddress[MaxClients];                                // array of client address values per-client
     
     ServerClientData m_clientData[MaxClients];                          // heavier weight data per-client, eg. not for fast lookup
+
+    ConnectTokenEntry m_connectTokenEntries[MaxConnectTokenEntries];    // array of connect tokens entries. used to avoid replay attacks of the same connect token for different addresses.
 
 public:
 
@@ -619,6 +636,16 @@ public:
         }
     }
 
+    void SetServerAddress( const Address & address )
+    {
+        m_serverAddress = address;
+    }
+
+    const Address & GetServerAddress() const
+    {
+        return m_serverAddress;
+    }
+
 protected:
 
     void ResetClientState( int clientIndex )
@@ -649,6 +676,56 @@ protected:
                 return i;
         }
         return -1;
+    }
+
+    bool FindOrAddConnectTokenEntry( const Address & address, const uint8_t * mac, double time )
+    {
+        // find the matching entry for the token mac, and the oldest token. constant time worst case O(1) at all times. This is intentional!
+
+        assert( address.IsValid() );
+
+        assert( mac );
+
+        int matchingTokenIndex = -1;
+        int oldestTokenIndex = -1;
+        double oldestTokenTime = 0.0;
+        for ( int i = 0; i < MaxConnectTokenEntries; ++i )
+        {
+            if ( memcmp( mac, m_connectTokenEntries[i].mac, MacBytes ) == 0 )
+            {
+                matchingTokenIndex = i;
+            }
+
+            if ( oldestTokenIndex == -1 || oldestTokenTime < m_connectTokenEntries[i].time )
+            {
+                oldestTokenTime = m_connectTokenEntries[i].time;
+                oldestTokenIndex = i;
+            }
+        }
+
+        // if no entry is found with the mac, replace the oldest entry with this (mac,address,time) and return true
+
+        assert( oldestTokenIndex != -1 );
+
+        if ( matchingTokenIndex == -1 )
+        {
+            m_connectTokenEntries[oldestTokenIndex].time = time;
+            m_connectTokenEntries[oldestTokenIndex].address = address;
+            memcpy( m_connectTokenEntries[oldestTokenIndex].mac, mac, MacBytes );
+            return true;
+        }
+
+        // if an entry is found with the same mac *and* it has the same address, return true
+
+        assert( matchingTokenIndex >= 0 );
+        assert( matchingTokenIndex < MaxConnectTokenEntries );
+
+        if ( m_connectTokenEntries[matchingTokenIndex].address == address )
+            return true;
+
+        // otherwise an entry exists with the same mac, but a different address, somebody is trying to reuse the connect token as a replay attack!
+
+        return false;
     }
 
     void ConnectClient( int clientIndex, const Address & address, uint64_t clientId, double time )
@@ -732,11 +809,61 @@ protected:
         m_networkInterface->SendPacket( m_clientAddress[clientIndex], packet );
     }
 
-    void ProcessConnectionRequest( const ConnectionRequestPacket & /*packet*/, const Address & address, double /*time*/ )
+    void ProcessConnectionRequest( const ConnectionRequestPacket & packet, const Address & address, double time )
     {
         char buffer[256];
         const char *addressString = address.ToString( buffer, sizeof( buffer ) );        
         printf( "processing connection request packet from: %s\n", addressString );
+
+        ConnectToken connectToken;
+        if ( !DecryptConnectToken( packet.connectTokenData, connectToken, NULL, 0, packet.connectTokenNonce, private_key ) )
+        {
+            printf( "failed to decrypt connect token\n" );
+            return;
+        }
+
+        bool serverAddressInConnectTokenWhiteList = false;
+
+        for ( int i = 0; i < connectToken.numServerAddresses; ++i )
+        {
+            if ( m_serverAddress == connectToken.serverAddresses[i] )
+            {
+                serverAddressInConnectTokenWhiteList = true;
+                break;
+            }
+        }
+
+        if ( !serverAddressInConnectTokenWhiteList )
+        {
+            printf( "server address is not in connect token whitelist\n" );
+            return;
+        }
+
+        if ( connectToken.clientId == 0 )
+        {
+            printf( "connect token client id is 0\n" );
+            return;
+        }
+
+        if ( IsConnected( address, connectToken.clientId ) )
+        {
+            printf( "client is already connected\n" );
+            return;
+        }
+
+        uint64_t timestamp = (uint64_t) ::time( NULL );
+
+        if ( connectToken.expiryTimestamp <= timestamp )
+        {
+            printf( "connect token has expired\n" );
+            return;
+        }
+
+        if ( !m_networkInterface->AddEncryptionMapping( address, connectToken.serverToClientKey, connectToken.clientToServerKey ) )
+        {
+            printf( "failed to add encryption mapping\n" );
+            return;
+        }
 
         if ( m_numConnectedClients == MaxClients )
         {
@@ -746,20 +873,15 @@ protected:
             return;
         }
 
-        // todo
-
-        /*
-
-        if ( IsConnected( address, packet.client_salt ) )
+        if ( !FindOrAddConnectTokenEntry( address, packet.connectTokenData, time ) )
         {
-            printf( "connection denied: already connected\n" );
-            ConnectionDeniedPacket * connectionDeniedPacket = (ConnectionDeniedPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DENIED );
-            connectionDeniedPacket->client_salt = packet.client_salt;
-            connectionDeniedPacket->reason = CONNECTION_DENIED_ALREADY_CONNECTED;
-            m_networkInterface->SendPacket( address, connectionDeniedPacket );
+            printf( "connect token has already been used\n" );
             return;
         }
 
+        // todo
+
+        /*
         ServerChallengeEntry * entry = FindOrInsertChallenge( address, packet.client_salt, time );
         if ( !entry )
             return;
@@ -1308,15 +1430,13 @@ int main()
 
         InitializeNetwork();
 
+        ClientServerPacketFactory packetFactory;
+
         Address clientAddress( "::1", ClientPort );
         Address serverAddress( "::1", ServerPort );
 
-        ClientServerPacketFactory packetFactory;
-
         ClientServerNetworkInterface clientInterface( packetFactory, ClientPort );
         ClientServerNetworkInterface serverInterface( packetFactory, ServerPort );
-
-        // todo: switch over to interface with all packets set as encrypted
 
         if ( clientInterface.GetError() != SOCKET_ERROR_NONE || serverInterface.GetError() != SOCKET_ERROR_NONE )
         {
@@ -1331,6 +1451,8 @@ int main()
         Client client( clientInterface );
 
         Server server( serverInterface );
+
+        server.SetServerAddress( serverAddress );
         
         client.Connect( serverAddress, time, clientId, connectTokenData, connectTokenNonce, clientToServerKey, serverToClientKey );
 

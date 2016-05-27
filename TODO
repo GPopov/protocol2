@@ -1,7 +1,5 @@
 DONE
 
-TODO
-
     Now think about what the server needs to do when it receives that connection request.
 
     First it needs to decrypt the token with the private key and nonce.
@@ -16,6 +14,8 @@ TODO
 
     At this point the connection request is valid.
 
+    Setup the encryption mapping for the client/server pending connection.
+
     Is the server currently full? Reply with connection denied packet.
 
     If the particular client id is already connected, ignore the connection request. (is this the best thing to do? why not deny w. reason already connected?)
@@ -26,8 +26,16 @@ TODO
 
     If there is no entry, add it and insert the network address the connection request came from with the HMAC.
 
+TODO
+
     Now construct a challenge response token object.
 
     Encyrypt this challenge response token and bump the challenge response token nonce.
 
     Send a challenge response packet back to the client.
+
+    ----------
+
+    Need to properly implement encryption mapping array in network interface
+
+    ----------
