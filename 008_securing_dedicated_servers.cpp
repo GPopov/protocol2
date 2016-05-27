@@ -916,6 +916,14 @@ protected:
             return;
         }
 
+        printf( "challenge token: " );
+        PrintBytes( packet.challengeTokenData, ChallengeTokenBytes );
+        printf( "\n" );
+
+        printf( "challenge nonce: " );
+        PrintBytes( packet.challengeTokenNonce, ChallengeNonceBytes );
+        printf( "\n" );
+
         ChallengeToken decryptedChallengeToken;
         if ( !DecryptChallengeToken( connectionChallengePacket->challengeTokenData, challengeToken, NULL, 0, connectionChallengePacket->challengeTokenNonce, private_key ) )
         {
@@ -935,9 +943,18 @@ protected:
         ChallengeToken challengeToken;
         if ( !DecryptChallengeToken( packet.challengeTokenData, challengeToken, NULL, 0, packet.challengeTokenNonce, private_key ) )
         {
-            printf( "failed to decrypt challenge token\n" );
-            // temp!
+            printf( "failed to decrypt challenge token (b)\n" );
+
+            printf( "challenge token: " );
+            PrintBytes( packet.challengeTokenData, ChallengeTokenBytes );
+            printf( "\n" );
+
+            printf( "challenge nonce: " );
+            PrintBytes( packet.challengeTokenNonce, ChallengeNonceBytes );
+            printf( "\n" );
+
             exit(1);
+
             return;
         }
 
@@ -1072,13 +1089,13 @@ class Client
 
     uint64_t m_clientId;                                                // client id as per-connect call
 
-    uint8_t m_connectTokenData[ConnectTokenBytes] __attribute__ ((aligned (16)));
+    uint8_t m_connectTokenData[ConnectTokenBytes];                      // encrypted connect token data for connection request packet
 
-    uint8_t m_connectTokenNonce[NonceBytes] __attribute__ ((aligned (16)));
+    uint8_t m_connectTokenNonce[NonceBytes];                            // nonce required to send to server so it can decrypt connect token
 
-    uint8_t m_challengeTokenData[ChallengeTokenBytes] __attribute__ ((aligned (16)));
+    uint8_t m_challengeTokenData[ChallengeTokenBytes];                  // encrypted challenge token data for challenge response packet
 
-    uint8_t m_challengeTokenNonce[NonceBytes] __attribute__ ((aligned (16)));
+    uint8_t m_challengeTokenNonce[NonceBytes];                          // nonce required to send to server so it can decrypt challenge token
 
 public:
 
