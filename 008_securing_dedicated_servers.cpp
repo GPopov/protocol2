@@ -45,9 +45,9 @@ const int ServerPort = 50000;
 //const float ConnectionRequestSendRate = 0.1f;
 //const float ConnectionChallengeSendRate = 0.1f;
 //const float ConnectionConfirmSendRate = 0.1f;
-const float ConnectionKeepAliveSendRate = 1.0f;
+const float ConnectionHeartBeatRate = 1.0f;
 //const float ConnectionRequestTimeOut = 5.0f;
-const float KeepAliveTimeOut = 10.0f;
+const float ConnectionTimeOut = 10.0f;
 
 const int ConnectTokenBytes = 1024;
 const int ChallengeTokenBytes = 256;
@@ -371,8 +371,8 @@ enum PacketTypes
     PACKET_CONNECTION_DENIED,                       // server denies client connection request.
     PACKET_CONNECTION_CHALLENGE,                    // server response to client connection request.
     PACKET_CONNECTION_RESPONSE,                     // client response to server connection challenge.
-    PACKET_CONNECTION_KEEP_ALIVE,                   // keep alive packet sent at some low rate (once per-second) to keep the connection alive
-    PACKET_CONNECTION_DISCONNECT,                   // courtesy packet to indicate that the other side has disconnected. better than a timeout
+    PACKET_CONNECTION_HEARTBEAT,                    // heartbeat packet sent at some low rate (once per-second) to keep the connection alive.
+    PACKET_CONNECTION_DISCONNECT,                   // courtesy packet to indicate that the other side has disconnected. better than a timeout.
     CLIENT_SERVER_NUM_PACKETS
 };
 
@@ -448,9 +448,9 @@ struct ConnectionResponsePacket : public Packet
     PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
 };
 
-struct ConnectionKeepAlivePacket : public Packet
+struct ConnectionHeartBeatPacket : public Packet
 {
-    ConnectionKeepAlivePacket() : Packet( PACKET_CONNECTION_KEEP_ALIVE ) {}
+    ConnectionHeartBeatPacket() : Packet( PACKET_CONNECTION_HEARTBEAT ) {}
 
     template <typename Stream> bool Serialize( Stream & /*stream*/ ) { return true; }
 
@@ -478,7 +478,7 @@ struct ClientServerPacketFactory : public PacketFactory
             case PACKET_CONNECTION_DENIED:          return new ConnectionDeniedPacket();
             case PACKET_CONNECTION_CHALLENGE:       return new ConnectionChallengePacket();
             case PACKET_CONNECTION_RESPONSE:        return new ConnectionResponsePacket();
-            case PACKET_CONNECTION_KEEP_ALIVE:      return new ConnectionKeepAlivePacket();
+            case PACKET_CONNECTION_HEARTBEAT:       return new ConnectionHeartBeatPacket();
             case PACKET_CONNECTION_DISCONNECT:      return new ConnectionDisconnectPacket();
             default:
                 return NULL;
@@ -556,10 +556,10 @@ public:
             if ( !m_clientConnected[i] )
                 continue;
 
-            if ( m_clientData[i].lastPacketSendTime + ConnectionKeepAliveSendRate > time )
+            if ( m_clientData[i].lastPacketSendTime + ConnectionHeartBeatRate > time )
                 return;
 
-            ConnectionKeepAlivePacket * packet = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
+            ConnectionHeartBeatPacket * packet = (ConnectionHeartBeatPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_HEARTBEAT );
 
             SendPacketToConnectedClient( i, packet, time );
         }
@@ -584,8 +584,8 @@ public:
                     ProcessConnectionResponse( *(ConnectionResponsePacket*)packet, address, time );
                     break;
 
-                case PACKET_CONNECTION_KEEP_ALIVE:
-                    ProcessConnectionKeepAlive( *(ConnectionKeepAlivePacket*)packet, address, time );
+                case PACKET_CONNECTION_HEARTBEAT:
+                    ProcessConnectionHeartBeat( *(ConnectionHeartBeatPacket*)packet, address, time );
                     break;
 
                 case PACKET_CONNECTION_DISCONNECT:
@@ -607,7 +607,7 @@ public:
             if ( !m_clientConnected[i] )
                 continue;
 
-            if ( m_clientData[i].lastPacketReceiveTime + KeepAliveTimeOut < time )
+            if ( m_clientData[i].lastPacketReceiveTime + ConnectionTimeOut < time )
             {
                 char buffer[256];
                 const char *addressString = m_clientAddress[i].ToString( buffer, sizeof( buffer ) );
@@ -671,9 +671,9 @@ protected:
         const char *addressString = address.ToString( buffer, sizeof( buffer ) );
         printf( "client %d connected (client address = %s, client id = %" PRIx64 ")\n", clientIndex, addressString, clientId );
 
-        ConnectionKeepAlivePacket * connectionKeepAlivePacket = (ConnectionKeepAlivePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_KEEP_ALIVE );
+        ConnectionHeartBeatPacket * connectionHeartBeatPacket = (ConnectionHeartBeatPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_HEARTBEAT );
 
-        SendPacketToConnectedClient( clientIndex, connectionKeepAlivePacket, time );
+        SendPacketToConnectedClient( clientIndex, connectionHeartBeatPacket, time );
     }
 
     void DisconnectClient( int clientIndex, double time )
@@ -841,7 +841,7 @@ protected:
         */
     }
 
-    void ProcessConnectionKeepAlive( const ConnectionKeepAlivePacket & /*packet*/, const Address & address, double time )
+    void ProcessConnectionHeartBeat( const ConnectionHeartBeatPacket & /*packet*/, const Address & address, double time )
     {
         const int clientIndex = FindExistingClientIndex( address );
         if ( clientIndex == -1 )
@@ -863,6 +863,31 @@ protected:
         assert( clientIndex < MaxClients );
 
         DisconnectClient( clientIndex, time );
+    }
+};
+
+class ClientServerNetworkInterface : public SocketInterface
+{   
+public:
+
+    ClientServerNetworkInterface( ClientServerPacketFactory & packetFactory, uint16_t port ) : SocketInterface( memory_default_allocator(), packetFactory, ProtocolId, port )
+    {
+        EnablePacketEncryption();
+
+        DisableEncryptionForPacketType( PACKET_CONNECTION_REQUEST );
+
+        assert( IsEncryptedPacketType( PACKET_CONNECTION_REQUEST ) == false );
+        assert( IsEncryptedPacketType( PACKET_CONNECTION_DENIED ) == true );
+        assert( IsEncryptedPacketType( PACKET_CONNECTION_CHALLENGE ) == true );
+        assert( IsEncryptedPacketType( PACKET_CONNECTION_RESPONSE ) == true );
+        assert( IsEncryptedPacketType( PACKET_CONNECTION_HEARTBEAT ) == true );
+        assert( IsEncryptedPacketType( PACKET_CONNECTION_DISCONNECT ) == true );
+    }
+
+    ~ClientServerNetworkInterface()
+    {
+        ClearSendQueue();
+        ClearReceiveQueue();
     }
 };
 
@@ -965,11 +990,12 @@ int main()
         Address clientAddress( "::1", ClientPort );
         Address serverAddress( "::1", ServerPort );
 
-        ClientServerPacketFactory clientPacketFactory;
-        ClientServerPacketFactory serverPacketFactory;
+        ClientServerPacketFactory packetFactory;
 
-        SocketInterface clientInterface( memory_default_allocator(), clientPacketFactory, ProtocolId, ClientPort );
-        SocketInterface serverInterface( memory_default_allocator(), serverPacketFactory, ProtocolId, ServerPort );
+        ClientServerNetworkInterface clientInterface( packetFactory, ClientPort );
+        ClientServerNetworkInterface serverInterface( packetFactory, ServerPort );
+
+        // todo: switch over to interface with all packets set as encrypted
 
         if ( clientInterface.GetError() != SOCKET_ERROR_NONE || serverInterface.GetError() != SOCKET_ERROR_NONE )
         {

@@ -2,4 +2,4 @@ DONE
 
 TODO
 
-    ...
+    Next step, bring across the network interface from secure packets and set only the connection request packet as unencrypted.
