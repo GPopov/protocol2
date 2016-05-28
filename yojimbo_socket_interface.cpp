@@ -90,6 +90,8 @@ namespace yojimbo
         m_scratchBuffer = (uint8_t*) m_allocator->Allocate( m_absoluteMaxPacketSize );
         
         m_packetFactory = &packetFactory;
+
+        m_packetProcessor = new PacketProcessor( packetFactory, m_protocolId, maxPacketSize );
         
         queue_reserve( m_sendQueue, sendQueueSize );
         queue_reserve( m_receiveQueue, receiveQueueSize );
@@ -132,6 +134,8 @@ namespace yojimbo
         m_allocator->Free( m_packetTypeIsUnencrypted );
 #endif // #if YOJIMBO_SECURE
 
+        delete m_packetProcessor;
+
         m_socket = NULL;
         m_packetBuffer = NULL;
         m_scratchBuffer = NULL;
@@ -140,6 +144,8 @@ namespace yojimbo
         m_packetTypeIsEncrypted = NULL;
         m_packetTypeIsUnencrypted = NULL;
 #endif // #if YOJIMBO_SECURE
+
+        m_packetProcessor = NULL;
 
         m_allocator = NULL;
     }
@@ -250,10 +256,6 @@ namespace yojimbo
         return entry.packet;
     }
 
-#if YOJIMBO_SECURE
-    static const int ENCRYPTED_PACKET_FLAG = (1<<7);
-#endif // if YOJIMBO_SECURE
-
     void SocketInterface::WritePackets( double /*time*/ )
     {
         assert( m_allocator );
@@ -270,125 +272,27 @@ namespace yojimbo
 
             queue_consume( m_sendQueue, 1 );
 
-#if YOJIMBO_SECURE
-
             const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
 
-            if ( encrypt )
+            const uint8_t * key = NULL;
+
+            if ( encrypt)
             {
-                int prefixBytes;
-                uint8_t prefix[16];
-                yojimbo::CompressPacketSequence( entry.sequence, prefix[0], prefixBytes, prefix+1 );
-                prefix[0] |= ENCRYPTED_PACKET_FLAG;
-                prefixBytes++;
-
-                protocol2::PacketInfo info;
-
-                info.context = m_context;
-                info.protocolId = m_protocolId;
-                info.packetFactory = m_packetFactory;
-                info.rawFormat = true;
-
-                int packetBytes = protocol2::WritePacket( info, entry.packet, m_scratchBuffer, m_maxPacketSize );
-
-                if ( packetBytes > 0 )
-                {
-                    assert( packetBytes <= m_maxPacketSize );
-
-                    EncryptionMapping * encryptionMapping = FindEncryptionMapping( entry.address );
-
-                    if ( encryptionMapping )
-                    {
-                        int encryptedPacketSize;
-
-                        if ( Encrypt( m_scratchBuffer,
-                                      packetBytes,
-                                      m_scratchBuffer,
-                                      encryptedPacketSize, 
-                                      (uint8_t*) &entry.sequence, encryptionMapping->sendKey ) )
-                        {
-                            memcpy( m_packetBuffer, prefix, prefixBytes );
-                            memcpy( m_packetBuffer + prefixBytes, m_scratchBuffer, encryptedPacketSize );
-
-                            packetBytes = prefixBytes + encryptedPacketSize;
-
-                            assert( packetBytes <= m_absoluteMaxPacketSize );
-
-                            m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );
-
-                            m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
-                            m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN]++;    
-                        }
-                        else
-                        {
-                            m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES]++;
-                        }
-                    }
-                    else
-                    {
-                        m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTION_MAPPING_FAILURES_SEND]++;
-                    }
-                }
-                else
-                {
-                    m_counters[SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS]++;
-                }
+                EncryptionMapping * encryptionMapping = FindEncryptionMapping( entry.address );
+                if ( encryptionMapping )
+                    key = encryptionMapping->sendKey;
             }
-            else
+
+            int packetBytes;
+
+            const uint8_t * packetData = m_packetProcessor->WritePacket( entry.packet, entry.sequence, packetBytes, encrypt, key );
+
+            if ( packetData )
             {
-                protocol2::PacketInfo info;
-
-                info.context = m_context;
-                info.protocolId = m_protocolId;
-                info.packetFactory = m_packetFactory;
-                info.rawFormat = false;
-                info.prefixBytes = 1;
-
-                int packetBytes = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
-
-                if ( packetBytes > 0 )
-                {
-                    assert( packetBytes <= m_maxPacketSize );
-
-                    m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );
-
-                    m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
-                    m_counters[SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN]++;    
-                }
-                else
-                {
-                    m_counters[SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS]++;
-                }
+                m_socket->SendPacket( entry.address, packetData, packetBytes );
             }
 
             m_packetFactory->DestroyPacket( entry.packet );
-
-#else // #if YOJIMBO_SECURE
-
-            protocol2::PacketInfo info;
-
-            info.context = m_context;
-            info.protocolId = m_protocolId;
-            info.packetFactory = m_packetFactory;
-
-            int packetBytes = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
-
-            if ( packetBytes > 0 )
-            {
-                assert( packetBytes <= m_maxPacketSize );
-
-                m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );
-
-                m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
-            }
-            else
-            {
-                m_counters[SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS]++;
-            }
-
-            m_packetFactory->DestroyPacket( entry.packet );
-
-#endif // #if YOJIMBO_SECURE
         }
     }
 
@@ -414,131 +318,25 @@ namespace yojimbo
                 break;
             }
 
-#if YOJIMBO_SECURE
+            const uint8_t * key = NULL;
 
-            const uint8_t prefixByte = m_packetBuffer[0];
+            EncryptionMapping * encryptionMapping = FindEncryptionMapping( address );
+            if ( encryptionMapping )
+                key = encryptionMapping->receiveKey;
 
-            const bool encrypted = ( prefixByte & ENCRYPTED_PACKET_FLAG ) != 0;
+            uint64_t sequence;
 
-            if ( encrypted )
-            {
-                EncryptionMapping * encryptionMapping = FindEncryptionMapping( address );
-                if ( !encryptionMapping )
-                {
-                    m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTION_MAPPING_FAILURES_RECEIVE]++;
-                    continue;
-                }
+            protocol2::Packet * packet = m_packetProcessor->ReadPacket( m_packetBuffer, sequence, packetBytes, key, m_packetTypeIsEncrypted, m_packetTypeIsUnencrypted );
 
-                const int sequenceBytes = GetPacketSequenceBytes( prefixByte );
-
-                const int prefixBytes = 1 + sequenceBytes;
-
-                if ( packetBytes <= prefixBytes + MacBytes )
-                {
-                    m_counters[SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES]++;
-                    continue;
-                }
-
-                uint64_t sequence = DecompressPacketSequence( prefixByte, m_packetBuffer + 1 );
-
-                int decryptedPacketBytes;
-
-                memcpy( m_scratchBuffer, m_packetBuffer + prefixBytes, packetBytes - prefixBytes );
-
-                if ( !Decrypt( m_scratchBuffer,
-                               packetBytes - prefixBytes, 
-                               m_scratchBuffer,
-                               decryptedPacketBytes, 
-                               (uint8_t*)&sequence, encryptionMapping->receiveKey ) )
-                {
-                    m_counters[SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES]++;
-                    continue;
-                }
-
-                protocol2::PacketInfo info;
-                
-                info.context = m_context;
-                info.protocolId = m_protocolId;
-                info.packetFactory = m_packetFactory;
-                info.allowedPacketTypes = m_packetTypeIsEncrypted;
-                info.rawFormat = 1;
-
-                int readError;
-                protocol2::Packet *packet = protocol2::ReadPacket( info, m_scratchBuffer, decryptedPacketBytes, NULL, &readError );
-                if ( packet )
-                {
-                    m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
-                    m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ]++;    
-                }
-                else
-                {
-                    m_counters[SOCKET_INTERFACE_COUNTER_READ_PACKET_ERRORS]++;
-                    continue;
-                }
-
-                PacketEntry entry;
-                entry.sequence = 0;
-                entry.packet = packet;
-                entry.address = address;
-                queue_push_back( m_receiveQueue, entry );
-            }
-            else
-            {
-                protocol2::PacketInfo info;
-                
-                info.context = m_context;
-                info.protocolId = m_protocolId;
-                info.packetFactory = m_packetFactory;
-                info.allowedPacketTypes = m_packetTypeIsUnencrypted;
-                info.prefixBytes = 1;
-
-                int readError;
-                protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
-                if ( packet )
-                {
-                    m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
-                    m_counters[SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ]++;    
-                }
-                else
-                {
-                    m_counters[SOCKET_INTERFACE_COUNTER_READ_PACKET_ERRORS]++;
-                    continue;
-                }
-
-                PacketEntry entry;
-                entry.sequence = 0;
-                entry.packet = packet;
-                entry.address = address;
-                queue_push_back( m_receiveQueue, entry );
-            }
-
-#else // #if YOJIMBO_SECURE
-
-            protocol2::PacketInfo info;
-            
-            info.context = m_context;
-            info.protocolId = m_protocolId;
-            info.packetFactory = m_packetFactory;
-
-            int readError;
-            protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
             if ( packet )
             {
-                m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
-            }
-            else
-            {
-                m_counters[SOCKET_INTERFACE_COUNTER_READ_PACKET_ERRORS]++;
-                continue;
-            }
+                PacketEntry entry;
+                entry.sequence = 0;
+                entry.packet = packet;
+                entry.address = address;
 
-            PacketEntry entry;
-            entry.sequence = 0;
-            entry.packet = packet;
-            entry.address = address;
-            queue_push_back( m_receiveQueue, entry );
-
-#endif // #if YOJIMBO_SECURE
+                queue_push_back( m_receiveQueue, entry );
+            }
         }
     }
 

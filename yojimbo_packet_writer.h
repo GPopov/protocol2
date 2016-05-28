@@ -31,29 +31,42 @@
 
 namespace yojimbo
 {
-    class PacketWriter
+    class PacketProcessor
     {
     private:
 
-        /*
-        uint32_t protocolId;
-        int packetBytes;
-        int maxPacketSize;
-        int absoluteMaxPacketSize;
-        void * context;
-        protocol2::PacketFactory * packetFactory;
-        */
+        uint32_t m_protocolId;
 
-        PacketWriter()
-        {
-            // ...
-        }
+        int m_maxPacketSize;
+        int m_absoluteMaxPacketSize;
+        
+        uint8_t * m_packetBuffer;
+        uint8_t * m_scratchBuffer;
 
-        bool WritePacket( protocol2::Packet * packet, 
-                          int & packetBytes,
-                          uint64_t sequence,
-                          uint8_t * packetBuffer,
-                          uint8_t * scratchBuffer );
+        void * m_context;
+
+        protocol2::PacketFactory * m_packetFactory;
+
+    public:
+
+        PacketProcessor( protocol2::PacketFactory & packetFactory, uint32_t protocolId, int maxPacketSize, void * context = NULL );
+
+        ~PacketProcessor();
+
+        const uint8_t * WritePacket( protocol2::Packet * packet, 
+                                     uint64_t sequence,
+                                     int & packetBytes,
+                                     bool encrypt,
+                                     const uint8_t * key );
+
+        protocol2::Packet * ReadPacket( const uint8_t * packetData, 
+                                        uint64_t & sequence,
+                                        int packetBytes,
+                                        const uint8_t * key,
+                                        const uint8_t * encryptedPacketTypes,
+                                        const uint8_t * unencryptedPacketTypes );
+
+        int GetMaxPacketSize() const { return m_maxPacketSize; }
     };
 }
 

@@ -1260,7 +1260,7 @@ namespace protocol2
         int prefixBytes;                            // prefix this number of bytes when reading and writing packets. stick your own data there.
         uint32_t protocolId;                        // protocol id that distinguishes your protocol from other packets sent over UDP.
         PacketFactory * packetFactory;              // create packets and determine information about packet types. required.
-        uint8_t * allowedPacketTypes;               // array of allowed packet types. if a packet type is not allowed the serialize read or write will fail.
+        const uint8_t * allowedPacketTypes;         // array of allowed packet types. if a packet type is not allowed the serialize read or write will fail.
         void * context;                             // context for the packet serialization (optional, pass in NULL)
 
         PacketInfo()

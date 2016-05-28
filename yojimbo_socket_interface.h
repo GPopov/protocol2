@@ -79,6 +79,7 @@ namespace yojimbo
         Allocator * m_allocator;
         network2::Socket * m_socket;
         protocol2::PacketFactory * m_packetFactory;
+        PacketProcessor * m_packetProcessor;
 
         struct PacketEntry
         {
