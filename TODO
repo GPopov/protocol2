@@ -10,4 +10,6 @@ DONE
 
 TODO
     
-    Strip down into a test case.
+    First try to strip out the sequence stuff and see if that fixes it.
+
+    Eg. make sequence always 0 on both sides for nonce.
