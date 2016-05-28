@@ -431,6 +431,8 @@ void test_address_ipv4()
     }
 }
 
+#if 0
+
 void test_address_ipv6()
 {
     printf( "test_address_ipv6\n" );
@@ -569,6 +571,8 @@ void test_address_ipv6()
         check( strcmp( address.ToString( buffer, 256 ), "[::1]:65535" ) == 0 );
     }
 }
+
+#endif // #if 0
 
 void test_packet_sequence()
 {
@@ -1291,7 +1295,7 @@ int main()
     test_stream();
     test_packets();
     test_address_ipv4();
-    test_address_ipv6();
+//    test_address_ipv6();
     test_packet_sequence();
     test_packet_encryption();
     test_packet_processor();
