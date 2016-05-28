@@ -1,7 +1,5 @@
 DONE
 
-TODO
-    
     Now that it reproduces with the basically rewritten packet processor, the question is -- can it be reproduced on linux, in a test case?
 
     Try again, with the actual packet processor sending packets.
@@ -10,6 +8,6 @@ TODO
 
     If it doesn't reproduce, then I still suspect something bad, eg. mem trashing, or queues or something bad trashing memory.
 
-    ---------
-
-    Once reproduced, need to bring back the 
+TODO
+    
+    Strip down into a test case.
