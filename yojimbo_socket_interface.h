@@ -36,7 +36,7 @@
 #include "yojimbo_crypto.h"
 #include "yojimbo_allocator.h"
 #include "yojimbo_network_interface.h"
-#include "yojimbo_packet_writer.h"
+#include "yojimbo_packet_processor.h"
 
 namespace yojimbo
 {
@@ -68,13 +68,8 @@ namespace yojimbo
         void * m_context;
 
         uint32_t m_protocolId;
-        int m_maxPacketSize;
         int m_sendQueueSize;
         int m_receiveQueueSize;
-        int m_absoluteMaxPacketSize;
-
-        uint8_t * m_packetBuffer;
-        uint8_t * m_scratchBuffer;
 
         Allocator * m_allocator;
         network2::Socket * m_socket;

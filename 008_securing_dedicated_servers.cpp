@@ -830,7 +830,7 @@ protected:
     void ProcessConnectionRequest( const ConnectionRequestPacket & packet, const Address & address, double time )
     {
         char buffer[256];
-        const char *addressString = address.ToString( buffer, sizeof( buffer ) );        
+        const char * addressString = address.ToString( buffer, sizeof( buffer ) );        
         printf( "processing connection request packet from: %s\n", addressString );
 
         ConnectToken connectToken;
@@ -916,28 +916,9 @@ protected:
             return;
         }
 
-        printf( "challenge token: " );
-        PrintBytes( connectionChallengePacket->challengeTokenData, ChallengeTokenBytes );
-        printf( "\n" );
-
-        printf( "challenge nonce: " );
-        PrintBytes( connectionChallengePacket->challengeTokenNonce, NonceBytes );
-        printf( "\n" );
-
-        printf( "private key: " );
-        PrintBytes( private_key, KeyBytes );
-        printf( "\n" );
-
-        ChallengeToken decryptedChallengeToken;
-        if ( !DecryptChallengeToken( connectionChallengePacket->challengeTokenData, challengeToken, NULL, 0, connectionChallengePacket->challengeTokenNonce, private_key ) )
-        {
-            printf( "failed to decrypt challenge token (a)\n" );
-            // temp!
-            exit(1);
-            return;
-        }
-
-        m_challengeTokenNonce++;
+        char clientAddressString[64];
+        address.ToString( clientAddressString, sizeof( clientAddressString ) );
+        printf( "server sent challenge to client %s\n", clientAddressString );
 
         m_networkInterface->SendPacket( address, connectionChallengePacket );
     }
@@ -947,22 +928,7 @@ protected:
         ChallengeToken challengeToken;
         if ( !DecryptChallengeToken( packet.challengeTokenData, challengeToken, NULL, 0, packet.challengeTokenNonce, private_key ) )
         {
-            printf( "failed to decrypt challenge token (b)\n" );
-
-            printf( "challenge token: " );
-            PrintBytes( packet.challengeTokenData, ChallengeTokenBytes );
-            printf( "\n" );
-
-            printf( "challenge nonce: " );
-            PrintBytes( packet.challengeTokenNonce, NonceBytes );
-            printf( "\n" );
-
-            printf( "private key: " );
-            PrintBytes( private_key, KeyBytes );
-            printf( "\n" );
-
-            exit(1);
-
+            printf( "failed to decrypt challenge token\n" );
             return;
         }
 
@@ -1052,7 +1018,6 @@ public:
 
     ClientServerNetworkInterface( ClientServerPacketFactory & packetFactory, uint16_t port ) : SocketInterface( memory_default_allocator(), packetFactory, ProtocolId, port )
     {
-        /*
         EnablePacketEncryption();
 
         DisableEncryptionForPacketType( PACKET_CONNECTION_REQUEST );
@@ -1063,7 +1028,6 @@ public:
         assert( IsEncryptedPacketType( PACKET_CONNECTION_RESPONSE ) == true );
         assert( IsEncryptedPacketType( PACKET_CONNECTION_HEARTBEAT ) == true );
         assert( IsEncryptedPacketType( PACKET_CONNECTION_DISCONNECT ) == true );
-        */
     }
 
     ~ClientServerNetworkInterface()
@@ -1178,7 +1142,7 @@ public:
 
                 char buffer[256];
                 const char *addressString = m_serverAddress.ToString( buffer, sizeof( buffer ) );
-                printf( "client sending connection request to server: %s\n", addressString );
+                printf( "client sending connection request to server %s\n", addressString );
 
                 ConnectionRequestPacket * packet = (ConnectionRequestPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_REQUEST );
 
@@ -1199,7 +1163,7 @@ public:
 
                 char buffer[256];
                 const char *addressString = m_serverAddress.ToString( buffer, sizeof( buffer ) );
-                printf( "client sending challenge response to server: %s\n", addressString );
+                printf( "client sending challenge response to server %s\n", addressString );
 
                 ConnectionResponsePacket * packet = (ConnectionResponsePacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_RESPONSE );
 

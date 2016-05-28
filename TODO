@@ -28,8 +28,6 @@ DONE
 
     If they are limited to use the same buffers, then they cannot. So it's worthwhile potentially.
 
-TODO
-
     It's somewhat inconvenient that we don't know the encryption mappings in the packet processor.
 
     This forces me to lookup the encryption mapping for unencrypted packets.
@@ -40,3 +38,13 @@ TODO
     the packet came from in order to process the packet, this seems annoying. The packet processor should just process and not make decisions.
 
     eg. it should do what it's told.
+
+    Works, and it works in linux.
+
+    Which is... troubling. and indicates memory trashing in my opinion.
+
+TODO
+    
+    Fuck. Was still in unencrypted mode, which means don't know if it works in linux or not.
+
+    Some bullshit going on with encrypted packets.

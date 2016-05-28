@@ -28,6 +28,7 @@
 #define YOJIMBO_PACKET_WRITER_H
 
 #include "protocol2.h"
+#include "yojimbo_config.h"
 
 namespace yojimbo
 {

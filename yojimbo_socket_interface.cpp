@@ -52,7 +52,6 @@ namespace yojimbo
           m_receiveQueue( allocator )
     {
         assert( protocolId != 0 );
-        assert( maxPacketSize > 0 );
         assert( sendQueueSize > 0 );
         assert( receiveQueueSize > 0 );
 
@@ -64,33 +63,12 @@ namespace yojimbo
         
         m_protocolId = protocolId;
 
-        m_maxPacketSize = maxPacketSize + ( ( maxPacketSize % 4 ) ? ( 4 - ( maxPacketSize % 4 ) ) : 0 );
-        assert( m_maxPacketSize % 4 == 0 );
-        assert( m_maxPacketSize >= maxPacketSize );
-
-#if YOJIMBO_SECURE
-
-        const int MaxPrefixBytes = 9;
-        const int CryptoOverhead = MacBytes;
-
-        m_absoluteMaxPacketSize = m_maxPacketSize + MaxPrefixBytes + CryptoOverhead;
-
-#else // #if YOJIMBO_SECURE
-
-        m_absoluteMaxPacketSize = m_maxPacketSize;
-
-#endif // #if YOJIMBO_SECURE
-
         m_sendQueueSize = sendQueueSize;
 
         m_receiveQueueSize = receiveQueueSize;
-        
-        m_packetBuffer = (uint8_t*) m_allocator->Allocate( m_absoluteMaxPacketSize );
 
-        m_scratchBuffer = (uint8_t*) m_allocator->Allocate( m_absoluteMaxPacketSize );
-        
         m_packetFactory = &packetFactory;
-
+        
         m_packetProcessor = new PacketProcessor( packetFactory, m_protocolId, maxPacketSize );
         
         queue_reserve( m_sendQueue, sendQueueSize );
@@ -118,16 +96,11 @@ namespace yojimbo
     SocketInterface::~SocketInterface()
     {
         assert( m_socket );
-        assert( m_packetBuffer );
-        assert( m_packetFactory );
 
         ClearSendQueue();
         ClearReceiveQueue();
 
         YOJIMBO_DELETE( *m_allocator, NetworkSocket, m_socket );
-
-        m_allocator->Free( m_packetBuffer );
-        m_allocator->Free( m_scratchBuffer );
 
 #if YOJIMBO_SECURE
         m_allocator->Free( m_packetTypeIsEncrypted );
@@ -137,8 +110,6 @@ namespace yojimbo
         delete m_packetProcessor;
 
         m_socket = NULL;
-        m_packetBuffer = NULL;
-        m_scratchBuffer = NULL;
         m_packetFactory = NULL;
 #if YOJIMBO_SECURE
         m_packetTypeIsEncrypted = NULL;
@@ -260,8 +231,8 @@ namespace yojimbo
     {
         assert( m_allocator );
         assert( m_socket );
-        assert( m_packetBuffer );
         assert( m_packetFactory );
+        assert( m_packetProcessor );
 
         while ( queue_size( m_sendQueue ) )
         {
@@ -300,13 +271,17 @@ namespace yojimbo
     {
         assert( m_allocator );
         assert( m_socket );
-        assert( m_packetBuffer );
         assert( m_packetFactory );
+        assert( m_packetProcessor );
+
+        const int maxPacketSize = GetMaxPacketSize();
+
+        uint8_t * packetBuffer = (uint8_t*) alloca( maxPacketSize );
 
         while ( true )
         {
             network2::Address address;
-            int packetBytes = m_socket->ReceivePacket( address, m_packetBuffer, m_maxPacketSize );
+            int packetBytes = m_socket->ReceivePacket( address, packetBuffer, maxPacketSize );
             if ( !packetBytes )
                 break;
 
@@ -326,7 +301,7 @@ namespace yojimbo
 
             uint64_t sequence;
 
-            protocol2::Packet * packet = m_packetProcessor->ReadPacket( m_packetBuffer, sequence, packetBytes, key, m_packetTypeIsEncrypted, m_packetTypeIsUnencrypted );
+            protocol2::Packet * packet = m_packetProcessor->ReadPacket( packetBuffer, sequence, packetBytes, key, m_packetTypeIsEncrypted, m_packetTypeIsUnencrypted );
 
             if ( packet )
             {
@@ -342,7 +317,7 @@ namespace yojimbo
 
     int SocketInterface::GetMaxPacketSize() const 
     {
-        return m_maxPacketSize;
+        return m_packetProcessor->GetMaxPacketSize();
     }
 
     void SocketInterface::SetContext( void * context )

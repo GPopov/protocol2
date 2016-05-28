@@ -24,10 +24,11 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "yojimbo_packet_writer.h"
+#include "yojimbo_packet_processor.h"
 #include "yojimbo_crypto.h"
 #include "yojimbo_util.h"
 #include "protocol2.h"
+#include <stdio.h>
 
 #if YOJIMBO_SECURE
 #include <sodium.h>
@@ -67,6 +68,9 @@ namespace yojimbo
     {
         delete [] m_packetBuffer;
         delete [] m_scratchBuffer;
+
+        m_packetBuffer = NULL;
+        m_scratchBuffer = NULL;
     }
 
 #if YOJIMBO_SECURE
@@ -79,6 +83,8 @@ namespace yojimbo
                                                   bool encrypt, 
                                                   const uint8_t * key )
     {
+#if YOJIMBO_SECURE
+
         if ( encrypt )
         {
             if ( !key )
@@ -95,6 +101,7 @@ namespace yojimbo
             info.context = m_context;
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
+            info.rawFormat = 0;
 
             packetBytes = protocol2::WritePacket( info, packet, m_scratchBuffer, m_maxPacketSize );
 
@@ -153,34 +160,24 @@ namespace yojimbo
             }
         }
 
-//#else // #if YOJIMBO_SECURE
+#else // #if YOJIMBO_SECURE
 
-        /*
         protocol2::PacketInfo info;
 
         info.context = m_context;
         info.protocolId = m_protocolId;
         info.packetFactory = m_packetFactory;
 
-        int packetBytes = protocol2::WritePacket( info, entry.packet, m_packetBuffer, m_maxPacketSize );
+        packetBytes = protocol2::WritePacket( info, packet, m_packetBuffer, m_maxPacketSize );
 
         if ( packetBytes > 0 )
         {
             assert( packetBytes <= m_maxPacketSize );
 
-            m_socket->SendPacket( entry.address, m_packetBuffer, packetBytes );
-
-            m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
-        }
-        else
-        {
-            m_counters[SOCKET_INTERFACE_COUNTER_WRITE_PACKET_ERRORS]++;
+            return m_packetBuffer;
         }
 
-        m_packetFactory->DestroyPacket( entry.packet );
-        */
-
-//#endif // #if YOJIMBO_SECURE
+#endif // #if YOJIMBO_SECURE
 
         return m_packetBuffer;
     }
@@ -192,7 +189,7 @@ namespace yojimbo
                                                      const uint8_t * encryptedPacketTypes,
                                                      const uint8_t * unencryptedPacketTypes )
     {
-//#if YOJIMBO_SECURE
+#if YOJIMBO_SECURE
 
         const uint8_t prefixByte = packetData[0];
 
@@ -214,7 +211,7 @@ namespace yojimbo
 
             int decryptedPacketBytes;
 
-            memcpy( m_scratchBuffer, m_packetBuffer + prefixBytes, packetBytes - prefixBytes );
+            memcpy( m_scratchBuffer, packetData + prefixBytes, packetBytes - prefixBytes );
 
             if ( !Decrypt( m_scratchBuffer,
                            packetBytes - prefixBytes, 
@@ -231,11 +228,11 @@ namespace yojimbo
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
             info.allowedPacketTypes = encryptedPacketTypes;
-            info.rawFormat = 1;
+            info.rawFormat = 0;
 
             int readError;
             
-            protocol2::Packet *packet = protocol2::ReadPacket( info, m_scratchBuffer, decryptedPacketBytes, NULL, &readError );
+            protocol2::Packet * packet = protocol2::ReadPacket( info, m_scratchBuffer, decryptedPacketBytes, NULL, &readError );
             
             return packet;
         }
@@ -251,14 +248,13 @@ namespace yojimbo
 
             int readError;
 
-            protocol2::Packet *packet = protocol2::ReadPacket( info, packetData, packetBytes, NULL, &readError );
+            protocol2::Packet * packet = protocol2::ReadPacket( info, packetData, packetBytes, NULL, &readError );
 
             sequence = 0;
-
+            
             return packet;
         }
 
-/*
 #else // #if YOJIMBO_SECURE
 
         protocol2::PacketInfo info;
@@ -272,6 +268,7 @@ namespace yojimbo
         protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
 
         return packet;
-*/
+
+#endif // #if YOJIMBO_SECURE
     }
 }
