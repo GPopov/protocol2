@@ -1550,7 +1550,7 @@ namespace protocol2
 
             if ( crc32 != read_crc32 )
             {
-                printf( "crc32 mismatch. expected %x, got %x\n", crc32, read_crc32 );
+                printf( "corrupt packet. expected crc32 %x, got %x\n", crc32, read_crc32 );
 
                 if ( errorCode )
                     *errorCode = PROTOCOL2_ERROR_CRC32_MISMATCH;
