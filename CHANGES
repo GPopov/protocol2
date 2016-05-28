@@ -96,6 +96,63 @@ Friday May 27th, 2016
 
     Memory trashing? Stack corruption? Compiler bug somewhere? Logic bug something in my packet system? Bug in sodium?!
 
+    It's more likely to be a bug in my packet system, which is complex.
+
+    Or a bug in the allocation code, which is also complex.
+
+    What the fuck. Where do I start debugging this?!
+
+    Idea. Split out the key read and write packet functionality into functions that can be unit tested.
+
+    Then, re-implement the network interface using these functions and see if the bugs still occur.
+
+    If they do, then pull the functions out of the network interface, and run over the same inputs and see if the result reproduces.
+
+    Eventually, simplify enough so that it is possible to isolate the actual bug.
+
+    WIP splitting out into packet writer class (yojimbo_packet_writer.*)
+
+    OK. THe send is a bit ugly, but it is working.
+
+    Now convert the read packet.
+
+    Should it be a separate class or the same?
+
+    On one hand do we really need separate buffers for read and write? Not really.
+    
+    Yes there is. By keeping read and write data separately packet read and write can conceivably be done in parallel.
+
+    If they are limited to use the same buffers, then they cannot. So it's worthwhile potentially.
+
+    It's somewhat inconvenient that we don't know the encryption mappings in the packet processor.
+
+    This forces me to lookup the encryption mapping for unencrypted packets.
+
+    Since *most* packets are encrypted, this is no big problem.
+
+    Leave it for now. Don't move the encryption mapping into the packet processor, otherwise the packet processor would need to know the address
+    the packet came from in order to process the packet, this seems annoying. The packet processor should just process and not make decisions.
+
+    eg. it should do what it's told.
+
+    Works, and it works in linux.
+
+    Which is... troubling. and indicates memory trashing in my opinion.
+
+    Fuck. Was still in unencrypted mode, which means don't know if it works in linux or not.
+
+    Some bullshit going on with encrypted packets.
+    
+    Was having raw mode on for encrypted read but not write. Raw mode off for both now.
+
+    Interestingly, the issue still reproduces on linux, which makes me think:
+
+    a) logic error
+
+    b) bug is sodium
+
+    It's caught now by the crc32 I put in the encrypted packets, which until I trust encryption again is a good idea.
+
 
 Thursday May 26th, 2016
 =======================

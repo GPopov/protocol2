@@ -304,7 +304,7 @@ struct PacketBuffer
 
         if ( crc32 != fragmentPacket.crc32 )
         {
-            printf( "error: crc32 mismatch. expected %x, got %x\n", crc32, fragmentPacket.crc32 );
+            printf( "corrupt packet: expected crc32 %x, got %x\n", crc32, fragmentPacket.crc32 );
             return false;
         }
 

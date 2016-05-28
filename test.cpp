@@ -688,6 +688,13 @@ void test_packet_encryption()
 
 #endif // #if YOJIMBO_SECURE
 
+void test_packet_processor()
+{
+    printf( "test_packet_processor\n" );
+
+    // ...
+}
+
 int main()
 {
     test_bitpacker();   
@@ -699,5 +706,6 @@ int main()
 #if YOJIMBO_SECURE
     test_packet_encryption();
 #endif // #if YOJIMBO_SECURE
+    test_packet_processor();
     return 0;
 }

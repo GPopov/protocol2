@@ -390,6 +390,11 @@ public:
         }
     }
 
+    int GetNumConnectedClients() const
+    {
+        return m_numConnectedClients;
+    }
+
 protected:
 
     void ResetClientState( int clientIndex )
@@ -1029,7 +1034,7 @@ protected:
 
 int main()
 {
-    printf( "client/server connection\n" );
+    printf( "\nclient/server connection\n\n" );
 
     memory_initialize();
     {
@@ -1095,10 +1100,15 @@ int main()
             time += 0.1f;
 
             printf( "----------------------------------------------------------\n" );
+
+            if ( !client.IsConnecting() && !client.IsConnected() && server.GetNumConnectedClients() )
+                break;
         }
 
         ShutdownNetwork();
     }
+
+    printf( "\n" );
 
     memory_shutdown();
 

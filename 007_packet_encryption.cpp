@@ -249,7 +249,7 @@ int main()
         return 1;
     }
 
-    printf( "packet encryption\n" );
+    printf( "\npacket encryption\n\n" );
 
     memory_initialize();
     {
@@ -354,6 +354,8 @@ int main()
 
         ShutdownNetwork();
     }
+
+    printf( "\n" );
 
     memory_shutdown();
 
