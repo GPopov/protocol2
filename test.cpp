@@ -633,8 +633,6 @@ void test_packet_encryption()
 
     using namespace yojimbo;
 
-    InitializeCrypto();
-
     uint8_t packet[1024];
   
     int packet_length = 1;
@@ -688,24 +686,615 @@ void test_packet_encryption()
 
 #endif // #if YOJIMBO_SECURE
 
+#include "network2.h"
+#include "protocol2.h"
+#include <time.h>
+#include <stdint.h>
+#include <inttypes.h>
+#include <map>
+
+using namespace std;
+using namespace network2;
+using namespace protocol2;
+using namespace yojimbo;
+
+const uint32_t ProtocolId = 0x12341651;
+
+const int ClientPort = 40000;
+const int ServerPort = 50000;
+
+const int ConnectTokenBytes = 1024;
+const int ChallengeTokenBytes = 256;
+const int MaxServersPerConnectToken = 8;
+const int ConnectTokenExpirySeconds = 10;
+
+template <typename Stream> bool serialize_address_internal( Stream & stream, Address & address )
+{
+    char buffer[64];
+
+    if ( Stream::IsWriting )
+    {
+        assert( address.IsValid() );
+        address.ToString( buffer, sizeof( buffer ) );
+    }
+
+    serialize_string( stream, buffer, sizeof( buffer ) );
+
+    if ( Stream::IsReading )
+    {
+        address = Address( buffer );
+        if ( !address.IsValid() )
+            return false;
+    }
+
+    return true;
+}
+
+#define serialize_address( stream, value )                          \
+    do                                                              \
+    {                                                               \
+        if ( !serialize_address_internal( stream, value ) )         \
+            return false;                                           \
+    } while (0)
+
+static uint8_t private_key[KeyBytes];
+
+struct ConnectToken
+{
+    uint32_t protocolId;                                                // the protocol id this connect token corresponds to.
+ 
+    uint64_t clientId;                                                  // the unique client id. max one connection per-client id, per-server.
+ 
+    uint64_t expiryTimestamp;                                           // timestamp the connect token expires (eg. ~10 seconds after token creation)
+ 
+    int numServerAddresses;                                             // the number of server addresses in the connect token whitelist.
+ 
+    Address serverAddresses[MaxServersPerConnectToken];                 // connect token only allows connection to these server addresses.
+ 
+    uint8_t clientToServerKey[KeyBytes];                                // the key for encrypted communication from client -> server.
+ 
+    uint8_t serverToClientKey[KeyBytes];                                // the key for encrypted communication from server -> client.
+
+    uint8_t random[KeyBytes];                                           // random data the client cannot possibly know.
+
+    ConnectToken()
+    {
+        protocolId = 0;
+        clientId = 0;
+        expiryTimestamp = 0;
+        numServerAddresses = 0;
+        memset( clientToServerKey, 0, KeyBytes );
+        memset( serverToClientKey, 0, KeyBytes );
+        memset( random, 0, KeyBytes );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_uint32( stream, protocolId );
+
+        serialize_uint64( stream, clientId );
+        
+        serialize_uint64( stream, expiryTimestamp );
+        
+        serialize_int( stream, numServerAddresses, 0, MaxServersPerConnectToken - 1 );
+        
+        for ( int i = 0; i < numServerAddresses; ++i )
+            serialize_address( stream, serverAddresses[i] );
+
+        serialize_bytes( stream, clientToServerKey, KeyBytes );
+
+        serialize_bytes( stream, serverToClientKey, KeyBytes );
+
+        serialize_bytes( stream, random, KeyBytes );
+
+        return true;
+    }
+};
+
+void GenerateConnectToken( ConnectToken & token, uint64_t clientId, int numServerAddresses, const Address * serverAddresses )
+{
+    uint64_t timestamp = (uint64_t) time( NULL );
+
+    token.protocolId = ProtocolId;
+    token.clientId = clientId;
+    token.expiryTimestamp = timestamp + ConnectTokenExpirySeconds;
+    
+    assert( numServerAddresses > 0 );
+    assert( numServerAddresses <= MaxServersPerConnectToken );
+    token.numServerAddresses = numServerAddresses;
+    for ( int i = 0; i < numServerAddresses; ++i )
+        token.serverAddresses[i] = serverAddresses[i];
+
+    GenerateKey( token.clientToServerKey );    
+
+    GenerateKey( token.serverToClientKey );
+
+    GenerateKey( token.random );
+}
+
+bool EncryptConnectToken( ConnectToken & token, uint8_t *encryptedMessage, const uint8_t *additional, int additionalLength, const uint8_t * nonce, const uint8_t * key )
+{
+    uint8_t message[ConnectTokenBytes];
+    memset( message, 0, ConnectTokenBytes );
+    WriteStream stream( message, ConnectTokenBytes );
+    if ( !token.Serialize( stream ) )
+        return false;
+
+    stream.Flush();
+    
+    if ( stream.GetError() )
+        return false;
+
+    uint64_t encryptedLength;
+
+    if ( !Encrypt_AEAD( message, ConnectTokenBytes - AuthBytes, encryptedMessage, encryptedLength, additional, additionalLength, nonce, key ) )
+        return false;
+
+    assert( encryptedLength == ConnectTokenBytes );
+
+    return true;
+}
+
+bool DecryptConnectToken( const uint8_t * encryptedMessage, ConnectToken & decryptedToken, const uint8_t * additional, int additionalLength, const uint8_t * nonce, const uint8_t * key )
+{
+    const int encryptedMessageLength = ConnectTokenBytes;
+
+    uint64_t decryptedMessageLength;
+    uint8_t decryptedMessage[ConnectTokenBytes];
+
+    if ( !Decrypt_AEAD( encryptedMessage, encryptedMessageLength, decryptedMessage, decryptedMessageLength, additional, additionalLength, nonce, key ) )
+        return false;
+
+    assert( decryptedMessageLength == ConnectTokenBytes - AuthBytes );
+
+    ReadStream stream( decryptedMessage, ConnectTokenBytes - AuthBytes );
+    if ( !decryptedToken.Serialize( stream ) )
+        return false;
+
+    if ( stream.GetError() )
+        return false;
+
+    return true;
+}
+
+struct ChallengeToken
+{
+    uint64_t clientId;                                                  // the unique client id. max one connection per-client id, per-server.
+
+    Address clientAddress;                                              // client address corresponding to the initial connection request.
+
+    Address serverAddress;                                              // client address corresponding to the initial connection request.
+
+    uint8_t connectTokenMac[MacBytes];                                  // mac of the initial connect token this challenge corresponds to.
+ 
+    uint8_t clientToServerKey[KeyBytes];                                // the key for encrypted communication from client -> server.
+ 
+    uint8_t serverToClientKey[KeyBytes];                                // the key for encrypted communication from server -> client.
+
+    uint8_t random[KeyBytes];                                           // random bytes the client cannot possibly know.
+
+    ChallengeToken()
+    {
+        clientId = 0;
+        memset( connectTokenMac, 0, MacBytes );
+        memset( clientToServerKey, 0, KeyBytes );
+        memset( serverToClientKey, 0, KeyBytes );
+        memset( random, 0, KeyBytes );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_uint64( stream, clientId );
+        
+        serialize_address( stream, clientAddress );
+
+        serialize_address( stream, serverAddress );
+
+        serialize_bytes( stream, connectTokenMac, MacBytes );
+
+        serialize_bytes( stream, clientToServerKey, KeyBytes );
+
+        serialize_bytes( stream, serverToClientKey, KeyBytes );
+
+        serialize_bytes( stream, random, KeyBytes );
+
+        return true;
+    }
+};
+
+bool GenerateChallengeToken( const ConnectToken & connectToken, const Address & clientAddress, const Address & serverAddress, const uint8_t * connectTokenMac, ChallengeToken & challengeToken )
+{
+    if ( connectToken.clientId == 0 )
+        return false;
+
+    if ( !clientAddress.IsValid() )
+        return false;
+
+    challengeToken.clientId = connectToken.clientId;
+
+    challengeToken.clientAddress = clientAddress;
+    
+    challengeToken.serverAddress = serverAddress;
+
+    memcpy( challengeToken.connectTokenMac, connectTokenMac, MacBytes );
+
+    memcpy( challengeToken.clientToServerKey, connectToken.clientToServerKey, KeyBytes );
+
+    memcpy( challengeToken.serverToClientKey, connectToken.serverToClientKey, KeyBytes );
+
+    GenerateKey( challengeToken.random );
+
+    return true;
+}
+
+bool EncryptChallengeToken( ChallengeToken & token, uint8_t *encryptedMessage, const uint8_t *additional, int additionalLength, const uint8_t * nonce, const uint8_t * key )
+{
+    uint8_t message[ChallengeTokenBytes];
+    memset( message, 0, ChallengeTokenBytes );
+    WriteStream stream( message, ChallengeTokenBytes );
+    if ( !token.Serialize( stream ) )
+        return false;
+
+    stream.Flush();
+    
+    if ( stream.GetError() )
+        return false;
+
+    uint64_t encryptedLength;
+
+    if ( !Encrypt_AEAD( message, ChallengeTokenBytes - AuthBytes, encryptedMessage, encryptedLength, additional, additionalLength, nonce, key ) )
+        return false;
+
+    assert( encryptedLength == ChallengeTokenBytes );
+
+    return true;
+}
+
+bool DecryptChallengeToken( const uint8_t * encryptedMessage, ChallengeToken & decryptedToken, const uint8_t * additional, int additionalLength, const uint8_t * nonce, const uint8_t * key )
+{
+    const int encryptedMessageLength = ChallengeTokenBytes;
+
+    uint64_t decryptedMessageLength;
+    uint8_t decryptedMessage[ChallengeTokenBytes];
+
+    if ( !Decrypt_AEAD( encryptedMessage, encryptedMessageLength, decryptedMessage, decryptedMessageLength, additional, additionalLength, nonce, key ) )
+        return false;
+
+    assert( decryptedMessageLength == ChallengeTokenBytes - AuthBytes );
+
+    ReadStream stream( decryptedMessage, ChallengeTokenBytes - AuthBytes );
+    if ( !decryptedToken.Serialize( stream ) )
+        return false;
+
+    if ( stream.GetError() )
+        return false;
+
+    return true;
+}
+
+class Matcher
+{
+    uint64_t m_nonce;                                   // increments with each match request
+
+public:
+
+    Matcher()
+    {
+        m_nonce = 0;
+    }
+
+    bool RequestMatch( uint64_t clientId, uint8_t * tokenData, uint8_t * tokenNonce, uint8_t * clientToServerKey, uint8_t * serverToClientKey, int & numServerAddresses, Address * serverAddresses )
+    {
+        if ( clientId == 0 )
+            return false;
+
+        numServerAddresses = 1;
+        serverAddresses[0] = Address( "::1", ServerPort );
+
+        ConnectToken token;
+        GenerateConnectToken( token, clientId, numServerAddresses, serverAddresses );
+
+        memcpy( clientToServerKey, token.clientToServerKey, KeyBytes );
+        memcpy( serverToClientKey, token.serverToClientKey, KeyBytes );
+
+        if ( !EncryptConnectToken( token, tokenData, NULL, 0, (const uint8_t*) &m_nonce, private_key ) )
+            return false;
+
+        assert( NonceBytes == 8 );
+
+        memcpy( tokenNonce, &m_nonce, NonceBytes );
+
+        m_nonce++;
+
+        return true;
+    }
+};
+
+enum PacketTypes
+{
+    PACKET_CONNECTION_REQUEST,                      // client requests a connection.
+    PACKET_CONNECTION_DENIED,                       // server denies client connection request.
+    PACKET_CONNECTION_CHALLENGE,                    // server response to client connection request.
+    PACKET_CONNECTION_RESPONSE,                     // client response to server connection challenge.
+    PACKET_CONNECTION_HEARTBEAT,                    // heartbeat packet sent at some low rate (once per-second) to keep the connection alive.
+    PACKET_CONNECTION_DISCONNECT,                   // courtesy packet to indicate that the other side has disconnected. better than a timeout.
+    CLIENT_SERVER_NUM_PACKETS
+};
+
+struct ConnectionRequestPacket : public Packet
+{
+    uint8_t connectTokenData[ConnectTokenBytes];                        // encrypted connect token data generated by matchmaker
+    uint8_t connectTokenNonce[NonceBytes];                              // nonce required to decrypt the connect token on the server
+
+    ConnectionRequestPacket() : Packet( PACKET_CONNECTION_REQUEST )
+    {
+        memset( connectTokenData, 0, sizeof( connectTokenData ) );
+        memset( connectTokenNonce, 0, sizeof( connectTokenNonce ) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_bytes( stream, connectTokenData, sizeof( connectTokenData ) );
+        serialize_bytes( stream, connectTokenNonce, sizeof( connectTokenNonce ) );
+        return true;
+    }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
+};
+
+struct ConnectionDeniedPacket : public Packet
+{
+    ConnectionDeniedPacket() : Packet( PACKET_CONNECTION_DENIED ) {}
+
+    template <typename Stream> bool Serialize( Stream & /*stream*/ ) { return true; }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
+};
+
+struct ConnectionChallengePacket : public Packet
+{
+    uint8_t challengeTokenData[ChallengeTokenBytes];                      // encrypted challenge token data generated by matchmaker
+    uint8_t challengeTokenNonce[NonceBytes];                              // nonce required to decrypt the challenge token on the server
+
+    ConnectionChallengePacket() : Packet( PACKET_CONNECTION_CHALLENGE )
+    {
+        memset( challengeTokenData, 0, sizeof( challengeTokenData ) );
+        memset( challengeTokenNonce, 0, sizeof( challengeTokenNonce ) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_bytes( stream, challengeTokenData, sizeof( challengeTokenData ) );
+        serialize_bytes( stream, challengeTokenNonce, sizeof( challengeTokenNonce ) );
+        return true;
+    }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
+};
+
+struct ConnectionResponsePacket : public Packet
+{
+    uint8_t challengeTokenData[ChallengeTokenBytes];                      // encrypted challenge token data generated by matchmaker
+    uint8_t challengeTokenNonce[NonceBytes];                              // nonce required to decrypt the challenge token on the server
+
+    ConnectionResponsePacket() : Packet( PACKET_CONNECTION_RESPONSE )
+    {
+        memset( challengeTokenData, 0, sizeof( challengeTokenData ) );
+        memset( challengeTokenNonce, 0, sizeof( challengeTokenNonce ) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_bytes( stream, challengeTokenData, sizeof( challengeTokenData ) );
+        serialize_bytes( stream, challengeTokenNonce, sizeof( challengeTokenNonce ) );
+        return true;
+    }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
+};
+
+struct ConnectionHeartBeatPacket : public Packet
+{
+    ConnectionHeartBeatPacket() : Packet( PACKET_CONNECTION_HEARTBEAT ) {}
+
+    template <typename Stream> bool Serialize( Stream & /*stream*/ ) { return true; }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
+};
+
+struct ConnectionDisconnectPacket : public Packet
+{
+    ConnectionDisconnectPacket() : Packet( PACKET_CONNECTION_DISCONNECT ) {}
+
+    template <typename Stream> bool Serialize( Stream & /*stream*/ ) { return true; }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
+};
+
+struct ClientServerPacketFactory : public PacketFactory
+{
+    ClientServerPacketFactory() : PacketFactory( CLIENT_SERVER_NUM_PACKETS ) {}
+
+    Packet* Create( int type )
+    {
+        switch ( type )
+        {
+            case PACKET_CONNECTION_REQUEST:         return new ConnectionRequestPacket();
+            case PACKET_CONNECTION_DENIED:          return new ConnectionDeniedPacket();
+            case PACKET_CONNECTION_CHALLENGE:       return new ConnectionChallengePacket();
+            case PACKET_CONNECTION_RESPONSE:        return new ConnectionResponsePacket();
+            case PACKET_CONNECTION_HEARTBEAT:       return new ConnectionHeartBeatPacket();
+            case PACKET_CONNECTION_DISCONNECT:      return new ConnectionDisconnectPacket();
+            default:
+                return NULL;
+        }
+    }
+
+    void Destroy( Packet *packet )
+    {
+        delete packet;
+    }
+};
+
 void test_packet_processor()
 {
     printf( "test_packet_processor\n" );
 
-    // ...
+    uint64_t clientId = 1;
+
+    uint8_t connectTokenData[ConnectTokenBytes];
+    uint8_t challengeTokenData[ChallengeTokenBytes];
+    
+    uint8_t connectTokenNonce[NonceBytes];
+    uint8_t challengeTokenNonce[NonceBytes];
+
+    uint8_t clientToServerKey[KeyBytes];
+    uint8_t serverToClientKey[KeyBytes];
+
+    int numServerAddresses;
+    Address serverAddresses[MaxServersPerConnectToken];
+
+    memset( connectTokenNonce, 0, NonceBytes );
+    memset( challengeTokenNonce, 0, NonceBytes );
+
+    printf( "\nrequesting match\n\n" );
+
+    GenerateKey( private_key );
+
+    Matcher matcher;
+
+    if ( !matcher.RequestMatch( clientId, connectTokenData, connectTokenNonce, clientToServerKey, serverToClientKey, numServerAddresses, serverAddresses ) )
+    {
+        printf( "error: request match failed\n" );
+        exit( 1 );
+    }
+
+    printf( "connect token: " );
+    PrintBytes( connectTokenData, ConnectTokenBytes );
+    printf( "\n" );
+
+    ConnectToken connectToken;
+    if ( !DecryptConnectToken( connectTokenData, connectToken, NULL, 0, connectTokenNonce, private_key ) )
+    {
+        printf( "error: failed to decrypt connect token\n" );
+        exit( 1 );
+    }
+
+    assert( connectToken.clientId == 1 );
+    assert( connectToken.numServerAddresses == 1 );
+    assert( connectToken.serverAddresses[0] == Address( "::1", ServerPort ) );
+    assert( memcmp( connectToken.clientToServerKey, clientToServerKey, KeyBytes ) == 0 );
+    assert( memcmp( connectToken.serverToClientKey, serverToClientKey, KeyBytes ) == 0 );
+
+    char serverAddressString[64];
+    connectToken.serverAddresses[0].ToString( serverAddressString, sizeof( serverAddressString ) );
+    printf( "\nsuccess: connect token is valid for client %" PRIx64 " connection to %s\n\n", connectToken.clientId, serverAddressString );
+
+    Address clientAddress( "::1", ClientPort );
+
+    ChallengeToken challengeToken;
+    if ( !GenerateChallengeToken( connectToken, clientAddress, serverAddresses[0], connectTokenData, challengeToken ) )
+    {
+        printf( "error: failed to generate challenge token\n" );
+        exit( 1 );
+    }
+
+    if ( !EncryptChallengeToken( challengeToken, challengeTokenData, NULL, 0, challengeTokenNonce, private_key ) )
+    {
+        printf( "error: failed to encrypt challenge token\n" );
+        exit( 1 );
+    }
+
+    printf( "challenge token: " );
+    PrintBytes( challengeTokenData, ChallengeTokenBytes );
+    printf( "\n" );
+
+    ChallengeToken decryptedChallengeToken;
+    if ( !DecryptChallengeToken( challengeTokenData, decryptedChallengeToken, NULL, 0, challengeTokenNonce, private_key ) )
+    {
+        printf( "error: failed to decrypt challenge token\n" );
+        exit( 1 );
+    }
+
+    assert( challengeToken.clientId == 1 );
+    assert( challengeToken.clientAddress == clientAddress );
+    assert( challengeToken.serverAddress == serverAddresses[0] );
+    assert( memcmp( challengeToken.connectTokenMac, connectTokenData, MacBytes ) == 0 );
+    assert( memcmp( challengeToken.clientToServerKey, clientToServerKey, KeyBytes ) == 0 );
+    assert( memcmp( challengeToken.serverToClientKey, serverToClientKey, KeyBytes ) == 0 );
+
+    char clientAddressString[64];
+    challengeToken.clientAddress.ToString( clientAddressString, sizeof( clientAddressString ) );
+    challengeToken.serverAddress.ToString( serverAddressString, sizeof( serverAddressString ) );
+    printf( "\nsuccess: challenge token is valid for client %" PRIx64 " connection from %s to %s\n\n", challengeToken.clientId, clientAddressString, serverAddressString );
+
+    ClientServerPacketFactory packetFactory;
+
+    PacketProcessor packetProcessor( packetFactory, ProtocolId, 4096 );
+
+    ConnectionChallengePacket * packet = (ConnectionChallengePacket*) packetFactory.CreatePacket( PACKET_CONNECTION_CHALLENGE );
+
+    assert( packet );
+
+    memcpy( packet->challengeTokenNonce, challengeTokenNonce, NonceBytes );
+
+    if ( !EncryptChallengeToken( challengeToken, packet->challengeTokenData, NULL, 0, packet->challengeTokenNonce, private_key ) )
+    {
+        printf( "error: failed to encrypt challenge token\n" );
+        exit( 1 );
+    }
+
+    printf( "server sent challenge packet to client\n\n" );
+
+    int packetBytes;
+    const uint8_t * packetData = packetProcessor.WritePacket( packet, 0, packetBytes, true, serverToClientKey );
+    if ( !packetData )
+    {
+        printf( "error: failed to write connection challenge packet\n" );
+        exit( 1 );
+    }
+
+    printf( "challenge packet: " );
+    PrintBytes( packetData, packetBytes );
+    printf( "\n\n" );
+
+    packetFactory.DestroyPacket( packet );
+
+    uint8_t encryptedPacketTypes[CLIENT_SERVER_NUM_PACKETS];
+    uint8_t unencryptedPacketTypes[CLIENT_SERVER_NUM_PACKETS];
+
+    memset( encryptedPacketTypes, 1, sizeof( encryptedPacketTypes ) );
+    memset( unencryptedPacketTypes, 0, sizeof( unencryptedPacketTypes ) );
+
+    uint64_t receivedSequence;
+    Packet * receivedPacket = packetProcessor.ReadPacket( packetData, receivedSequence, packetBytes, serverToClientKey, encryptedPacketTypes, unencryptedPacketTypes );
+    if ( !receivedPacket )
+    {
+        printf( "error: failed to read packet\n" );
+        exit( 1 );
+    }
+
+    packetFactory.DestroyPacket( receivedPacket );
 }
 
 int main()
 {
+#if YOJIMBO_SECURE
+    if ( !InitializeCrypto() )
+    {
+        printf( "error: failed to initialize crypto\n" );
+        exit( 1 );
+    }
+#endif // #if YOJIMBO_SECURE
+
     test_bitpacker();   
     test_stream();
     test_packets();
     test_address_ipv4();
     test_address_ipv6();
     test_packet_sequence();
-#if YOJIMBO_SECURE
     test_packet_encryption();
-#endif // #if YOJIMBO_SECURE
     test_packet_processor();
+
     return 0;
 }

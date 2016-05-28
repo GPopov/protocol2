@@ -8,8 +8,14 @@ DONE
 
     If it doesn't reproduce, then I still suspect something bad, eg. mem trashing, or queues or something bad trashing memory.
 
-TODO
-    
     First try to strip out the sequence stuff and see if that fixes it.
 
     Eg. make sequence always 0 on both sides for nonce.
+
+    It does not fix it. This makes me think that it's definitely a libsodium bug. I mean, what the fuck could it be?
+
+    There is now absolutely nothing complex going on in my code, and it's still breaking, only on linux.
+
+TODO
+    
+    

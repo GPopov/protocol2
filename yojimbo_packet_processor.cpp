@@ -90,14 +90,6 @@ namespace yojimbo
             if ( !key )
                 return NULL;
 
-            /*
-            int prefixBytes;
-            uint8_t prefix[16];
-            CompressPacketSequence( sequence, prefix[0], prefixBytes, prefix+1 );
-            prefix[0] |= ENCRYPTED_PACKET_FLAG;
-            prefixBytes++;
-            */
-
             int prefixBytes = 1;
             uint8_t prefix[16];
             prefix[0] = ENCRYPTED_PACKET_FLAG;
