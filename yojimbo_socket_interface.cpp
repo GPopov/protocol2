@@ -245,12 +245,31 @@ namespace yojimbo
 
             const uint8_t * packetData = m_packetProcessor->WritePacket( entry.packet, entry.sequence, packetBytes, encrypt, key );
 
-            if ( packetData )
+            if ( !packetData )
             {
-                m_socket->SendPacket( entry.address, packetData, packetBytes );
+                switch ( m_packetProcessor->GetError() )
+                {
+                    case PACKET_PROCESSOR_ERROR_KEY_IS_NULL:                m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTION_MAPPING_FAILURES]++;         break;
+                    case PACKET_PROCESSOR_ERROR_ENCRYPT_FAILED:             m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES]++;             break;
+                    case PACKET_PROCESSOR_ERROR_WRITE_PACKET_FAILED:        m_counters[SOCKET_INTERFACE_COUNTER_WRITE_PACKET_FAILURES]++;               break;
+
+                    default:
+                        break;
+                }
+
+                continue;
             }
 
+            m_socket->SendPacket( entry.address, packetData, packetBytes );
+
             m_packetFactory->DestroyPacket( entry.packet );
+
+            m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN]++;
+
+            if ( encrypt )
+                m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_WRITTEN]++;
+            else
+                m_counters[SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_WRITTEN]++;
         }
     }
 
@@ -288,17 +307,39 @@ namespace yojimbo
             if ( encryptionMapping )
                 key = encryptionMapping->receiveKey;
 
-            protocol2::Packet * packet = m_packetProcessor->ReadPacket( packetBuffer, sequence, packetBytes, key, m_packetTypeIsEncrypted, m_packetTypeIsUnencrypted );
+            bool encrypted = false;
 
-            if ( packet )
+            protocol2::Packet * packet = m_packetProcessor->ReadPacket( packetBuffer, sequence, packetBytes, encrypted, key, m_packetTypeIsEncrypted, m_packetTypeIsUnencrypted );
+
+            if ( !packet )
             {
-                PacketEntry entry;
-                entry.sequence = 0;
-                entry.packet = packet;
-                entry.address = address;
+                switch ( m_packetProcessor->GetError() )
+                {
+                    case PACKET_PROCESSOR_ERROR_KEY_IS_NULL:                m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTION_MAPPING_FAILURES]++;        break;
+                    case PACKET_PROCESSOR_ERROR_DECRYPT_FAILED:             m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES]++;            break;
+                    case PACKET_PROCESSOR_ERROR_PACKET_TOO_SMALL:           m_counters[SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES]++;            break;
+                    case PACKET_PROCESSOR_ERROR_READ_PACKET_FAILED:         m_counters[SOCKET_INTERFACE_COUNTER_READ_PACKET_FAILURES]++;               break;
 
-                queue_push_back( m_receiveQueue, entry );
+                    default:
+                        break;
+                }
+
+                continue;
             }
+
+            PacketEntry entry;
+            entry.sequence = 0;
+            entry.packet = packet;
+            entry.address = address;
+
+            queue_push_back( m_receiveQueue, entry );
+
+            m_counters[SOCKET_INTERFACE_COUNTER_PACKETS_READ]++;
+
+            if ( encrypted )
+                m_counters[SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ]++;
+            else
+                m_counters[SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ]++;
         }
     }
 

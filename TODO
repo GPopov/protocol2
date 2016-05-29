@@ -1,9 +1,13 @@
 DONE
 
 TODO
-
-    Add error reporting to packet processor so I have enough information to reconstruct counters.
-
-    Make sure all counters in 007 work as expected.
    
-    Copy across to 009_basic_matchmaking.cpp and strip out extra stuff in matcher from 008.
+    Next step for work. Strip out the encryption mapping and it it in its own class.
+
+    Implement the encryption mapping properly.
+
+    Test the encryption mapping.
+
+    Next, implement a queue and stop using the stupid memory allocator and types from those idiots. Update LICENCE.
+
+    Now copy across to 009_basic_matchmaking.cpp and clean 008.

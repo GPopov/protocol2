@@ -36,7 +36,10 @@ namespace yojimbo
     PacketProcessor::PacketProcessor( protocol2::PacketFactory & packetFactory, uint32_t protocolId, int maxPacketSize, void * context )
     {
         m_packetFactory = &packetFactory;
+
         m_protocolId = protocolId;
+
+        m_error = PACKET_PROCESSOR_ERROR_NONE;
 
         m_maxPacketSize = maxPacketSize + ( ( maxPacketSize % 4 ) ? ( 4 - ( maxPacketSize % 4 ) ) : 0 );
         
@@ -65,17 +68,15 @@ namespace yojimbo
 
     static const int ENCRYPTED_PACKET_FLAG = (1<<7);
 
-    const uint8_t * PacketProcessor::WritePacket( protocol2::Packet * packet, 
-                                                  uint64_t sequence,
-                                                  int & packetBytes,
-                                                  bool encrypt, 
-                                                  const uint8_t * key )
+    const uint8_t * PacketProcessor::WritePacket( protocol2::Packet * packet, uint64_t sequence, int & packetBytes, bool encrypt, const uint8_t * key )
     {
+        m_error = PACKET_PROCESSOR_ERROR_NONE;
+
         if ( encrypt )
         {
             if ( !key )
             {
-                // key is NULL
+                m_error = PACKET_PROCESSOR_ERROR_KEY_IS_NULL;
                 return NULL;
             }
 
@@ -96,7 +97,7 @@ namespace yojimbo
 
             if ( packetBytes <= 0 )
             {
-                // write packet failed
+                m_error = PACKET_PROCESSOR_ERROR_WRITE_PACKET_FAILED;
                 return NULL;
             }
 
@@ -110,7 +111,7 @@ namespace yojimbo
                           encryptedPacketSize, 
                           (uint8_t*) &sequence, key ) )
             {
-                // encrypt failed
+                m_error = PACKET_PROCESSOR_ERROR_ENCRYPT_FAILED;
                 return NULL;
             }
 
@@ -136,7 +137,7 @@ namespace yojimbo
 
             if ( packetBytes <= 0 )
             {
-                // write packet failed
+                m_error = PACKET_PROCESSOR_ERROR_WRITE_PACKET_FAILED;
                 return NULL;
             }
 
@@ -146,22 +147,20 @@ namespace yojimbo
         }
     }
 
-    protocol2::Packet * PacketProcessor::ReadPacket( const uint8_t * packetData, 
-                                                     uint64_t & sequence,
-                                                     int packetBytes,
-                                                     const uint8_t * key,
-                                                     const uint8_t * encryptedPacketTypes,
-                                                     const uint8_t * unencryptedPacketTypes )
+    protocol2::Packet * PacketProcessor::ReadPacket( const uint8_t * packetData, uint64_t & sequence, int packetBytes, bool & encrypted,  
+                                                     const uint8_t * key, const uint8_t * encryptedPacketTypes, const uint8_t * unencryptedPacketTypes )
     {
+        m_error = PACKET_PROCESSOR_ERROR_NONE;
+
         const uint8_t prefixByte = packetData[0];
 
-        const bool encrypted = ( prefixByte & ENCRYPTED_PACKET_FLAG ) != 0;
+        encrypted = ( prefixByte & ENCRYPTED_PACKET_FLAG ) != 0;
 
         if ( encrypted )
         {
             if ( !key )
             {
-                // key is null
+                m_error = PACKET_PROCESSOR_ERROR_KEY_IS_NULL;
                 return NULL;
             }
 
@@ -171,7 +170,7 @@ namespace yojimbo
 
             if ( packetBytes <= prefixBytes + MacBytes )
             {
-                // packet too small
+                m_error = PACKET_PROCESSOR_ERROR_PACKET_TOO_SMALL;
                 return NULL;
             }
 
@@ -181,13 +180,9 @@ namespace yojimbo
 
             memcpy( m_scratchBuffer, packetData + prefixBytes, packetBytes - prefixBytes );
 
-            if ( !Decrypt( m_scratchBuffer,
-                           packetBytes - prefixBytes, 
-                           m_scratchBuffer,
-                           decryptedPacketBytes, 
-                           (uint8_t*)&sequence, key ) )
+            if ( !Decrypt( m_scratchBuffer, packetBytes - prefixBytes, m_scratchBuffer, decryptedPacketBytes, (uint8_t*)&sequence, key ) )
             {
-                // decrypt failed
+                m_error = PACKET_PROCESSOR_ERROR_DECRYPT_FAILED;
                 return NULL;
             }
 
@@ -201,6 +196,12 @@ namespace yojimbo
             int readError;
             
             protocol2::Packet * packet = protocol2::ReadPacket( info, m_scratchBuffer, decryptedPacketBytes, NULL, &readError );
+
+            if ( !packet )
+            {
+                m_error = PACKET_PROCESSOR_ERROR_READ_PACKET_FAILED;
+                return NULL;
+            }
             
             return packet;
         }
@@ -220,6 +221,12 @@ namespace yojimbo
 
             protocol2::Packet * packet = protocol2::ReadPacket( info, packetData, packetBytes, NULL, &readError );
 
+            if ( !packet )
+            {
+                m_error = PACKET_PROCESSOR_ERROR_READ_PACKET_FAILED;
+                return NULL;
+            }
+            
             return packet;
         }
     }

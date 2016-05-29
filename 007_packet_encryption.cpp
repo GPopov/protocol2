@@ -338,6 +338,8 @@ int main()
         printf( "client received %" PRIu64 " unencrypted packets\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ ) );
         printf( "client had %" PRIu64 " packet encrypt failures\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES ) );
         printf( "client had %" PRIu64 " packet decrypt failures\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES ) );
+        printf( "client had %" PRIu64 " packet read failures\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_READ_PACKET_FAILURES ) );
+        printf( "client had %" PRIu64 " packet write failures\n", clientInterface.GetCounter( SOCKET_INTERFACE_COUNTER_WRITE_PACKET_FAILURES ) );
 
         printf( "----------------------------------------------------------\n" );
 
@@ -347,6 +349,8 @@ int main()
         printf( "server received %" PRIu64 " unencrypted packets\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_UNENCRYPTED_PACKETS_READ ) );
         printf( "server had %" PRIu64 " packet encrypt failures\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_ENCRYPT_PACKET_FAILURES ) );
         printf( "server had %" PRIu64 " packet decrypt failures\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_DECRYPT_PACKET_FAILURES ) );
+        printf( "client had %" PRIu64 " packet read failures\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_READ_PACKET_FAILURES ) );
+        printf( "client had %" PRIu64 " packet write failures\n", serverInterface.GetCounter( SOCKET_INTERFACE_COUNTER_WRITE_PACKET_FAILURES ) );
 
         printf( "----------------------------------------------------------\n" );
 
