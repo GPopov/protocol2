@@ -434,6 +434,12 @@ void test_address_ipv4()
 #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_UNIX
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#elif NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
+#define NOMINMAX
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <ws2ipdef.h>
 #endif // #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_UNIX
 
 void test_address_ipv6()
