@@ -431,6 +431,10 @@ void test_address_ipv4()
     }
 }
 
+#if NETWORK2_PLATFORM == NETWORK2_UNIX
+#include <arpa/inet.h>
+#endif // #if NETWORK2_PLATFORM == NETWORK2_UNIX
+
 void test_address_ipv6()
 {
     printf( "test_address_ipv6\n" );
@@ -633,7 +637,7 @@ void test_packet_encryption()
 
     if ( !InitializeCrypto() )
     {
-        printf( "error: failed to initialize crypto\n" );
+        printf( "error: failed to initialize crypto\n\n" );
         exit( 1 );
     }
 
@@ -677,13 +681,13 @@ void test_packet_encryption()
     int decrypted_length;
     if ( !Decrypt( encrypted_packet, encrypted_length, decrypted_packet, decrypted_length, nonce, key ) )
     {
-        printf( "error: failed to decrypt\n" );
+        printf( "error: failed to decrypt\n\n" );
         exit(1);
     }
 
     if ( decrypted_length != packet_length || memcmp( packet, decrypted_packet, packet_length ) != 0 )
     {
-        printf( "error: decrypted packet does not match original packet\n" );
+        printf( "error: decrypted packet does not match original packet\n\n" );
         exit(1);
     }
 }
