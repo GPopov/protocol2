@@ -688,6 +688,8 @@ bool CheckPacketsAreIdentical( protocol2::Packet *p1, protocol2::Packet *p2, Tes
 
 int main()
 {
+    printf( "\npacket fragmentation and reassembly\n\n" );
+
     srand( (unsigned int) time( NULL ) );
 
     TestPacketFactory packetFactory;

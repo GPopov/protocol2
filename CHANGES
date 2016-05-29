@@ -1,4 +1,40 @@
 
+Saturday May 28th, 2016
+=======================
+
+    Now that it reproduces with the basically rewritten packet processor, the question is -- can it be reproduced on linux, in a test case?
+
+    Try again, with the actual packet processor sending packets.
+
+    If it reproduces, then the reproduction can be cut down to isolate the problem.
+
+    If it doesn't reproduce, then I still suspect something bad, eg. mem trashing, or queues or something bad trashing memory.
+
+    First try to strip out the sequence stuff and see if that fixes it.
+
+    Eg. make sequence always 0 on both sides for nonce.
+
+    It does not fix it. This makes me think that it's definitely a libsodium bug. I mean, what the fuck could it be?
+
+    There is now absolutely nothing complex going on in my code, and it's still breaking, only on linux.
+
+    Excellent news. The cut down case reproduces the error... which means... it's not caused by anything in the network interface!
+
+    It seems to be either:
+
+    a) a legitimate bug in libsodium
+
+    b) some sort of gcc bug
+
+    c) a bug in my logic in my packet processor
+
+    Can I simplify the packet processor further to make the bug go away? This is an important test...
+
+    Yes. In fact simplified it down so much it points the finger at a libsodium or GCC bug.
+
+    Now that I'm certain it's not me, fuck linux for a while, I'm moving on to the next example.
+
+
 Friday May 27th, 2016
 =====================
 

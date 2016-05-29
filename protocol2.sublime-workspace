@@ -714,12 +714,17 @@
 	],
 	"file_history":
 	[
-		"/Users/gaffer/Desktop/CONTRACT GOALS",
-		"/Users/gaffer/git/protocol2/protocol2.h",
-		"/Users/gaffer/git/protocol2/008_securing_dedicated_servers.cpp",
-		"/Users/gaffer/git/protocol2/temp.cpp",
-		"/Users/gaffer/git/protocol2/test.cpp",
 		"/Users/gaffer/git/protocol2/TODO",
+		"/Users/gaffer/git/protocol2/test.cpp",
+		"/Users/gaffer/git/protocol2/yojimbo_packet_processor.h",
+		"/Users/gaffer/git/protocol2/yojimbo_socket_interface.cpp",
+		"/Users/gaffer/git/protocol2/008_securing_dedicated_servers.cpp",
+		"/Users/gaffer/git/protocol2/protocol2.h",
+		"/Users/gaffer/git/protocol2/yojimbo_packet_processor.cpp",
+		"/Users/gaffer/git/protocol2/yojimbo_socket_interface.h",
+		"/Users/gaffer/git/protocol2/yojimbo_crypto.h",
+		"/Users/gaffer/Desktop/CONTRACT GOALS",
+		"/Users/gaffer/git/protocol2/temp.cpp",
 		"/Users/gaffer/git/protocol2/CHANGES",
 		"/Users/gaffer/git/protocol2/006_client_server.cpp",
 		"/Users/gaffer/git/protocol2/yojimbo_config.h",
@@ -836,12 +841,7 @@
 		"/Users/gaffer/Desktop/taxes/profit.txt",
 		"/Users/gaffer/Documents/AUSTRALIA",
 		"/Users/gaffer/Documents/OUTBACK",
-		"/Users/gaffer/git/protocol2/backup.txt",
-		"/Users/gaffer/git/protocol2/002_packet_fragmentation_and_reassembly",
-		"/Users/gaffer/git/protocol/src/Core/Core.h",
-		"/Users/gaffer/git/protocol2/001_serializing_packets.cpp",
-		"/Users/gaffer/git/protocol2/serializing_packets.cpp",
-		"/Users/gaffer/git/protocol/tests/Protocol/TestPackets.h"
+		"/Users/gaffer/git/protocol2/backup.txt"
 	],
 	"find":
 	{
@@ -892,6 +892,10 @@
 		"case_sensitive": true,
 		"find_history":
 		[
+			"ProcessConnectionRequest",
+			"PacketFactory",
+			"ChallengeToken",
+			"crc32 mismatch",
 			"215",
 			"Encrypt",
 			"ChallengeToken",
@@ -1015,11 +1019,7 @@
 			"serialize check failed",
 			"serialize_check",
 			"ReadPacket",
-			"WritePacket",
-			"printf",
-			"MaxChunkSize",
-			"uint32_t( ",
-			"m_scratch"
+			"WritePacket"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -1124,20 +1124,48 @@
 		"selected_items":
 		[
 			[
-				"changes",
-				"CHANGES"
+				"test.cpp",
+				"test.cpp"
 			],
 			[
 				"todo",
 				"TODO"
 			],
 			[
-				"006",
-				"006_client_server.cpp"
+				"packet_processor.cpp",
+				"yojimbo_packet_processor.cpp"
 			],
 			[
-				"test.cpp",
-				"test.cpp"
+				"socket_interfac",
+				"yojimbo_socket_interface.h"
+			],
+			[
+				"yojimbo_socket",
+				"yojimbo_socket_interface.cpp"
+			],
+			[
+				"crypto.h",
+				"yojimbo_crypto.h"
+			],
+			[
+				"008",
+				"008_securing_dedicated_servers.cpp"
+			],
+			[
+				"packet_process",
+				"yojimbo_packet_processor.cpp"
+			],
+			[
+				"protocol2.h",
+				"protocol2.h"
+			],
+			[
+				"changes",
+				"CHANGES"
+			],
+			[
+				"006",
+				"006_client_server.cpp"
 			],
 			[
 				"canges",
@@ -1146,10 +1174,6 @@
 			[
 				"yoj",
 				"yojimbo_config.h"
-			],
-			[
-				"008",
-				"008_securing_dedicated_servers.cpp"
 			],
 			[
 				"bsdsocket.",
@@ -1282,10 +1306,6 @@
 			[
 				"netwokr2.h",
 				"network2.h"
-			],
-			[
-				"protocol2.h",
-				"protocol2.h"
 			],
 			[
 				"network2.h",
@@ -1614,26 +1634,6 @@
 			[
 				"tood",
 				"TODO"
-			],
-			[
-				"packtes.h",
-				"packets.h"
-			],
-			[
-				"woludbe",
-				"WOULD BE NICE"
-			],
-			[
-				"goal",
-				"GOAL"
-			],
-			[
-				"client",
-				"client.cpp"
-			],
-			[
-				"plato.mh",
-				"platform.h"
 			]
 		],
 		"width": 0.0

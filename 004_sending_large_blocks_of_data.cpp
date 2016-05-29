@@ -468,9 +468,9 @@ inline float random_float( float a, float b )
 
 int main()
 {
-    srand( (unsigned int) time( NULL ) );
+    printf( "\nsending large blocks of data\n\n" );
 
-    printf( "\n" );
+    srand( (unsigned int) time( NULL ) );
 
     ChunkSender sender;
     ChunkReceiver receiver;

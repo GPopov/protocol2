@@ -894,6 +894,8 @@ struct TestPacketFactory : public protocol2::PacketFactory
 
 int main()
 {
+    printf( "\nserialization strategies\n\n" );
+
     srand( (unsigned int) time( NULL ) );
 
     TestPacketFactory packetFactory;
@@ -952,6 +954,8 @@ int main()
         if ( error )
             return 1;
     }
+
+    printf( "\n" );
 
     return 0;
 }

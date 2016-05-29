@@ -243,13 +243,13 @@ public:
 
 int main()
 {
+    printf( "\npacket encryption\n\n" );
+
     if ( !InitializeCrypto() )
     {
         printf( "error: failed to initialize crypto!\n" );
         return 1;
     }
-
-    printf( "\npacket encryption\n\n" );
 
     memory_initialize();
     {
@@ -355,9 +355,9 @@ int main()
         ShutdownNetwork();
     }
 
-    printf( "\n" );
-
     memory_shutdown();
+
+    printf( "\n" );
 
     return 0;
 }

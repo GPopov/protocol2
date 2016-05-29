@@ -1,21 +1,17 @@
 DONE
 
-    Now that it reproduces with the basically rewritten packet processor, the question is -- can it be reproduced on linux, in a test case?
-
-    Try again, with the actual packet processor sending packets.
-
-    If it reproduces, then the reproduction can be cut down to isolate the problem.
-
-    If it doesn't reproduce, then I still suspect something bad, eg. mem trashing, or queues or something bad trashing memory.
-
-    First try to strip out the sequence stuff and see if that fixes it.
-
-    Eg. make sequence always 0 on both sides for nonce.
-
-    It does not fix it. This makes me think that it's definitely a libsodium bug. I mean, what the fuck could it be?
-
-    There is now absolutely nothing complex going on in my code, and it's still breaking, only on linux.
+    Check through definitions in protocol2.h, network2.h -- are there things in there that can be removed?
 
 TODO
-    
-    
+
+    Remove fat packet processor test from test.cpp
+
+    Turn the CRC32 back on so until the libsodium bug is fixed, it picks it up. Put a note in there.
+
+    Make sure everything works with YOJIMBO_SECURE disabled again.
+
+    Add error reporting to packet processor so I have enough information to reconstruct counters.
+   
+    Make sure all tests work.
+
+

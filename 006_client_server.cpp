@@ -1034,7 +1034,7 @@ protected:
 
 int main()
 {
-    printf( "\nclient/server connection\n\n" );
+    printf( "\nclient server\n\n" );
 
     memory_initialize();
     {
@@ -1108,9 +1108,9 @@ int main()
         ShutdownNetwork();
     }
 
-    printf( "\n" );
-
     memory_shutdown();
+
+    printf( "\n" );
 
     return 0;
 }
