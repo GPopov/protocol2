@@ -431,8 +431,10 @@ void test_address_ipv4()
     }
 }
 
+#if NETWORK2_PLATFORM == NETWORK2_PLATFORM_UNIX
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#endif // #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_UNIX
 
 void test_address_ipv6()
 {
