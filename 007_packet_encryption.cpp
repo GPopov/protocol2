@@ -26,8 +26,6 @@
 
 #include "yojimbo.h"
 
-#if YOJIMBO_SECURE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -361,13 +359,3 @@ int main()
 
     return 0;
 }
-
-#else // #if YOJIMBO_SECURE
-
-int main()
-{
-	printf( "\nCannot run sample because Yojimbo Security is disabled\n\n#define YOJIMBO_SECURE 1 in yojimbo_config.h\n\n" );
-    return 0;
-}
-
-#endif // #if YOJIMBO_SECURE

@@ -57,15 +57,15 @@ namespace yojimbo
         const uint8_t * WritePacket( protocol2::Packet * packet, 
                                      uint64_t sequence,
                                      int & packetBytes,
-                                     bool encrypt,
-                                     const uint8_t * key );
+                                     bool encrypt = false,
+                                     const uint8_t * key = NULL );
 
         protocol2::Packet * ReadPacket( const uint8_t * packetData, 
                                         uint64_t & sequence,
                                         int packetBytes,
-                                        const uint8_t * key,
-                                        const uint8_t * encryptedPacketTypes,
-                                        const uint8_t * unencryptedPacketTypes );
+                                        const uint8_t * key = NULL,
+                                        const uint8_t * encryptedPacketTypes = NULL,
+                                        const uint8_t * unencryptedPacketTypes = NULL );
 
         int GetMaxPacketSize() const { return m_maxPacketSize; }
     };

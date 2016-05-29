@@ -53,8 +53,6 @@ namespace yojimbo
 
         virtual void SetContext( void * context ) = 0;
 
-#if YOJIMBO_SECURE
-
         virtual void EnablePacketEncryption() = 0;
 
         virtual void DisableEncryptionForPacketType( int type ) = 0;
@@ -66,8 +64,6 @@ namespace yojimbo
         virtual bool RemoveEncryptionMapping( const network2::Address & address ) = 0;
 
         virtual void ResetEncryptionMappings() = 0;
-
-#endif // #if YOJIMBO_SECURE
     };
 }
 

@@ -26,8 +26,6 @@
 
 #include "yojimbo_crypto.h"
 
-#if YOJIMBO_SECURE
-
 #ifdef _MSC_VER
 #define SODIUM_STATIC
 #endif // #ifdef _MSC_VER
@@ -129,9 +127,3 @@ namespace yojimbo
         return result == 0;
     }
 }
-
-#else // #if YOJIMBO_SECURE
-
-int yojimbo_crypto_is_disabled = 1;
-
-#endif // #if YOJIMBO_SECURE

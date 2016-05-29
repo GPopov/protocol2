@@ -612,8 +612,6 @@ void test_packet_sequence()
     }
 }
 
-#if YOJIMBO_SECURE
-
 void PrintBytes( const uint8_t * data, int data_bytes )
 {
     for ( int i = 0; i < data_bytes; ++i )
@@ -690,8 +688,6 @@ void test_packet_encryption()
     }
 }
 
-#endif // #if YOJIMBO_SECURE
-
 int main()
 {
     test_bitpacker();   
@@ -700,9 +696,6 @@ int main()
     test_address_ipv4();
     test_address_ipv6();
     test_packet_sequence();
-#if YOJIMBO_SECURE
     test_packet_encryption();
-#endif // #if YOJIMBO_SECURE
-
     return 0;
 }

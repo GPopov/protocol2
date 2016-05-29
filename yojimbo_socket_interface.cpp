@@ -28,11 +28,6 @@
 #include "yojimbo_array.h"
 #include "yojimbo_queue.h"
 #include "yojimbo_util.h"
-
-#if YOJIMBO_SECURE
-#include <sodium.h>
-#endif // #if YOJIMBO_SECURE
-
 #include <stdint.h>
 #include <inttypes.h>
 
@@ -74,8 +69,6 @@ namespace yojimbo
         queue_reserve( m_sendQueue, sendQueueSize );
         queue_reserve( m_receiveQueue, receiveQueueSize );
 
-#if YOJIMBO_SECURE
-
         const int numPacketTypes = m_packetFactory->GetNumPacketTypes();
 
 		assert( numPacketTypes > 0 );
@@ -87,8 +80,6 @@ namespace yojimbo
         memset( m_packetTypeIsUnencrypted, 1, m_packetFactory->GetNumPacketTypes() );
 
         m_numEncryptionMappings = 0;
-
-#endif // #if YOJIMBO_SECURE
 
         memset( m_counters, 0, sizeof( m_counters ) );
     }
@@ -102,19 +93,15 @@ namespace yojimbo
 
         YOJIMBO_DELETE( *m_allocator, NetworkSocket, m_socket );
 
-#if YOJIMBO_SECURE
         m_allocator->Free( m_packetTypeIsEncrypted );
         m_allocator->Free( m_packetTypeIsUnencrypted );
-#endif // #if YOJIMBO_SECURE
 
         delete m_packetProcessor;
 
         m_socket = NULL;
         m_packetFactory = NULL;
-#if YOJIMBO_SECURE
         m_packetTypeIsEncrypted = NULL;
         m_packetTypeIsUnencrypted = NULL;
-#endif // #if YOJIMBO_SECURE
 
         m_packetProcessor = NULL;
 
@@ -243,6 +230,8 @@ namespace yojimbo
 
             queue_consume( m_sendQueue, 1 );
 
+            int packetBytes;
+
             const bool encrypt = IsEncryptedPacketType( entry.packet->GetType() );
 
             const uint8_t * key = NULL;
@@ -253,8 +242,6 @@ namespace yojimbo
                 if ( encryptionMapping )
                     key = encryptionMapping->sendKey;
             }
-
-            int packetBytes;
 
             const uint8_t * packetData = m_packetProcessor->WritePacket( entry.packet, entry.sequence, packetBytes, encrypt, key );
 
@@ -293,13 +280,13 @@ namespace yojimbo
                 break;
             }
 
+            uint64_t sequence;
+
             const uint8_t * key = NULL;
 
             EncryptionMapping * encryptionMapping = FindEncryptionMapping( address );
             if ( encryptionMapping )
                 key = encryptionMapping->receiveKey;
-
-            uint64_t sequence;
 
             protocol2::Packet * packet = m_packetProcessor->ReadPacket( packetBuffer, sequence, packetBytes, key, m_packetTypeIsEncrypted, m_packetTypeIsUnencrypted );
 
@@ -324,8 +311,6 @@ namespace yojimbo
     {
         m_context = context;
     }
-
-#if YOJIMBO_SECURE
 
     void SocketInterface::EnablePacketEncryption()
     {
@@ -384,8 +369,6 @@ namespace yojimbo
     {
         m_numEncryptionMappings = 0;
     }
-
-#endif // #if YOJIMBO_SECURE
 
     uint64_t SocketInterface::GetCounter( int index ) const
     {

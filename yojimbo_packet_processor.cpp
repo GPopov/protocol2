@@ -29,10 +29,7 @@
 #include "yojimbo_util.h"
 #include "protocol2.h"
 #include <stdio.h>
-
-#if YOJIMBO_SECURE
 #include <sodium.h>
-#endif // #if YOJIMBO_SECURE
 
 namespace yojimbo
 {
@@ -46,17 +43,10 @@ namespace yojimbo
         assert( m_maxPacketSize % 4 == 0 );
         assert( m_maxPacketSize >= maxPacketSize );
 
-#if YOJIMBO_SECURE
-
         const int MaxPrefixBytes = 9;
         const int CryptoOverhead = MacBytes;
+
         m_absoluteMaxPacketSize = maxPacketSize + MaxPrefixBytes + CryptoOverhead;
-
-#else // #if YOJIMBO_SECURE
-
-        m_absoluteMaxPacketSize = maxPacketSize;
-
-#endif // #if YOJIMBO_SECURE
 
         m_context = context;
 
@@ -73,9 +63,7 @@ namespace yojimbo
         m_scratchBuffer = NULL;
     }
 
-#if YOJIMBO_SECURE
     static const int ENCRYPTED_PACKET_FLAG = (1<<7);
-#endif // if YOJIMBO_SECURE
 
     const uint8_t * PacketProcessor::WritePacket( protocol2::Packet * packet, 
                                                   uint64_t sequence,
@@ -83,58 +71,14 @@ namespace yojimbo
                                                   bool encrypt, 
                                                   const uint8_t * key )
     {
-#if YOJIMBO_SECURE
-
         if ( encrypt )
         {
             if ( !key )
-                return NULL;
-
-            int prefixBytes = 1;
-            uint8_t prefix[16];
-            prefix[0] = ENCRYPTED_PACKET_FLAG;
-
-            protocol2::PacketInfo info;
-
-            info.context = m_context;
-            info.protocolId = m_protocolId;
-            info.packetFactory = m_packetFactory;
-            info.rawFormat = 0;
-
-            packetBytes = protocol2::WritePacket( info, packet, m_scratchBuffer, m_maxPacketSize );
-
-            if ( packetBytes > 0 )
             {
-                assert( packetBytes <= m_maxPacketSize );
-
-                int encryptedPacketSize;
-
-                if ( Encrypt( m_scratchBuffer,
-                              packetBytes,
-                              m_scratchBuffer,
-                              encryptedPacketSize, 
-                              (uint8_t*) &sequence, key ) )
-                {
-                    memcpy( m_packetBuffer, prefix, prefixBytes );
-                    memcpy( m_packetBuffer + prefixBytes, m_scratchBuffer, encryptedPacketSize );
-
-                    packetBytes = prefixBytes + encryptedPacketSize;
-
-                    assert( packetBytes <= m_absoluteMaxPacketSize );
-
-                    return m_packetBuffer;
-                }
-                else
-                {
-                    return NULL;
-                }
-            }
-            else
-            {
+                // key is NULL
                 return NULL;
             }
 
-            /*
             int prefixBytes;
             uint8_t prefix[16];
             CompressPacketSequence( sequence, prefix[0], prefixBytes, prefix+1 );
@@ -146,41 +90,38 @@ namespace yojimbo
             info.context = m_context;
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
-            info.rawFormat = 0;
+//            info.rawFormat = 1;
 
             packetBytes = protocol2::WritePacket( info, packet, m_scratchBuffer, m_maxPacketSize );
 
-            if ( packetBytes > 0 )
+            if ( packetBytes <= 0 )
             {
-                assert( packetBytes <= m_maxPacketSize );
-
-                int encryptedPacketSize;
-
-                if ( Encrypt( m_scratchBuffer,
-                              packetBytes,
-                              m_scratchBuffer,
-                              encryptedPacketSize, 
-                              (uint8_t*) &sequence, key ) )
-                {
-                    memcpy( m_packetBuffer, prefix, prefixBytes );
-                    memcpy( m_packetBuffer + prefixBytes, m_scratchBuffer, encryptedPacketSize );
-
-                    packetBytes = prefixBytes + encryptedPacketSize;
-
-                    assert( packetBytes <= m_absoluteMaxPacketSize );
-
-                    return m_packetBuffer;
-                }
-                else
-                {
-                    return NULL;
-                }
-            }
-            else
-            {
+                // write packet failed
                 return NULL;
             }
-            */
+
+            assert( packetBytes <= m_maxPacketSize );
+
+            int encryptedPacketSize;
+
+            if ( !Encrypt( m_scratchBuffer,
+                          packetBytes,
+                          m_scratchBuffer,
+                          encryptedPacketSize, 
+                          (uint8_t*) &sequence, key ) )
+            {
+                // encrypt failed
+                return NULL;
+            }
+
+            memcpy( m_packetBuffer, prefix, prefixBytes );
+            memcpy( m_packetBuffer + prefixBytes, m_scratchBuffer, encryptedPacketSize );
+
+            packetBytes = prefixBytes + encryptedPacketSize;
+
+            assert( packetBytes <= m_absoluteMaxPacketSize );
+
+            return m_packetBuffer;
         }
         else
         {
@@ -189,43 +130,20 @@ namespace yojimbo
             info.context = m_context;
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
-            info.rawFormat = 0;
             info.prefixBytes = 1;
 
             packetBytes = protocol2::WritePacket( info, packet, m_packetBuffer, m_maxPacketSize );
 
-            if ( packetBytes > 0 )
+            if ( packetBytes <= 0 )
             {
-                assert( packetBytes <= m_maxPacketSize );
-
-                return m_packetBuffer;
-            }
-            else
-            {
+                // write packet failed
                 return NULL;
             }
-        }
 
-#else // #if YOJIMBO_SECURE
-
-        protocol2::PacketInfo info;
-
-        info.context = m_context;
-        info.protocolId = m_protocolId;
-        info.packetFactory = m_packetFactory;
-
-        packetBytes = protocol2::WritePacket( info, packet, m_packetBuffer, m_maxPacketSize );
-
-        if ( packetBytes > 0 )
-        {
             assert( packetBytes <= m_maxPacketSize );
 
             return m_packetBuffer;
         }
-
-#endif // #if YOJIMBO_SECURE
-
-        return m_packetBuffer;
     }
 
     protocol2::Packet * PacketProcessor::ReadPacket( const uint8_t * packetData, 
@@ -235,8 +153,6 @@ namespace yojimbo
                                                      const uint8_t * encryptedPacketTypes,
                                                      const uint8_t * unencryptedPacketTypes )
     {
-#if YOJIMBO_SECURE
-
         const uint8_t prefixByte = packetData[0];
 
         const bool encrypted = ( prefixByte & ENCRYPTED_PACKET_FLAG ) != 0;
@@ -244,46 +160,20 @@ namespace yojimbo
         if ( encrypted )
         {
             if ( !key )
-                return NULL;
-
-            const int prefixBytes = 1;
-
-            sequence = 0;
-
-            int decryptedPacketBytes;
-
-            memcpy( m_scratchBuffer, packetData + prefixBytes, packetBytes - prefixBytes );
-
-            if ( !Decrypt( m_scratchBuffer,
-                           packetBytes - prefixBytes, 
-                           m_scratchBuffer,
-                           decryptedPacketBytes, 
-                           (uint8_t*)&sequence, key ) )
             {
+                // key is null
                 return NULL;
             }
 
-            protocol2::PacketInfo info;
-
-            info.context = m_context;
-            info.protocolId = m_protocolId;
-            info.packetFactory = m_packetFactory;
-            info.allowedPacketTypes = encryptedPacketTypes;
-            info.rawFormat = 0;
-
-            int readError;
-            
-            protocol2::Packet * packet = protocol2::ReadPacket( info, m_scratchBuffer, decryptedPacketBytes, NULL, &readError );
-            
-            return packet;
-
-            /*
             const int sequenceBytes = GetPacketSequenceBytes( prefixByte );
 
             const int prefixBytes = 1 + sequenceBytes;
 
             if ( packetBytes <= prefixBytes + MacBytes )
+            {
+                // packet too small
                 return NULL;
+            }
 
             sequence = DecompressPacketSequence( prefixByte, packetData + 1 );
 
@@ -297,6 +187,7 @@ namespace yojimbo
                            decryptedPacketBytes, 
                            (uint8_t*)&sequence, key ) )
             {
+                // decrypt failed
                 return NULL;
             }
 
@@ -306,14 +197,12 @@ namespace yojimbo
             info.protocolId = m_protocolId;
             info.packetFactory = m_packetFactory;
             info.allowedPacketTypes = encryptedPacketTypes;
-            info.rawFormat = 0;
 
             int readError;
             
             protocol2::Packet * packet = protocol2::ReadPacket( info, m_scratchBuffer, decryptedPacketBytes, NULL, &readError );
             
             return packet;
-            */
         }
         else
         {
@@ -325,29 +214,13 @@ namespace yojimbo
             info.allowedPacketTypes = unencryptedPacketTypes;
             info.prefixBytes = 1;
 
+            sequence = 0;
+            
             int readError;
 
             protocol2::Packet * packet = protocol2::ReadPacket( info, packetData, packetBytes, NULL, &readError );
 
-            sequence = 0;
-            
             return packet;
         }
-
-#else // #if YOJIMBO_SECURE
-
-        protocol2::PacketInfo info;
-        
-        info.context = m_context;
-        info.protocolId = m_protocolId;
-        info.packetFactory = m_packetFactory;
-
-        int readError;
-
-        protocol2::Packet *packet = protocol2::ReadPacket( info, m_packetBuffer, packetBytes, NULL, &readError );
-
-        return packet;
-
-#endif // #if YOJIMBO_SECURE
     }
 }
