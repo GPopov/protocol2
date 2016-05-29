@@ -421,11 +421,11 @@ namespace protocol2
     {
     public:
 
-#if DEBUG
+#ifdef DEBUG
         BitReader( const void* data, int bytes ) : m_data( (const uint32_t*)data ), m_numBytes( bytes ), m_numWords( ( bytes + 3 ) / 4)
-#else // #if DEBUG
+#else // #ifdef DEBUG
         BitReader( const void* data, int bytes ) : m_data( (const uint32_t*)data ), m_numBytes( bytes )
-#endif // #if DEBUG
+#endif // #ifdef DEBUG
         {
             // IMPORTANT: Although we support non-multiples of four bytes passed in, the actual buffer
             // underneath the bit reader must round up to at least 4 bytes because we read a dword at a time.
@@ -563,9 +563,9 @@ namespace protocol2
         uint64_t m_scratch;
         int m_numBits;
         int m_numBytes;
-#if DEBUG
+#ifdef DEBUG
         int m_numWords;
-#endif // #if DEBUG
+#endif // #ifdef DEBUG
         int m_bitsRead;
         int m_scratchBits;
         int m_wordIndex;
