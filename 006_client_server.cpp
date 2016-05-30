@@ -1101,7 +1101,7 @@ int main()
 
             printf( "----------------------------------------------------------\n" );
 
-            if ( !client.IsConnecting() && !client.IsConnected() && server.GetNumConnectedClients() )
+            if ( !client.IsConnecting() && !client.IsConnected() && server.GetNumConnectedClients() == 0 )
                 break;
         }
 

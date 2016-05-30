@@ -1132,6 +1132,7 @@ public:
             printf( "client-side disconnect: (client id = %" PRIx64 ")\n", m_clientId );
             ConnectionDisconnectPacket * packet = (ConnectionDisconnectPacket*) m_networkInterface->CreatePacket( PACKET_CONNECTION_DISCONNECT );
             SendPacketToServer( packet, time );
+            m_networkInterface->WritePackets( time );       // hack: flush packet to network before encryption mapping is cleared
         }
 
         ResetConnectionData();
@@ -1268,8 +1269,8 @@ public:
                 if ( m_lastPacketReceiveTime + ConnectionTimeOut < time )
                 {
                     printf( "keep alive timed out\n" );
-                    m_clientState = CLIENT_STATE_CONNECTION_TIMED_OUT;
                     Disconnect( time );
+                    m_clientState = CLIENT_STATE_CONNECTION_TIMED_OUT;
                     return;
                 }
             }
@@ -1536,7 +1537,7 @@ int main()
 
             printf( "----------------------------------------------------------\n" );
 
-            if ( !client.IsConnecting() && !client.IsConnected() && server.GetNumConnectedClients() )
+            if ( !client.IsConnecting() && !client.IsConnected() && server.GetNumConnectedClients() == 0 )
                 break;
         }
 
