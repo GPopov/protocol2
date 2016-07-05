@@ -1197,17 +1197,17 @@ namespace protocol2
 
         virtual ~Object() {}
 
-        virtual bool SerializeRead( class ReadStream & stream ) = 0;
+        virtual bool SerializeInternal( class ReadStream & stream ) = 0;
 
-        virtual bool SerializeWrite( class WriteStream & stream ) = 0;
+        virtual bool SerializeInternal( class WriteStream & stream ) = 0;
 
-        virtual bool SerializeMeasure( class MeasureStream & stream ) = 0;
+        virtual bool SerializeInternal( class MeasureStream & stream ) = 0;
     };
 
-    #define PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS()                                                   \
-        bool SerializeRead( class protocol2::ReadStream & stream ) { return Serialize( stream ); };           \
-        bool SerializeWrite( class protocol2::WriteStream & stream ) { return Serialize( stream ); };         \
-        bool SerializeMeasure( class protocol2::MeasureStream & stream ) { return Serialize( stream ); };     \
+    #define PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS()                                                     \
+        bool SerializeInternal( class protocol2::ReadStream & stream ) { return Serialize( stream ); };         \
+        bool SerializeInternal( class protocol2::WriteStream & stream ) { return Serialize( stream ); };        \
+        bool SerializeInternal( class protocol2::MeasureStream & stream ) { return Serialize( stream ); };      \
 
     class Packet : public Object
     {
@@ -1478,7 +1478,7 @@ namespace protocol2
 
         if ( header )
         {
-            if ( !header->SerializeWrite( stream ) )
+            if ( !header->SerializeInternal( stream ) )
                 return 0;
         }
 
@@ -1491,7 +1491,7 @@ namespace protocol2
             stream.SerializeInteger( packetType, 0, numPacketTypes - 1 );
         }
 
-        if ( !packet->SerializeWrite( stream ) )
+        if ( !packet->SerializeInternal( stream ) )
             return 0;
 
         stream.SerializeCheck( "end of packet" );
@@ -1559,7 +1559,7 @@ namespace protocol2
 
         if ( header )
         {
-            if ( !header->SerializeRead( stream ) )
+            if ( !header->SerializeInternal( stream ) )
             {
                 if ( errorCode )
                     *errorCode = PROTOCOL2_ERROR_SERIALIZE_HEADER_FAILED;
@@ -1601,7 +1601,7 @@ namespace protocol2
             return NULL;
         }
 
-        if ( !packet->SerializeRead( stream ) )
+        if ( !packet->SerializeInternal( stream ) )
         {
             if ( errorCode )
                 *errorCode = PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED;
@@ -1685,7 +1685,7 @@ cleanup:
 
             stream.SetContext( info.context );
 
-            if ( !aggregatePacketHeader->SerializeWrite( stream ) )
+            if ( !aggregatePacketHeader->SerializeInternal( stream ) )
                 return 0;
 
             stream.SerializeCheck( "aggregate packet header" );
@@ -1728,11 +1728,11 @@ cleanup:
             {
                 assert( packetHeaders[i] );
 
-                if ( !packetHeaders[i]->SerializeWrite( stream ) )
+                if ( !packetHeaders[i]->SerializeInternal( stream ) )
                     return 0;
             }
 
-            if ( !packet->SerializeWrite( stream ) )
+            if ( !packet->SerializeInternal( stream ) )
                 return 0;
 
             stream.SerializeCheck( "end of packet" );
@@ -1834,7 +1834,7 @@ cleanup:
 
         if ( aggregatePacketHeader )
         {
-            if ( !aggregatePacketHeader->SerializeRead( stream ) )
+            if ( !aggregatePacketHeader->SerializeInternal( stream ) )
             {
                 if ( errorCode )
                     *errorCode = PROTOCOL2_ERROR_SERIALIZE_HEADER_FAILED;
@@ -1877,7 +1877,7 @@ cleanup:
             {
                 assert( packetHeaders[numPacketsRead] );
 
-                if ( !packetHeaders[numPacketsRead]->SerializeRead( stream ) )
+                if ( !packetHeaders[numPacketsRead]->SerializeInternal( stream ) )
                 {
                     if ( errorCode )
                         *errorCode = PROTOCOL2_ERROR_SERIALIZE_HEADER_FAILED;
@@ -1894,7 +1894,7 @@ cleanup:
                 goto cleanup;
             }
 
-            if ( !packets[numPacketsRead]->SerializeRead( stream ) )
+            if ( !packets[numPacketsRead]->SerializeInternal( stream ) )
             {
                 if ( errorCode )
                     *errorCode = PROTOCOL2_ERROR_SERIALIZE_PACKET_FAILED;

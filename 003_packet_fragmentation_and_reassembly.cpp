@@ -290,7 +290,7 @@ struct PacketBuffer
 
         FragmentPacket fragmentPacket;
         
-        if ( !fragmentPacket.SerializeRead( stream ) )
+        if ( !fragmentPacket.SerializeInternal( stream ) )
         {
             printf( "error: fragment packet failed to serialize\n" );
             return false;
@@ -423,7 +423,7 @@ bool SplitPacketIntoFragments( uint16_t sequence, const uint8_t *packetData, int
         fragmentPacket.numFragments = (uint8_t) numFragments;
         memcpy( fragmentPacket.fragmentData, src, fragmentSize );
 
-        if ( !fragmentPacket.SerializeWrite( stream ) )
+        if ( !fragmentPacket.SerializeInternal( stream ) )
         {
             numFragments = 0;
             for ( int j = 0; j < i; ++j )

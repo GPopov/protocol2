@@ -40,6 +40,16 @@ using namespace protocol2;
 using namespace network2;
 
 //const uint32_t ProtocolId = 0x12341651;
+const int MaxMessagesPerPacket = 64; 
+/*
+const int MaxPacketSize = 4 * 1024;
+const int SlidingWindowSize = 256;
+const float MessageResendRate = 0.1f;
+const int MessageSendQueueSize = 1024;
+const int MessageReceiveQueueSize = 1024;
+const int MessageSentPacketsSize = 256;
+const int MessagePacketBudget = 1024;
+*/
 
 class Message : public Object
 {
@@ -47,9 +57,15 @@ public:
 
     Message( int type ) : m_refCount(1), m_id(0), m_type( type ) {}
 
+    void AssignId( uint16_t id ) { m_id = id; }
+
     int GetId() const { return m_id; }
 
     int GetType() const { return m_type; }
+
+    void AddRef() { m_refCount++; }
+
+    void Release() { assert( m_refCount > 0 ); m_refCount--; if ( m_refCount == 0 ) delete this; }
 
     int GetRefCount() { return m_refCount; }
 
@@ -60,12 +76,6 @@ public:
     virtual bool Serialize( MeasureStream & stream ) = 0;
 
 protected:
-
-    friend class MessageFactory;
-  
-    void AddRef() { m_refCount++; }
-
-    void Release() { assert( m_refCount > 0 ); m_refCount--; }
 
     ~Message()
     {
@@ -100,22 +110,6 @@ public:
         return CreateInternal( type );
     }
 
-    void AddRef( Message * message )
-    {
-        assert( message );        
-        message->AddRef();
-    }
-
-    void Release( Message * message )
-    {
-        assert( message );
-        message->Release();
-        if ( message->GetRefCount() == 0 )
-        {
-            delete message;
-        }
-    }
-
     int GetNumTypes() const
     {
         return m_numTypes;
@@ -130,6 +124,123 @@ enum PacketTypes
 {
     PACKET_CONNECTION,
     NUM_PACKETS
+};
+
+struct ConnectionContext
+{
+    MessageFactory * messageFactory;
+};
+
+struct ConnectionPacket : public Packet
+{
+    uint16_t sequence;
+    uint16_t ack;
+    uint32_t ack_bits;
+    int numMessages;
+    Message * messages[MaxMessagesPerPacket];
+
+    ConnectionPacket() : Packet( PACKET_CONNECTION )
+    {
+        sequence = 0;
+        ack = 0;
+        ack_bits = 0;
+        numMessages = 0;
+    }
+
+    ~ConnectionPacket()
+    {
+        for ( int i = 0; i < numMessages; ++i )
+        {
+            assert( messages[i] );
+            messages[i]->Release();
+            messages[i] = NULL;
+        }
+        numMessages = 0;
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        ConnectionContext * context = (ConnectionContext*) stream.GetContext();
+
+        assert( context );
+
+        // serialize ack system
+
+        serialize_bits( stream, sequence, 16 );
+
+        serialize_bits( stream, ack, 16 );
+
+        serialize_bits( stream, ack_bits, 32 );
+
+        // serialize messages
+
+        bool hasMessages = numMessages != 0;
+
+        serialize_bool( stream, hasMessages );
+
+        if ( hasMessages )
+        {
+            MessageFactory * messageFactory = context->messageFactory;
+
+            const int maxMessageType = messageFactory->GetNumTypes() - 1;
+
+            serialize_int( stream, numMessages, 1, MaxMessagesPerPacket );
+
+            int messageTypes[MaxMessagesPerPacket];
+
+            uint16_t messageIds[MaxMessagesPerPacket];
+
+            if ( Stream::IsWriting )
+            {
+                for ( int i = 0; i < numMessages; ++i )
+                {
+                    assert( messages[i] );
+                    messageTypes[i] = messages[i]->GetType();
+                    messageIds[i] = messages[i]->GetId();
+                }
+            }
+            else
+            {
+                memset( messages, 0, sizeof( messages ) );
+            }
+
+            for ( int i = 0; i < numMessages; ++i )
+            {
+                serialize_bits( stream, messageIds[i], 16 );
+            }
+
+            for ( int i = 0; i < numMessages; ++i )
+            {
+                serialize_int( stream, messageTypes[i], 0, maxMessageType );
+
+                if ( Stream::IsReading )
+                {
+                    messages[i] = messageFactory->Create( messageTypes[i] );
+
+                    if ( messages[i] )
+                        return false;
+
+                    messages[i]->AssignId( messageIds[i] );
+                }
+
+                assert( messages[i] );
+
+                if ( !messages[i]->SerializeInternal( stream ) )
+                    return false;
+            }
+
+            serialize_check( stream, "message system (end)" );
+        }
+
+        return true;
+    }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
+
+private:
+
+    ConnectionPacket( const ConnectionPacket & other );
+    const ConnectionPacket & operator = ( const ConnectionPacket & other );
 };
 
 int main()

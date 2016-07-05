@@ -812,17 +812,17 @@ struct TestPacketB : public protocol2::Packet
         RandomizeScene( scene );
     }
 
-    bool SerializeRead( protocol2::ReadStream & stream )
+    bool SerializeInternal( protocol2::ReadStream & stream )
     {
         return read_scene_b( stream, scene );
     }
 
-    bool SerializeWrite( protocol2::WriteStream & stream )
+    bool SerializeInternal( protocol2::WriteStream & stream )
     {
         return write_scene_b( stream, scene );
     }
 
-    bool SerializeMeasure( protocol2::MeasureStream & /*stream*/ )
+    bool SerializeInternal( protocol2::MeasureStream & /*stream*/ )
     {
         return false;
     }
@@ -837,17 +837,17 @@ struct TestPacketC : public protocol2::Packet
         RandomizeScene( scene );
     }
 
-    bool SerializeRead( protocol2::ReadStream & stream )
+    bool SerializeInternal( protocol2::ReadStream & stream )
     {
         return read_scene_c( stream, scene );
     }
 
-    bool SerializeWrite( protocol2::WriteStream & stream )
+    bool SerializeInternal( protocol2::WriteStream & stream )
     {
         return write_scene_c( stream, scene );
     }
 
-    bool SerializeMeasure( protocol2::MeasureStream & /*stream*/ )
+    bool SerializeInternal( protocol2::MeasureStream & /*stream*/ )
     {
         return false;
     }
