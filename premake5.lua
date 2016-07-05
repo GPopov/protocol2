@@ -52,22 +52,27 @@ project "005_packet_aggregation"
     kind "ConsoleApp"
     files { "005_packet_aggregation.cpp", "protocol2.h", "network2.h" }
 
-project "006_client_server"
+project "006_reliable_ordered_messages"
     language "C++"
     kind "ConsoleApp"
-    files { "006_client_server.cpp", "protocol2.h", "network2.h" }
+    files { "006_reliable_ordered_messages.cpp", "protocol2.h", "network2.h" }
+
+project "007_client_server"
+    language "C++"
+    kind "ConsoleApp"
+    files { "007_client_server.cpp", "protocol2.h", "network2.h" }
     links { "yojimbo", "sodium" }
 
-project "007_packet_encryption"
+project "008_packet_encryption"
     language "C++"
     kind "ConsoleApp"
-    files { "007_packet_encryption.cpp", "protocol2.h", "network2.h" }
+    files { "008_packet_encryption.cpp", "protocol2.h", "network2.h" }
     links { "yojimbo", "sodium" }
 
-project "008_securing_dedicated_servers"
+project "009_securing_dedicated_servers"
     language "C++"
     kind "ConsoleApp"
-    files { "008_securing_dedicated_servers.cpp", "protocol2.h", "network2.h" }
+    files { "009_securing_dedicated_servers.cpp", "protocol2.h", "network2.h" }
     links { "yojimbo", "sodium" }
 
 if _ACTION == "clean" then
@@ -86,9 +91,10 @@ if _ACTION == "clean" then
         os.execute "rm -f 003_packet_fragmentation_and_reassembly"
         os.execute "rm -f 004_sending_large_blocks_of_data"
         os.execute "rm -f 005_packet_aggregation"
-        os.execute "rm -f 006_client_server"
-        os.execute "rm -f 007_packet_encryption"
-        os.execute "rm -f 008_securing_dedicated_servers"
+        os.execute "rm -f 006_reliable_ordered_messages"
+        os.execute "rm -f 007_client_server"
+        os.execute "rm -f 008_packet_encryption"
+        os.execute "rm -f 009_securing_dedicated_servers"
         os.execute "find . -name .DS_Store -delete"
     else
         os.rmdir "ipch"
@@ -111,10 +117,6 @@ if not os.is "windows" then
     {
         trigger     = "zip",
         description = "Zip up archive of this project",
-        valid_kinds = premake.action.get("gmake").valid_kinds,
-        valid_languages = premake.action.get("gmake").valid_languages,
-        valid_tools = premake.action.get("gmake").valid_tools,
-     
         execute = function ()
             _ACTION = "clean"
             premake.action.call( "clean" )
@@ -126,10 +128,6 @@ if not os.is "windows" then
     {
         trigger     = "test",
         description = "Build and run all unit tests",
-        valid_kinds = premake.action.get("gmake").valid_kinds,
-        valid_languages = premake.action.get("gmake").valid_languages,
-        valid_tools = premake.action.get("gmake").valid_tools,
-     
         execute = function ()
             if os.execute "make -j4 test" == 0 then
                 os.execute "./bin/test"
@@ -141,10 +139,6 @@ if not os.is "windows" then
     {
         trigger     = "yojimbo",
         description = "Build yojimbo client/server protocol library",
-        valid_kinds = premake.action.get("gmake").valid_kinds,
-        valid_languages = premake.action.get("gmake").valid_languages,
-        valid_tools = premake.action.get("gmake").valid_tools,
-     
         execute = function ()
             os.execute "make -j4 yojimbo"
         end
@@ -154,10 +148,6 @@ if not os.is "windows" then
     {
         trigger     = "001",
         description = "Build example source for reading and writing packets",
-        valid_kinds = premake.action.get("gmake").valid_kinds,
-        valid_languages = premake.action.get("gmake").valid_languages,
-        valid_tools = premake.action.get("gmake").valid_tools,
-     
         execute = function ()
             if os.execute "make -j4 001_reading_and_writing_packets" == 0 then
                 os.execute "./bin/001_reading_and_writing_packets"
@@ -169,10 +159,6 @@ if not os.is "windows" then
     {
         trigger     = "002",
         description = "Build example source for serialization strategies",
-        valid_kinds = premake.action.get("gmake").valid_kinds,
-        valid_languages = premake.action.get("gmake").valid_languages,
-        valid_tools = premake.action.get("gmake").valid_tools,
-     
         execute = function ()
             if os.execute "make -j4 002_serialization_strategies" == 0 then
                 os.execute "./bin/002_serialization_strategies"
@@ -184,10 +170,6 @@ if not os.is "windows" then
     {
         trigger     = "003",
         description = "Build example source for packet fragmentation and reassembly",
-        valid_kinds = premake.action.get("gmake").valid_kinds,
-        valid_languages = premake.action.get("gmake").valid_languages,
-        valid_tools = premake.action.get("gmake").valid_tools,
-     
         execute = function ()
             if os.execute "make -j4 003_packet_fragmentation_and_reassembly" == 0 then
                 os.execute "./bin/003_packet_fragmentation_and_reassembly"
@@ -199,10 +181,6 @@ if not os.is "windows" then
     {
         trigger     = "004",
         description = "Build example source for sending large blocks of data",
-        valid_kinds = premake.action.get("gmake").valid_kinds,
-        valid_languages = premake.action.get("gmake").valid_languages,
-        valid_tools = premake.action.get("gmake").valid_tools,
-     
         execute = function ()
             if os.execute "make -j4 004_sending_large_blocks_of_data" == 0 then
                 os.execute "./bin/004_sending_large_blocks_of_data"
@@ -214,10 +192,6 @@ if not os.is "windows" then
     {
         trigger     = "005",
         description = "Build example source for packet aggregation",
-        valid_kinds = premake.action.get("gmake").valid_kinds,
-        valid_languages = premake.action.get("gmake").valid_languages,
-        valid_tools = premake.action.get("gmake").valid_tools,
-     
         execute = function ()
             if os.execute "make -j4 005_packet_aggregation" == 0 then
                 os.execute "./bin/005_packet_aggregation"
@@ -228,14 +202,10 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "006",
-        description = "Build example source for client/server",
-        valid_kinds = premake.action.get("gmake").valid_kinds,
-        valid_languages = premake.action.get("gmake").valid_languages,
-        valid_tools = premake.action.get("gmake").valid_tools,
-     
+        description = "Build example source for reliable ordered messages",
         execute = function ()
-            if os.execute "make -j4 006_client_server" == 0 then
-                os.execute "./bin/006_client_server"
+            if os.execute "make -j4 006_reliable_ordered_messages" == 0 then
+                os.execute "./bin/006_reliable_ordered_messages"
             end
         end
     }
@@ -243,14 +213,10 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "007",
-        description = "Build example source for packet encryption",
-        valid_kinds = premake.action.get("gmake").valid_kinds,
-        valid_languages = premake.action.get("gmake").valid_languages,
-        valid_tools = premake.action.get("gmake").valid_tools,
-     
+        description = "Build example source for client/server",
         execute = function ()
-            if os.execute "make -j4 007_packet_encryption" == 0 then
-                os.execute "./bin/007_packet_encryption"
+            if os.execute "make -j4 007_client_server" == 0 then
+                os.execute "./bin/007_client_server"
             end
         end
     }
@@ -258,14 +224,21 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "008",
-        description = "Build example source for securing dedicated servers",
-        valid_kinds = premake.action.get("gmake").valid_kinds,
-        valid_languages = premake.action.get("gmake").valid_languages,
-        valid_tools = premake.action.get("gmake").valid_tools,
-     
+        description = "Build example source for packet encryption",
         execute = function ()
-            if os.execute "make -j4 008_securing_dedicated_servers" == 0 then
-                os.execute "./bin/008_securing_dedicated_servers"
+            if os.execute "make -j4 008_packet_encryption" == 0 then
+                os.execute "./bin/008_packet_encryption"
+            end
+        end
+    }
+
+    newaction
+    {
+        trigger     = "009",
+        description = "Build example source for securing dedicated servers",     
+        execute = function ()
+            if os.execute "make -j4 009_securing_dedicated_servers" == 0 then
+                os.execute "./bin/009_securing_dedicated_servers"
             end
         end
     }

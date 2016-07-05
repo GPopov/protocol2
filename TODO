@@ -1,3 +1,12 @@
 DONE
 
 TODO
+
+    Cleanup and remove memory initialize and the stupid allocator stuff. There is no need for any of this.
+
+    Remove the queue and data structures I'm not using.
+
+    Incorporate the sliding window and sequence buffer into reliable ordered messages.
+
+    Incorporate the connection packet and connection class into reliable ordered messages. Keep it dependency free. Don't use fancy serialization.
+
