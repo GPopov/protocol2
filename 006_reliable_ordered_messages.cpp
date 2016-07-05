@@ -41,6 +41,91 @@ using namespace network2;
 
 //const uint32_t ProtocolId = 0x12341651;
 
+class Message : public Object
+{
+public:
+
+    Message( int type ) : m_refCount(1), m_id(0), m_type( type ) {}
+
+    int GetId() const { return m_id; }
+
+    int GetType() const { return m_type; }
+
+    int GetRefCount() { return m_refCount; }
+
+    virtual bool Serialize( ReadStream & stream ) = 0;
+
+    virtual bool Serialize( WriteStream & stream ) = 0;
+
+    virtual bool Serialize( MeasureStream & stream ) = 0;
+
+protected:
+
+    friend class MessageFactory;
+  
+    void AddRef() { m_refCount++; }
+
+    void Release() { assert( m_refCount > 0 ); m_refCount--; }
+
+    ~Message()
+    {
+        assert( m_refCount == 0 );
+    }
+
+private:
+
+    Message( const Message & other );
+    const Message & operator = ( const Message & other );
+
+    int m_refCount;
+    uint32_t m_id : 16;
+    uint32_t m_type : 16;
+};
+
+class MessageFactory
+{        
+    int m_numTypes;
+
+public:
+
+    MessageFactory( int numTypes )
+    {
+        m_numTypes = numTypes;
+    }
+
+    Message * Create( int type )
+    {
+        assert( type >= 0 );
+        assert( type < m_numTypes );
+        return CreateInternal( type );
+    }
+
+    void AddRef( Message * message )
+    {
+        assert( message );        
+        message->AddRef();
+    }
+
+    void Release( Message * message )
+    {
+        assert( message );
+        message->Release();
+        if ( message->GetRefCount() == 0 )
+        {
+            delete message;
+        }
+    }
+
+    int GetNumTypes() const
+    {
+        return m_numTypes;
+    }
+
+protected:
+
+    virtual Message * CreateInternal( int type ) = 0;
+};
+
 enum PacketTypes
 {
     PACKET_CONNECTION,

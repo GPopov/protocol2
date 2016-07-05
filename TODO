@@ -2,6 +2,8 @@ DONE
 
 TODO
 
+    Bring across a simple connection example without any external dependencies
+
     Cleanup and remove memory initialize and the stupid allocator stuff. There is no need for any of this.
 
     Remove the queue and data structures I'm not using.
