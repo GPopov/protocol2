@@ -347,6 +347,11 @@ private:
 
 Connection::Connection( PacketFactory & packetFactory, MessageFactory & messageFactory )
 {
+    assert( ( 65536 % SlidingWindowSize ) == 0 );
+    assert( ( 65536 % MessageSendQueueSize ) == 0 );
+    assert( ( 65536 % MessageSentPacketsSize ) == 0 );
+    assert( ( 65536 % MessageReceiveQueueSize ) == 0 );
+    
     m_packetFactory = &packetFactory;
 
     m_messageFactory = &messageFactory;
@@ -823,6 +828,15 @@ protected:
     }
 };
 
+#include <signal.h>
+
+static volatile int quit = 0;
+
+void interrupt_handler( int /*dummy*/ )
+{
+    quit = 1;
+}
+
 int MessagesMain()
 {
     TestPacketFactory packetFactory;
@@ -833,88 +847,51 @@ int MessagesMain()
 
     Connection receiver( packetFactory, messageFactory );
 
-#if 0
-
-    const int NumMessagesSent = 64;
-
-    for ( int i = 0; i < NumMessagesSent; ++i )
-    {
-        TestMessage * message = (TestMessage*) messageFactory.Create( MESSAGE_TEST );
-        check( message );
-        message->sequence = i;
-        sender.SendMessage( message );
-    }
-
-    TestNetworkSimulator networkSimulator;
-
-    networkSimulator.SetJitter( 250 );
-    networkSimulator.SetLatency( 1000 );
-    networkSimulator.SetDuplicates( 50 );
-    networkSimulator.SetPacketLoss( 50 );
-
-    const int SenderPort = 10000;
-    const int ReceiverPort = 10001;
-
-    Address senderAddress( "::1", SenderPort );
-    Address receiverAddress( "::1", ReceiverPort );
-
-    SimulatorInterface senderInterface( GetDefaultAllocator(), networkSimulator, packetFactory, senderAddress, ProtocolId );
-    SimulatorInterface receiverInterface( GetDefaultAllocator(), networkSimulator, packetFactory, receiverAddress, ProtocolId );
-
-    senderInterface.SetContext( &context );
-    receiverInterface.SetContext( &context );
-
     double time = 0.0;
     double deltaTime = 0.1;
 
-    const int NumIterations = 1000;
+    uint64_t numMessagesSent = 0;
+    uint64_t numMessagesReceived = 0;
 
-    int numMessagesReceived = 0;
+    signal( SIGINT, interrupt_handler );    
 
-    for ( int i = 0; i < NumIterations; ++i )
+    while ( !quit )
     {
-        Packet * senderPacket = sender.WritePacket();
-        Packet * receiverPacket = receiver.WritePacket();
+        const int messagesToSend = random_int( 0, 32 );
 
-        check( senderPacket );
-        check( receiverPacket );
-
-        senderInterface.SendPacket( receiverAddress, senderPacket, 0, false );
-        receiverInterface.SendPacket( senderAddress, receiverPacket, 0, false );
-
-        senderInterface.WritePackets();
-        receiverInterface.WritePackets();
-
-        senderInterface.ReadPackets();
-        receiverInterface.ReadPackets();
-
-        while ( true )
+        for ( int i = 0; i < messagesToSend; ++i )
         {
-            Address from;
-            Packet * packet = senderInterface.ReceivePacket( from, NULL );
-            if ( !packet )
+            if ( !sender.CanSendMessage() )
                 break;
 
-            if ( from == receiverAddress && packet->GetType() == TEST_PACKET_CONNECTION )
-                sender.ReadPacket( (ConnectionPacket*) packet );
-
-            packetFactory.DestroyPacket( packet );
-        }
-
-        while ( true )
-        {
-            Address from;
-            Packet * packet = receiverInterface.ReceivePacket( from, NULL );
-            if ( !packet )
-                break;
-
-            if ( from == senderAddress && packet->GetType() == TEST_PACKET_CONNECTION )
+            TestMessage * message = (TestMessage*) messageFactory.Create( MESSAGE_TEST );
+            
+            if ( message )
             {
-                receiver.ReadPacket( (ConnectionPacket*) packet );
-            }
+                message->sequence = (uint16_t) numMessagesSent;
+                
+                printf( "sent message %d\n", message->sequence );
 
-            packetFactory.DestroyPacket( packet );
+                sender.SendMessage( message );
+
+                numMessagesSent++;
+            }
         }
+
+        ConnectionPacket * senderPacket = sender.WritePacket();
+        ConnectionPacket * receiverPacket = receiver.WritePacket();
+
+        assert( senderPacket );
+        assert( receiverPacket );
+
+        if ( ( rand() % 100 ) == 0 )
+            sender.ReadPacket( receiverPacket );
+
+        if ( ( rand() % 100 ) == 0 )
+            receiver.ReadPacket( senderPacket );
+
+        packetFactory.DestroyPacket( senderPacket );
+        packetFactory.DestroyPacket( receiverPacket );
 
         while ( true )
         {
@@ -923,35 +900,27 @@ int MessagesMain()
             if ( !message )
                 break;
 
-            check( message->GetId() == (int) numMessagesReceived );
-            check( message->GetType() == MESSAGE_TEST );
+            assert( message->GetType() == MESSAGE_TEST );
+            assert( message->GetId() == (uint16_t) numMessagesReceived );
 
             TestMessage * testMessage = (TestMessage*) message;
 
-            check( testMessage->sequence == numMessagesReceived );
+            assert( testMessage->sequence == uint16_t( numMessagesReceived ) );
+
+            printf( "received message %d\n", uint16_t( numMessagesReceived ) );
 
             ++numMessagesReceived;
 
-            messageFactory.Release( message );
+            message->Release();
         }
-
-        if ( numMessagesReceived == NumMessagesSent )
-            break;
 
         time += deltaTime;
 
         sender.AdvanceTime( time );
         receiver.AdvanceTime( time );
-
-        senderInterface.AdvanceTime( time );
-        receiverInterface.AdvanceTime( time );
-
-        networkSimulator.AdvanceTime( time );
     }
 
-    check( numMessagesReceived == NumMessagesSent );
-
-#endif
+    printf( "\nstopped\n\n" );
 
     return 0;
 }

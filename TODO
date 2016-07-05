@@ -14,7 +14,9 @@ TODO
 
     But once it is working without serialization, implement that using the functions from "004_sending_large_blocks_of_data.cpp" to send and receive packets via simulator. It's important to actualy demonstrate serialization and packet drops, in a straightforward way.
 
+    Hacked up a basic reliable message soak test. It works under 99% packet loss for a while, but then message send keeps moving forward (slowly), but messages stop getting received.
 
+    This looks like a breakage. What is going on, and why wasn't it picked up in the message system inside yojimbo testing?
 
 
 

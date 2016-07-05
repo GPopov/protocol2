@@ -714,15 +714,24 @@
 	],
 	"file_history":
 	[
+		"/Users/gaffer/git/protocol2/006_reliable_ordered_messages.cpp",
+		"/Users/gaffer/git/protocol2/output.txt",
+		"/Users/gaffer/git/protocol2/protocol2.h",
+		"/Users/gaffer/git/protocol2/network2.h",
+		"/Users/gaffer/git/protocol2/004_sending_large_blocks_of_data.cpp",
+		"/Users/gaffer/git/protocol2/test.cpp",
+		"/Users/gaffer/git/protocol2/TODO",
+		"/Users/gaffer/git/protocol2/yojimbo.cpp",
+		"/Users/gaffer/git/protocol2/005_packet_aggregation.cpp",
 		"/Users/gaffer/git/protocol2/001_reading_and_writing_packets.cpp",
 		"/Users/gaffer/git/protocol2/002_serialization_strategies.cpp",
 		"/Users/gaffer/git/protocol2/003_packet_fragmentation_and_reassembly.cpp",
-		"/Users/gaffer/git/protocol2/004_sending_large_blocks_of_data.cpp",
-		"/Users/gaffer/git/protocol2/005_packet_aggregation.cpp",
+		"/Users/gaffer/git/protocol2/obj/x64/Debug/003_packet_fragmentation_and_reassembly/003_packet_fragmentation_and_reassembly.d",
+		"/Users/gaffer/git/protocol2/premake5.lua",
+		"/Users/gaffer/git/protocol2/006_reliable_messages.cpp",
 		"/Users/gaffer/git/protocol2/006_client_server.cpp",
 		"/Users/gaffer/git/protocol2/yojimbo_socket_interface.cpp",
 		"/Users/gaffer/git/protocol2/yojimbo_packet_processor.cpp",
-		"/Users/gaffer/git/protocol2/TODO",
 		"/Users/gaffer/git/protocol2/008_securing_dedicated_servers.cpp",
 		"/Users/gaffer/git/libyojimbo/network2.h",
 		"/Users/gaffer/git/libyojimbo/protocol2.h",
@@ -746,7 +755,6 @@
 		"/Users/gaffer/git/libyojimbo/yojimbo_socket_interface.cpp",
 		"/Users/gaffer/git/libyojimbo/yojimbo_packet_processor.cpp",
 		"/Users/gaffer/git/libyojimbo/yojimbo.cpp",
-		"/Users/gaffer/git/protocol2/premake5.lua",
 		"/Users/gaffer/git/protocol2/yojimbo_socket_interface.h",
 		"/Users/gaffer/git/protocol2/007_packet_encryption.cpp",
 		"/Users/gaffer/git/protocol2/yojimbo_packet_processor.h",
@@ -754,10 +762,6 @@
 		"/Users/gaffer/git/protocol2/yojimbo_network_interface.h",
 		"/Users/gaffer/git/protocol2/yojimbo_crypto.h",
 		"/Users/gaffer/git/protocol2/yojimbo_crypto.cpp",
-		"/Users/gaffer/git/protocol2/network2.h",
-		"/Users/gaffer/git/protocol2/protocol2.h",
-		"/Users/gaffer/git/protocol2/test.cpp",
-		"/Users/gaffer/git/protocol2/yojimbo.cpp",
 		"/Users/gaffer/git/protocol2/yojimbo_config.h",
 		"/Users/gaffer/Desktop/CONTRACT GOALS",
 		"/Users/gaffer/git/protocol2/temp.cpp",
@@ -837,11 +841,7 @@
 		"/Users/gaffer/Desktop/Reading and Writing Packets/premake4.lua",
 		"/Users/gaffer/Desktop/Reading and Writing Packets/test.cpp",
 		"/Users/gaffer/git/protocol2/002_packet_fragmentation_and_reassembly.cpp",
-		"/Users/gaffer/git/protocol2/005_reliable_packets.cpp",
-		"/Users/gaffer/git/protocol2/004_packet_aggregation.cpp",
-		"/Users/gaffer/git/protocol2/003_sending_large_blocks_of_data_quickly_and_reliably.cpp",
-		"/Users/gaffer/git/protocol2/protocol2-old.h",
-		"/Users/gaffer/Desktop/taxes/corporate 2015/working.txt"
+		"/Users/gaffer/git/protocol2/005_reliable_packets.cpp"
 	],
 	"find":
 	{
@@ -892,6 +892,15 @@
 		"case_sensitive": true,
 		"find_history":
 		[
+			"Simulator",
+			"class Message",
+			"Counter",
+			"_IMPLEMENTATION",
+			"(int) numMess",
+			"PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS",
+			"MaxMessagesPerPacket",
+			"queue",
+			"reliable_mes",
 			"PACKET_CONNECTION_DISCONNECT",
 			"DisconnectPacket",
 			"Disconnect();",
@@ -1010,16 +1019,7 @@
 			"ToString",
 			"Socket",
 			"GenerateSlicePacket",
-			"Sender",
-			"Packet",
-			"numBufferedFragments",
-			"numFragments",
-			"// todo",
-			"client",
-			"FlushBits",
-			"006",
-			"premake",
-			"random"
+			"Sender"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -1124,8 +1124,60 @@
 		"selected_items":
 		[
 			[
+				"todo",
+				"protocol2/TODO"
+			],
+			[
+				"output.txt",
+				"protocol2/output.txt"
+			],
+			[
+				"output.t",
+				"protocol2/output.txt"
+			],
+			[
+				"network2.h",
+				"protocol2/network2.h"
+			],
+			[
+				"protocol2h",
+				"protocol2/protocol2.h"
+			],
+			[
 				"006",
-				"protocol2/006_client_server.cpp"
+				"protocol2/006_reliable_ordered_messages.cpp"
+			],
+			[
+				"test.cpp",
+				"protocol2/test.cpp"
+			],
+			[
+				"protocol2.h",
+				"protocol2/protocol2.h"
+			],
+			[
+				"30",
+				"protocol2/obj/x64/Debug/003_packet_fragmentation_and_reassembly/003_packet_fragmentation_and_reassembly.d"
+			],
+			[
+				"yojimbo.cpp",
+				"protocol2/yojimbo.cpp"
+			],
+			[
+				"rel",
+				"protocol2/006_reliable_ordered_messages.cpp"
+			],
+			[
+				"premake5.lua",
+				"protocol2/premake5.lua"
+			],
+			[
+				"007",
+				"protocol2/007_client_server.cpp"
+			],
+			[
+				"pre",
+				"protocol2/premake5.lua"
 			],
 			[
 				"005",
@@ -1160,36 +1212,12 @@
 				"protocol2/yojimbo_packet_processor.cpp"
 			],
 			[
-				"todo",
-				"protocol2/TODO"
-			],
-			[
-				"premake5.lua",
-				"protocol2/premake5.lua"
-			],
-			[
-				"007",
-				"007_packet_encryption.cpp"
-			],
-			[
 				"packet_processor.h",
 				"yojimbo_packet_processor.h"
 			],
 			[
 				"packet",
 				"yojimbo_packet_processor.h"
-			],
-			[
-				"protocol2.h",
-				"protocol2.h"
-			],
-			[
-				"protocol2h",
-				"protocol2.h"
-			],
-			[
-				"test.cpp",
-				"test.cpp"
 			],
 			[
 				"network2h",
@@ -1212,16 +1240,8 @@
 				"yojimbo_packet_processor.h"
 			],
 			[
-				"yojimbo.cpp",
-				"yojimbo.cpp"
-			],
-			[
 				"config.h",
 				"yojimbo_config.h"
-			],
-			[
-				"network2.h",
-				"network2.h"
 			],
 			[
 				"socket_interfac",
@@ -1348,10 +1368,6 @@
 				"network2.h"
 			],
 			[
-				"pre",
-				"premake5.lua"
-			],
-			[
 				"netwokr2.h",
 				"network2.h"
 			],
@@ -1450,10 +1466,6 @@
 			[
 				"03",
 				"003_sending_large_blocks_of_data_quickly_and_reliably.cpp"
-			],
-			[
-				"output.txt",
-				"output.txt"
 			],
 			[
 				"001_read",
@@ -1622,18 +1634,6 @@
 			[
 				"vec3f.h",
 				"vectorial/vec3f.h"
-			],
-			[
-				"plann",
-				"PLANNING"
-			],
-			[
-				"would",
-				"WOULD BE NICE"
-			],
-			[
-				"client.h",
-				"obj/x64/Release/client/physics_ode.d"
 			]
 		],
 		"width": 0.0
