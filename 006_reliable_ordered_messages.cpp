@@ -228,8 +228,6 @@ struct ConnectionPacket : public Packet
                 if ( !messages[i]->SerializeInternal( stream ) )
                     return false;
             }
-
-            serialize_check( stream, "message system (end)" );
         }
 
         return true;
@@ -240,7 +238,118 @@ struct ConnectionPacket : public Packet
 private:
 
     ConnectionPacket( const ConnectionPacket & other );
+
     const ConnectionPacket & operator = ( const ConnectionPacket & other );
+};
+
+enum ConnectionError
+{
+    CONNECTION_ERROR_NONE = 0,
+    CONNECTION_ERROR_MESSAGE_SEND_QUEUE_FULL,
+    CONNECTION_ERROR_MESSAGE_SERIALIZE_MEASURE_FAILED,
+};
+
+class Connection
+{
+public:
+
+    Connection( PacketFactory & packetFactory, MessageFactory & messageFactory );
+
+    ~Connection();
+
+    void Reset();
+
+    bool CanSendMessage() const;
+
+    void SendMessage( Message * message );
+
+    Message * ReceiveMessage();
+
+    ConnectionPacket * WritePacket();
+
+    bool ReadPacket( ConnectionPacket * packet );
+
+    void AdvanceTime( double time );
+
+    uint64_t GetCounter( int index ) const;
+
+    ConnectionError GetError() const;
+
+protected:
+
+    struct SentPacketData { uint8_t acked; };
+
+    struct ReceivedPacketData {};
+
+    struct MessageSendQueueEntry
+    {
+        Message * message;
+        double timeLastSent;
+        uint32_t blockMessage : 1;
+        uint32_t measuredBits : 30;
+    };
+
+    struct MessageSentPacketEntry
+    {
+        double timeSent;
+        uint16_t * messageIds;
+        uint64_t numMessageIds : 16;                 // number of messages in this packet
+        uint64_t blockId : 16;                       // block id. valid only when sending a block message
+        uint64_t fragmentId : 16;                    // fragment id. valid only when sending a block message
+        uint64_t acked : 1;                          // 1 if this sent packet has been acked
+        uint64_t blockMessage : 1;                   // 1 if this sent packet contains a block message fragment
+    };
+
+    struct MessageReceiveQueueEntry
+    {
+        Message * message;
+    };
+
+    void InsertAckPacketEntry( uint16_t sequence );
+
+    void ProcessAcks( uint16_t ack, uint32_t ack_bits );
+
+    void PacketAcked( uint16_t sequence );
+
+    void GetMessagesToSend( uint16_t * messageIds, int & numMessageIds );
+
+    void AddMessagePacketEntry( const uint16_t * messageIds, int & numMessageIds, uint16_t sequence );
+
+    bool ProcessPacketMessages( const ConnectionPacket * packet );
+
+    void ProcessMessageAck( uint16_t ack );
+
+    void UpdateOldestUnackedMessageId();
+    
+private:
+
+    PacketFactory * m_packetFactory;                                                // packet factory for creating and destroying connection packets
+
+    MessageFactory * m_messageFactory;                                              // message factory creates and destroys messages
+
+    double m_time;                                                                  // current connection time
+
+    ConnectionError m_error;                                                        // connection error level
+
+    SequenceBuffer<SentPacketData> * m_sentPackets;                                 // sequence buffer of recently sent packets
+
+    SequenceBuffer<ReceivedPacketData> * m_receivedPackets;                         // sequence buffer of recently received packets
+
+    int m_messageOverheadBits;                                                      // number of bits overhead per-serialized message
+
+    uint16_t m_sendMessageId;                                                       // id for next message added to send queue
+
+    uint16_t m_receiveMessageId;                                                    // id for next message to be received
+
+    uint16_t m_oldestUnackedMessageId;                                              // id for oldest unacked message in send queue
+
+    SequenceBuffer<MessageSendQueueEntry> * m_messageSendQueue;                     // message send queue
+
+    SequenceBuffer<MessageSentPacketEntry> * m_messageSentPackets;                  // messages in sent packets (for acks)
+
+    SequenceBuffer<MessageReceiveQueueEntry> * m_messageReceiveQueue;               // message receive queue
+
+    uint16_t * m_sentPacketMessageIds;                                              // array of message ids, n ids per-sent packet
 };
 
 int main()

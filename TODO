@@ -4,6 +4,20 @@ TODO
 
     Bring across a simple connection example without any external dependencies
 
+    So far brought across message, message factory, connection packet, connection configuration (as constants)
+
+    Now need to bring across the 
+
+
+
+
+
+
+
+
+
+    ---------------
+
     Cleanup and remove memory initialize and the stupid allocator stuff. There is no need for any of this.
 
     Remove the queue and data structures I'm not using.
