@@ -45,10 +45,10 @@ const int SlidingWindowSize = 256;
 const int MessageSendQueueSize = 1024;
 const int MessageSentPacketsSize = 256;
 const int MessageReceiveQueueSize = 1024;
+const int MessagePacketBudget = 1024;
+const float MessageResendRate = 0.1f;
 /*
 const int MaxPacketSize = 4 * 1024;
-const float MessageResendRate = 0.1f;
-const int MessagePacketBudget = 1024;
 */
 
 class Message : public Object
@@ -283,8 +283,7 @@ protected:
     {
         Message * message;
         double timeLastSent;
-        uint32_t blockMessage : 1;
-        uint32_t measuredBits : 30;
+        int measuredBits;
     };
 
     struct MessageSentPacketEntry
@@ -439,15 +438,8 @@ void Connection::Reset()
     m_messageReceiveQueue->Reset();
 }
 
-#if 0
-
 bool Connection::CanSendMessage() const
 {
-    assert( m_messageSendQueue );
-
-    if ( GetError() != CONNECTION_ERROR_NONE )
-        return true;
-
     return m_messageSendQueue->IsAvailable( m_sendMessageId );
 }
 
@@ -456,16 +448,10 @@ void Connection::SendMessage( Message * message )
     assert( message );
     assert( CanSendMessage() );
 
-    if ( GetError() != CONNECTION_ERROR_NONE )
-    {
-        m_messageFactory->Release( message );
-        return;
-    }
-
     if ( !CanSendMessage() )
     {
         m_error = CONNECTION_ERROR_MESSAGE_SEND_QUEUE_FULL;
-        m_messageFactory->Release( message );
+        message->Release();
         return;
     }
 
@@ -475,30 +461,22 @@ void Connection::SendMessage( Message * message )
 
     assert( entry );
 
-    const int blockMessage = message->IsBlockMessage();
-    
     entry->message = message;
-    entry->blockMessage = blockMessage;
     entry->measuredBits = 0;
     entry->timeLastSent = -1.0;
 
-    if ( !blockMessage )
+    MeasureStream measureStream( MessagePacketBudget / 2 );
+
+    message->SerializeInternal( measureStream );
+
+    if ( measureStream.GetError() )
     {
-        MeasureStream measureStream( m_config.messagePacketBudget / 2 );        // if a single message takes up more than 1/2 the packet budget, there will be problems.
-
-        message->SerializeInternal( measureStream );
-
-        if ( measureStream.GetError() )
-        {
-            m_error = CONNECTION_ERROR_MESSAGE_SERIALIZE_MEASURE_FAILED;
-            m_messageFactory->Release( message );
-            return;
-        }
-
-        entry->measuredBits = measureStream.GetBitsProcessed() + m_messageOverheadBits;
+        m_error = CONNECTION_ERROR_MESSAGE_SERIALIZE_MEASURE_FAILED;
+        message->Release();
+        return;
     }
 
-    m_counters[CONNECTION_COUNTER_MESSAGES_SENT]++;
+    entry->measuredBits = measureStream.GetBitsProcessed() + m_messageOverheadBits;
 
     m_sendMessageId++;
 }
@@ -519,8 +497,6 @@ Message * Connection::ReceiveMessage()
 
     m_messageReceiveQueue->Remove( m_receiveMessageId );
 
-    m_counters[CONNECTION_COUNTER_MESSAGES_RECEIVED]++;
-
     m_receiveMessageId++;
 
     return message;
@@ -531,20 +507,16 @@ ConnectionPacket * Connection::WritePacket()
     if ( m_error != CONNECTION_ERROR_NONE )
         return NULL;
 
-    ConnectionPacket * packet = (ConnectionPacket*) m_packetFactory->CreatePacket( m_config.packetType );
+    ConnectionPacket * packet = (ConnectionPacket*) m_packetFactory->CreatePacket( PACKET_CONNECTION );
 
     if ( !packet )
         return NULL;
-
-    // ack system
 
     packet->sequence = m_sentPackets->GetSequence();
 
     GenerateAckBits( *m_receivedPackets, packet->ack, packet->ack_bits );
 
     InsertAckPacketEntry( packet->sequence );
-
-    // message system
 
     int numMessageIds;
     
@@ -560,12 +532,9 @@ ConnectionPacket * Connection::WritePacket()
     {
         MessageSendQueueEntry * entry = m_messageSendQueue->Find( messageIds[i] );
         assert( entry && entry->message );
-        packet->messageFactory = m_messageFactory;
         packet->messages[i] = entry->message;
-        m_messageFactory->AddRef( entry->message );
+        entry->message->AddRef();
     }
-
-    m_counters[CONNECTION_COUNTER_PACKETS_WRITTEN]++;
 
     return packet;
 }
@@ -576,9 +545,7 @@ bool Connection::ReadPacket( ConnectionPacket * packet )
         return false;
 
     assert( packet );
-    assert( packet->GetType() == m_config.packetType );
-
-    m_counters[CONNECTION_COUNTER_PACKETS_READ]++;
+    assert( packet->GetType() == PACKET_CONNECTION );
 
     if ( !ProcessPacketMessages( packet ) )
         goto discard;
@@ -592,24 +559,12 @@ bool Connection::ReadPacket( ConnectionPacket * packet )
 
 discard:
 
-    m_counters[CONNECTION_COUNTER_PACKETS_DISCARDED]++;
-
     return false;            
 }
 
 void Connection::AdvanceTime( double time )
 {
-    if ( m_error != CONNECTION_ERROR_NONE )
-        return;
-
     m_time = time;
-}
-
-uint64_t Connection::GetCounter( int index ) const
-{
-    assert( index >= 0 );
-    assert( index < CONNECTION_COUNTER_NUM_COUNTERS );
-    return m_counters[index];
 }
 
 ConnectionError Connection::GetError() const
@@ -649,11 +604,7 @@ void Connection::ProcessAcks( uint16_t ack, uint32_t ack_bits )
 
 void Connection::PacketAcked( uint16_t sequence )
 {
-    OnPacketAcked( sequence );
-
     ProcessMessageAck( sequence );
-
-    m_counters[CONNECTION_COUNTER_PACKETS_ACKED]++;
 }
 
 void Connection::GetMessagesToSend( uint16_t * messageIds, int & numMessageIds )
@@ -668,9 +619,9 @@ void Connection::GetMessagesToSend( uint16_t * messageIds, int & numMessageIds )
 
     const int GiveUpBits = 8 * 8;
 
-    int availableBits = m_config.messagePacketBudget * 8;
+    int availableBits = MessagePacketBudget * 8;
 
-    for ( int i = 0; i < m_config.messageSendQueueSize; ++i )
+    for ( int i = 0; i < MessageSendQueueSize; ++i )
     {
         if ( availableBits <= GiveUpBits )
             break;
@@ -682,10 +633,7 @@ void Connection::GetMessagesToSend( uint16_t * messageIds, int & numMessageIds )
         if ( !entry )
             break;
 
-        if ( entry->blockMessage )
-            break;
-
-        if ( entry->timeLastSent + m_config.messageResendRate <= m_time && availableBits - entry->measuredBits >= 0 )
+        if ( entry->timeLastSent + MessageResendRate <= m_time && availableBits - entry->measuredBits >= 0 )
         {
             messageIds[numMessageIds++] = messageId;
             entry->timeLastSent = m_time;
@@ -718,7 +666,7 @@ bool Connection::ProcessPacketMessages( const ConnectionPacket * packet )
     bool earlyMessage = false;
 
     const uint16_t minMessageId = m_receiveMessageId;
-    const uint16_t maxMessageId = m_receiveMessageId + m_config.messageReceiveQueueSize - 1;
+    const uint16_t maxMessageId = m_receiveMessageId + MessageReceiveQueueSize - 1;
 
     for ( int i = 0; i < (int) packet->numMessages; ++i )
     {
@@ -729,31 +677,22 @@ bool Connection::ProcessPacketMessages( const ConnectionPacket * packet )
         const uint16_t messageId = message->GetId();
 
         if ( sequence_less_than( messageId, minMessageId ) )
-        {
-            m_counters[CONNECTION_COUNTER_MESSAGES_LATE]++;
             continue;
-        }
 
         if ( sequence_greater_than( messageId, maxMessageId ) )
         {
-            m_counters[CONNECTION_COUNTER_MESSAGES_EARLY]++;
             earlyMessage = true;
             continue;
         }
 
         if ( m_messageReceiveQueue->Find( messageId ) )
-        {
-            m_counters[CONNECTION_COUNTER_MESSAGES_REDUNDANT]++;
             continue;
-        }
 
         MessageReceiveQueueEntry * entry = m_messageReceiveQueue->Insert( messageId );
 
         entry->message = message;
 
-        m_messageFactory->AddRef( message );
-
-        m_counters[CONNECTION_COUNTER_MESSAGES_RECEIVED]++;
+        entry->message->AddRef();
     }
 
     return !earlyMessage;
@@ -777,7 +716,7 @@ void Connection::ProcessMessageAck( uint16_t ack )
             assert( sendQueueEntry->message );
             assert( sendQueueEntry->message->GetId() == messageId );
 
-            m_messageFactory->Release( sendQueueEntry->message );
+            sendQueueEntry->message->Release();
 
             m_messageSendQueue->Remove( messageId );
         }
@@ -804,8 +743,6 @@ void Connection::UpdateOldestUnackedMessageId()
 
     assert( !sequence_greater_than( m_oldestUnackedMessageId, stopMessageId ) );
 }
-
-#endif
 
 int main()
 {
