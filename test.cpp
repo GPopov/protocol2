@@ -581,6 +581,93 @@ void test_address_ipv6()
     }
 }
 
+struct TestPacketData
+{
+    TestPacketData()
+        : sequence(0xFFFF) {}
+
+    TestPacketData( uint16_t _sequence )
+        : sequence( _sequence ) {}
+
+    uint32_t sequence : 16;                 // packet sequence #
+};
+
+void test_sequence_buffer()
+{
+    printf( "test_sequence_buffer\n" );
+
+    const int Size = 256;
+
+    protocol2::SequenceBuffer<TestPacketData> sequence_buffer( Size );
+
+    for ( int i = 0; i < Size; ++i )
+        check( sequence_buffer.Find(i) == NULL );
+
+    for ( int i = 0; i <= Size*4; ++i )
+    {
+        TestPacketData * entry = sequence_buffer.Insert( i );
+        entry->sequence = i;
+        check( sequence_buffer.GetSequence() == i + 1 );
+    }
+
+    for ( int i = 0; i <= Size; ++i )
+    {
+        // note: outside bounds!
+        TestPacketData * entry = sequence_buffer.Insert( i );
+        check( !entry );
+    }    
+
+    int index = Size * 4;
+    for ( int i = 0; i < Size; ++i )
+    {
+        TestPacketData * entry = sequence_buffer.Find( index );
+        check( entry );
+        check( entry->sequence == uint32_t( index ) );
+        index--;
+    }
+
+    sequence_buffer.Reset();
+
+    check( sequence_buffer.GetSequence() == 0 );
+
+    for ( int i = 0; i < Size; ++i )
+        check( sequence_buffer.Find(i) == NULL );
+}
+
+void test_generate_ack_bits()
+{
+    printf( "test_generate_ack_bits\n" );
+
+    const int Size = 256;
+
+    protocol2::SequenceBuffer<TestPacketData> received_packets( Size );
+
+    uint16_t ack = 0xFFFF;
+    uint32_t ack_bits = 0xFFFF;
+
+    GenerateAckBits( received_packets, ack, ack_bits );
+    check( ack == 0xFFFF );
+    check( ack_bits == 0 );
+
+    for ( int i = 0; i <= Size; ++i )
+        received_packets.Insert( i );
+
+    GenerateAckBits( received_packets, ack, ack_bits );
+    check( ack == Size );
+    check( ack_bits == 0xFFFFFFFF );
+
+    received_packets.Reset();
+    uint16_t input_acks[] = { 1, 5, 9, 11 };
+    int input_num_acks = sizeof( input_acks ) / sizeof( uint16_t );
+    for ( int i = 0; i < input_num_acks; ++i )
+        received_packets.Insert( input_acks[i] );
+
+    GenerateAckBits( received_packets, ack, ack_bits );
+
+    check( ack == 11 );
+    check( ack_bits == ( 1 | (1<<(11-9)) | (1<<(11-5)) | (1<<(11-1)) ) );
+}
+
 void test_packet_sequence()
 {
     printf( "test_packet_sequence\n" );
@@ -706,6 +793,8 @@ int main()
     test_packets();
     test_address_ipv4();
     test_address_ipv6();
+    test_sequence_buffer();
+    test_generate_ack_bits();
     test_packet_sequence();
     test_packet_encryption();
     return 0;
