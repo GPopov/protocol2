@@ -2,11 +2,17 @@ DONE
 
 TODO
 
-    Bring across a simple connection example without any external dependencies
+    Bring across a simple connection example without any external dependencies.
 
-    So far brought across message, message factory, connection packet, connection configuration (as constants)
+    So far brought across message, message factory, connection packet, connection configuration (as constants).
 
-    Now need to bring across the 
+    Connection implemented ported and cleaned up.
+
+    Now need to bring across the code for soak testing connection messages.
+
+    For the moment, don't actually serialize the messages.
+
+    But once it is working without serialization, implement that using the functions from "004_sending_large_blocks_of_data.cpp" to send and receive packets via simulator. It's important to actualy demonstrate serialization and packet drops, in a straightforward way.
 
 
 
@@ -18,11 +24,10 @@ TODO
 
     ---------------
 
+    Simplify the packet encryption example so it is more self contained, eg. use the same private key on both sides. Keep it simple.
+
     Cleanup and remove memory initialize and the stupid allocator stuff. There is no need for any of this.
 
     Remove the queue and data structures I'm not using.
 
-    Incorporate the sliding window and sequence buffer into reliable ordered messages.
-
-    Incorporate the connection packet and connection class into reliable ordered messages. Keep it dependency free. Don't use fancy serialization.
-
+    Remove the securing dedicated servers example. Yojimbo is this example but has moved on. This code is old and has bugs. Can't reasonably maintain two versions of libyojimbo just for a single example program.

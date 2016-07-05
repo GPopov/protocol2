@@ -356,7 +356,7 @@ public:
         return true;
     }
 
-    AckPacket* GenerateAckPacket( double t )
+    AckPacket * GenerateAckPacket( double t )
     {
         if ( timeLastAckSent + MinimumTimeBetweenAcks > t )
             return NULL;
@@ -429,7 +429,7 @@ void SendPacket( const network2::Address & from, const network2::Address & to, p
     packetFactory.DestroyPacket( packet );
 }
 
-protocol2::Packet* ReceivePacket( network2::Address & from, network2::Address & to )
+protocol2::Packet * ReceivePacket( network2::Address & from, network2::Address & to )
 {
     int packetSize;
     uint8_t* packetData = simulator.ReceivePacket( from, to, packetSize );

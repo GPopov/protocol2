@@ -39,7 +39,6 @@
 using namespace protocol2;
 using namespace network2;
 
-//const uint32_t ProtocolId = 0x12341651;
 const int MaxMessagesPerPacket = 64; 
 const int SlidingWindowSize = 256;
 const int MessageSendQueueSize = 1024;
@@ -47,9 +46,6 @@ const int MessageSentPacketsSize = 256;
 const int MessageReceiveQueueSize = 1024;
 const int MessagePacketBudget = 1024;
 const float MessageResendRate = 0.1f;
-/*
-const int MaxPacketSize = 4 * 1024;
-*/
 
 class Message : public Object
 {
@@ -69,11 +65,11 @@ public:
 
     int GetRefCount() { return m_refCount; }
 
-    virtual bool Serialize( ReadStream & stream ) = 0;
+    virtual bool SerializeInternal( ReadStream & stream ) = 0;
 
-    virtual bool Serialize( WriteStream & stream ) = 0;
+    virtual bool SerializeInternal( WriteStream & stream ) = 0;
 
-    virtual bool Serialize( MeasureStream & stream ) = 0;
+    virtual bool SerializeInternal( MeasureStream & stream ) = 0;
 
 protected:
 
@@ -122,8 +118,8 @@ protected:
 
 enum PacketTypes
 {
-    PACKET_CONNECTION,
-    NUM_PACKETS
+    CONNECTION_PACKET,
+    NUM_PACKET_TYPES
 };
 
 struct ConnectionContext
@@ -139,7 +135,7 @@ struct ConnectionPacket : public Packet
     int numMessages;
     Message * messages[MaxMessagesPerPacket];
 
-    ConnectionPacket() : Packet( PACKET_CONNECTION )
+    ConnectionPacket() : Packet( CONNECTION_PACKET )
     {
         sequence = 0;
         ack = 0;
@@ -507,7 +503,7 @@ ConnectionPacket * Connection::WritePacket()
     if ( m_error != CONNECTION_ERROR_NONE )
         return NULL;
 
-    ConnectionPacket * packet = (ConnectionPacket*) m_packetFactory->CreatePacket( PACKET_CONNECTION );
+    ConnectionPacket * packet = (ConnectionPacket*) m_packetFactory->CreatePacket( CONNECTION_PACKET );
 
     if ( !packet )
         return NULL;
@@ -545,7 +541,7 @@ bool Connection::ReadPacket( ConnectionPacket * packet )
         return false;
 
     assert( packet );
-    assert( packet->GetType() == PACKET_CONNECTION );
+    assert( packet->GetType() == CONNECTION_PACKET );
 
     if ( !ProcessPacketMessages( packet ) )
         goto discard;
@@ -744,11 +740,227 @@ void Connection::UpdateOldestUnackedMessageId()
     assert( !sequence_greater_than( m_oldestUnackedMessageId, stopMessageId ) );
 }
 
+struct TestPacketFactory : public PacketFactory
+{
+    explicit TestPacketFactory() : PacketFactory( NUM_PACKET_TYPES ) {}
+
+    Packet * Create( int type )
+    {
+        switch ( type )
+        {
+            case CONNECTION_PACKET: return new ConnectionPacket();
+        }
+
+        return NULL;
+    }
+
+    void Destroy( Packet * packet )
+    {
+        delete packet;
+    }
+};
+
+enum MessageType
+{
+    MESSAGE_TEST,
+    NUM_MESSAGE_TYPES
+};
+
+inline int GetNumBitsForMessage( uint16_t sequence )
+{
+    static int messageBitsArray[] = { 1, 320, 120, 4, 256, 45, 11, 13, 101, 100, 84, 95, 203, 2, 3, 8, 512, 5, 3, 7, 50 };
+    const int modulus = sizeof( messageBitsArray ) / sizeof( int );
+    const int index = sequence % modulus;
+    return messageBitsArray[index];
+}
+
+struct TestMessage : public Message
+{
+    TestMessage() : Message( MESSAGE_TEST )
+    {
+        sequence = 0;
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {        
+        serialize_bits( stream, sequence, 16 );
+
+        int numBits = GetNumBitsForMessage( sequence );
+        int numWords = numBits / 32;
+        uint32_t dummy = 0;
+        for ( int i = 0; i < numWords; ++i )
+            serialize_bits( stream, dummy, 32 );
+        int numRemainderBits = numBits - numWords * 32;
+        if ( numRemainderBits > 0 )
+            serialize_bits( stream, dummy, numRemainderBits );
+
+        serialize_check( stream, "end of test message" );
+
+        return true;
+    }
+
+    PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS();
+
+    uint16_t sequence;
+};
+
+class TestMessageFactory : public MessageFactory
+{
+public:
+
+    TestMessageFactory() : MessageFactory( NUM_MESSAGE_TYPES ) {}
+
+protected:
+
+    Message * CreateInternal( int type )
+    {
+        switch ( type )
+        {
+            case MESSAGE_TEST:      return new TestMessage();
+            default:
+                return NULL;
+        }
+    }
+};
+
+int MessagesMain()
+{
+    TestPacketFactory packetFactory;
+
+    TestMessageFactory messageFactory;
+
+    Connection sender( packetFactory, messageFactory );
+
+    Connection receiver( packetFactory, messageFactory );
+
+#if 0
+
+    const int NumMessagesSent = 64;
+
+    for ( int i = 0; i < NumMessagesSent; ++i )
+    {
+        TestMessage * message = (TestMessage*) messageFactory.Create( MESSAGE_TEST );
+        check( message );
+        message->sequence = i;
+        sender.SendMessage( message );
+    }
+
+    TestNetworkSimulator networkSimulator;
+
+    networkSimulator.SetJitter( 250 );
+    networkSimulator.SetLatency( 1000 );
+    networkSimulator.SetDuplicates( 50 );
+    networkSimulator.SetPacketLoss( 50 );
+
+    const int SenderPort = 10000;
+    const int ReceiverPort = 10001;
+
+    Address senderAddress( "::1", SenderPort );
+    Address receiverAddress( "::1", ReceiverPort );
+
+    SimulatorInterface senderInterface( GetDefaultAllocator(), networkSimulator, packetFactory, senderAddress, ProtocolId );
+    SimulatorInterface receiverInterface( GetDefaultAllocator(), networkSimulator, packetFactory, receiverAddress, ProtocolId );
+
+    senderInterface.SetContext( &context );
+    receiverInterface.SetContext( &context );
+
+    double time = 0.0;
+    double deltaTime = 0.1;
+
+    const int NumIterations = 1000;
+
+    int numMessagesReceived = 0;
+
+    for ( int i = 0; i < NumIterations; ++i )
+    {
+        Packet * senderPacket = sender.WritePacket();
+        Packet * receiverPacket = receiver.WritePacket();
+
+        check( senderPacket );
+        check( receiverPacket );
+
+        senderInterface.SendPacket( receiverAddress, senderPacket, 0, false );
+        receiverInterface.SendPacket( senderAddress, receiverPacket, 0, false );
+
+        senderInterface.WritePackets();
+        receiverInterface.WritePackets();
+
+        senderInterface.ReadPackets();
+        receiverInterface.ReadPackets();
+
+        while ( true )
+        {
+            Address from;
+            Packet * packet = senderInterface.ReceivePacket( from, NULL );
+            if ( !packet )
+                break;
+
+            if ( from == receiverAddress && packet->GetType() == TEST_PACKET_CONNECTION )
+                sender.ReadPacket( (ConnectionPacket*) packet );
+
+            packetFactory.DestroyPacket( packet );
+        }
+
+        while ( true )
+        {
+            Address from;
+            Packet * packet = receiverInterface.ReceivePacket( from, NULL );
+            if ( !packet )
+                break;
+
+            if ( from == senderAddress && packet->GetType() == TEST_PACKET_CONNECTION )
+            {
+                receiver.ReadPacket( (ConnectionPacket*) packet );
+            }
+
+            packetFactory.DestroyPacket( packet );
+        }
+
+        while ( true )
+        {
+            Message * message = receiver.ReceiveMessage();
+
+            if ( !message )
+                break;
+
+            check( message->GetId() == (int) numMessagesReceived );
+            check( message->GetType() == MESSAGE_TEST );
+
+            TestMessage * testMessage = (TestMessage*) message;
+
+            check( testMessage->sequence == numMessagesReceived );
+
+            ++numMessagesReceived;
+
+            messageFactory.Release( message );
+        }
+
+        if ( numMessagesReceived == NumMessagesSent )
+            break;
+
+        time += deltaTime;
+
+        sender.AdvanceTime( time );
+        receiver.AdvanceTime( time );
+
+        senderInterface.AdvanceTime( time );
+        receiverInterface.AdvanceTime( time );
+
+        networkSimulator.AdvanceTime( time );
+    }
+
+    check( numMessagesReceived == NumMessagesSent );
+
+#endif
+
+    return 0;
+}
+
 int main()
 {
     printf( "\nreliable ordered messages\n\n" );
 
-    // ...
+    int result = MessagesMain();
 
-    return 0;
+    return result;
 }

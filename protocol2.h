@@ -1249,7 +1249,7 @@ namespace protocol2
 
     protected:
 
-        virtual Packet* Create( int type ) = 0;
+        virtual Packet * Create( int type ) = 0;
         virtual void Destroy( Packet *packet ) = 0;
     };
 
