@@ -260,7 +260,7 @@ else
         description = "Open Yojimbo.sln",
         execute = function ()
             os.execute "premake5 vs2015"
-            os.execute "start Yojimbo.sln"
+            os.execute "start \"Building a Game Network Protocol.sln\""
         end
     }
 
