@@ -106,48 +106,6 @@ if not os.is "windows" then
 
     newaction
     {
-        trigger     = "clean",
-        description = "Clean this project",
-        execute = function ()
-            os.rmdir "obj"
-            if not os.is "windows" then
-                os.execute "rm -rf bin"
-                os.execute "rm -rf obj"
-                os.execute "rm -f Makefile"
-                os.execute "rm -f protocol2"
-                os.execute "rm -f network2"
-                os.execute "rm -f *.zip"
-                os.execute "rm -f *.7z"
-                os.execute "rm -f *.make"
-                os.execute "rm -f test"
-                os.execute "rm -f 001_reading_and_writing_packets"
-                os.execute "rm -f 002_serialization_strategies"
-                os.execute "rm -f 003_packet_fragmentation_and_reassembly"
-                os.execute "rm -f 004_sending_large_blocks_of_data"
-                os.execute "rm -f 005_packet_aggregation"
-                os.execute "rm -f 006_reliable_ordered_messages"
-                os.execute "rm -f 007_client_server"
-                os.execute "rm -f 008_packet_encryption"
-                os.execute "rm -f 009_securing_dedicated_servers"
-                os.execute "find . -name .DS_Store -delete"
-            else
-                os.rmdir "ipch"
-                os.rmdir "bin"
-                os.rmdir ".vs"
-                os.rmdir "Debug"
-                os.rmdir "Release"
-                os.execute "del /F /Q *.zip"
-                os.execute "del /F /Q *.db"
-                os.execute "del /F /Q *.opendb"
-                os.execute "del /F /Q *.vcproj"
-                os.execute "del /F /Q *.vcxproj"
-                os.execute "del /F /Q *.sln"
-            end
-        end
-    }
-
-    newaction
-    {
         trigger     = "zip",
         description = "Create a zip of this project",
         execute = function ()
@@ -292,3 +250,55 @@ else
     }
 
 end
+
+newaction
+{
+    trigger     = "clean",
+
+    description = "Clean all build files and output",
+
+    execute = function ()
+
+        files_to_delete = 
+        {
+            "Makefile",
+            "*.make",
+            "*.txt",
+            "*.7z",
+            "*.zip",
+            "*.tar.gz",
+            "*.db",
+            "*.opendb",
+            "*.vcproj",
+            "*.vcxproj",
+            "*.vcxproj.user",
+            "*.sln"
+        }
+
+        directories_to_delete = 
+        {
+            "obj",
+            "ipch",
+            "bin",
+            ".vs",
+            "Debug",
+            "Release",
+        }
+
+        for i,v in ipairs( directories_to_delete ) do
+          os.rmdir( v )
+        end
+
+        if not os.is "windows" then
+            os.execute "find . -name .DS_Store -delete"
+            for i,v in ipairs( files_to_delete ) do
+              os.execute( "rm -f " .. v )
+            end
+        else
+            for i,v in ipairs( files_to_delete ) do
+              os.execute( "del /F /Q  " .. v )
+            end
+        end
+
+    end
+}
