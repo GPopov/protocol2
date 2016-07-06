@@ -1444,9 +1444,17 @@ namespace protocol2
 
         void Remove( uint16_t sequence )
         {
-            const int index = sequence % m_size;
+            m_exists.ClearBit( sequence % m_size );
+        }
 
-            m_exists.ClearBit( index );
+        void RemoveOldEntries()
+        {
+            const uint16_t oldest_sequence = m_sequence - m_size;
+            for ( int i = 0; i < m_size; ++i )
+            {
+                if ( m_exists.GetBit( i ) && sequence_less_than( m_entry_sequence[i], oldest_sequence ) )
+                    m_exists.ClearBit( i );
+            }
         }
 
         bool IsAvailable( uint16_t sequence ) const

@@ -132,6 +132,7 @@ struct ConnectionPacket : public Packet
     uint16_t sequence;
     uint16_t ack;
     uint32_t ack_bits;
+    uint16_t oldest_message_id;
     int numMessages;
     Message * messages[MaxMessagesPerPacket];
 
@@ -140,6 +141,7 @@ struct ConnectionPacket : public Packet
         sequence = 0;
         ack = 0;
         ack_bits = 0;
+        oldest_message_id = 0xFFFF;
         numMessages = 0;
     }
 
@@ -169,6 +171,8 @@ struct ConnectionPacket : public Packet
         serialize_bits( stream, ack_bits, 32 );
 
         // serialize messages
+
+        serialize_bits( stream, oldest_message_id, 16 );
 
         bool hasMessages = numMessages != 0;
 
@@ -241,6 +245,7 @@ private:
 enum ConnectionError
 {
     CONNECTION_ERROR_NONE = 0,
+    CONNECTION_ERROR_MESSAGE_DESYNC,
     CONNECTION_ERROR_MESSAGE_SEND_QUEUE_FULL,
     CONNECTION_ERROR_MESSAGE_SERIALIZE_MEASURE_FAILED,
 };
@@ -286,11 +291,8 @@ protected:
     {
         double timeSent;
         uint16_t * messageIds;
-        uint64_t numMessageIds : 16;                 // number of messages in this packet
-        uint64_t blockId : 16;                       // block id. valid only when sending a block message
-        uint64_t fragmentId : 16;                    // fragment id. valid only when sending a block message
-        uint64_t acked : 1;                          // 1 if this sent packet has been acked
-        uint64_t blockMessage : 1;                   // 1 if this sent packet contains a block message fragment
+        uint32_t numMessageIds : 16;                 // number of messages in this packet
+        uint32_t acked : 1;                          // 1 if this sent packet has been acked
     };
 
     struct MessageReceiveQueueEntry
@@ -302,13 +304,11 @@ protected:
 
     void ProcessAcks( uint16_t ack, uint32_t ack_bits );
 
-    void PacketAcked( uint16_t sequence );
-
     void GetMessagesToSend( uint16_t * messageIds, int & numMessageIds );
 
     void AddMessagePacketEntry( const uint16_t * messageIds, int & numMessageIds, uint16_t sequence );
 
-    bool ProcessPacketMessages( const ConnectionPacket * packet );
+    void ProcessPacketMessages( const ConnectionPacket * packet );
 
     void ProcessMessageAck( uint16_t ack );
 
@@ -515,6 +515,8 @@ ConnectionPacket * Connection::WritePacket()
 
     packet->sequence = m_sentPackets->GetSequence();
 
+    packet->oldest_message_id = m_oldestUnackedMessageId;
+
     GenerateAckBits( *m_receivedPackets, packet->ack, packet->ack_bits );
 
     InsertAckPacketEntry( packet->sequence );
@@ -548,24 +550,24 @@ bool Connection::ReadPacket( ConnectionPacket * packet )
     assert( packet );
     assert( packet->GetType() == CONNECTION_PACKET );
 
-    if ( !ProcessPacketMessages( packet ) )
-        goto discard;
-
-    if ( !m_receivedPackets->Insert( packet->sequence ) )
-        goto discard;
-
     ProcessAcks( packet->ack, packet->ack_bits );
 
+    ProcessPacketMessages( packet );
+
+    m_receivedPackets->Insert( packet->sequence );
+
     return true;
-
-discard:
-
-    return false;            
 }
 
 void Connection::AdvanceTime( double time )
 {
     m_time = time;
+
+    m_sentPackets->RemoveOldEntries();
+
+    m_receivedPackets->RemoveOldEntries();
+
+    m_messageSentPackets->RemoveOldEntries();
 }
 
 ConnectionError Connection::GetError() const
@@ -592,55 +594,54 @@ void Connection::ProcessAcks( uint16_t ack, uint32_t ack_bits )
         if ( ack_bits & 1 )
         {                    
             const uint16_t sequence = ack - i;
+
             SentPacketData * packetData = m_sentPackets->Find( sequence );
+            
             if ( packetData && !packetData->acked )
             {
-                PacketAcked( sequence );
+                ProcessMessageAck( sequence );
+
                 packetData->acked = 1;
             }
         }
+
         ack_bits >>= 1;
     }
-}
-
-void Connection::PacketAcked( uint16_t sequence )
-{
-    ProcessMessageAck( sequence );
 }
 
 void Connection::GetMessagesToSend( uint16_t * messageIds, int & numMessageIds )
 {
     numMessageIds = 0;
 
+    if ( m_oldestUnackedMessageId == m_sendMessageId )
+        return;
+
     MessageSendQueueEntry * firstEntry = m_messageSendQueue->Find( m_oldestUnackedMessageId );
 
-    if ( !firstEntry )
-        return;
+    assert( firstEntry );
     
-
     const int GiveUpBits = 8 * 8;
 
     int availableBits = MessagePacketBudget * 8;
 
-    for ( int i = 0; i < MessageSendQueueSize; ++i )
+    const int messageLimit = min( MessageSendQueueSize, MessageReceiveQueueSize ) / 2;
+
+    for ( int i = 0; i < messageLimit; ++i )
     {
-        if ( availableBits <= GiveUpBits )
-            break;
-        
         const uint16_t messageId = m_oldestUnackedMessageId + i;
 
         MessageSendQueueEntry * entry = m_messageSendQueue->Find( messageId );
         
-        if ( !entry )
-            break;
-
-        if ( entry->timeLastSent + MessageResendRate <= m_time && availableBits - entry->measuredBits >= 0 )
+        if ( entry && ( entry->timeLastSent + MessageResendRate <= m_time ) && ( availableBits - entry->measuredBits >= 0 ) )
         {
             messageIds[numMessageIds++] = messageId;
             entry->timeLastSent = m_time;
             availableBits -= entry->measuredBits;
         }
 
+        if ( availableBits <= GiveUpBits )
+            break;
+        
         if ( numMessageIds == MaxMessagesPerPacket )
             break;
     }
@@ -652,24 +653,26 @@ void Connection::AddMessagePacketEntry( const uint16_t * messageIds, int & numMe
     
     assert( sentPacket );
 
-    sentPacket->acked = 0;
-    sentPacket->blockMessage = 0;
-    sentPacket->timeSent = m_time;
-    const int sentPacketIndex = m_sentPackets->GetIndex( sequence );
-    sentPacket->messageIds = &m_sentPacketMessageIds[sentPacketIndex*MaxMessagesPerPacket];
-    sentPacket->numMessageIds = numMessageIds;
-    for ( int i = 0; i < numMessageIds; ++i )
-        sentPacket->messageIds[i] = messageIds[i];
+    if ( sentPacket )
+    {
+        sentPacket->acked = 0;
+        sentPacket->timeSent = m_time;
+     
+        const int sentPacketIndex = m_sentPackets->GetIndex( sequence );
+     
+        sentPacket->messageIds = &m_sentPacketMessageIds[sentPacketIndex*MaxMessagesPerPacket];
+        sentPacket->numMessageIds = numMessageIds;
+        for ( int i = 0; i < numMessageIds; ++i )
+            sentPacket->messageIds[i] = messageIds[i];
+    }
 }
 
-bool Connection::ProcessPacketMessages( const ConnectionPacket * packet )
+void Connection::ProcessPacketMessages( const ConnectionPacket * packet )
 {
-    bool earlyMessage = false;
-
     const uint16_t minMessageId = m_receiveMessageId;
     const uint16_t maxMessageId = m_receiveMessageId + MessageReceiveQueueSize - 1;
 
-    for ( int i = 0; i < (int) packet->numMessages; ++i )
+    for ( int i = 0; i < packet->numMessages; ++i )
     {
         Message * message = packet->messages[i];
 
@@ -677,34 +680,47 @@ bool Connection::ProcessPacketMessages( const ConnectionPacket * packet )
 
         const uint16_t messageId = message->GetId();
 
+        if ( m_messageReceiveQueue->Find( messageId ) )
+            continue;
+
         if ( sequence_less_than( messageId, minMessageId ) )
             continue;
 
         if ( sequence_greater_than( messageId, maxMessageId ) )
         {
-            earlyMessage = true;
-            continue;
+            m_error = CONNECTION_ERROR_MESSAGE_DESYNC;
+            return;
         }
-
-        if ( m_messageReceiveQueue->Find( messageId ) )
-            continue;
 
         MessageReceiveQueueEntry * entry = m_messageReceiveQueue->Insert( messageId );
 
-        entry->message = message;
+        assert( entry );
 
-        entry->message->AddRef();
+        if ( entry )
+        {
+            entry->message = message;
+            entry->message->AddRef();
+        }
     }
-
-    return !earlyMessage;
 }
 
 void Connection::ProcessMessageAck( uint16_t ack )
 {
     MessageSentPacketEntry * sentPacketEntry = m_messageSentPackets->Find( ack );
 
-    if ( !sentPacketEntry || sentPacketEntry->acked )
+#if DEBUG_LOGS
+    if ( !sentPacketEntry )
+    {
+        printf( "can't find packet %d to ack\n", ack );
         return;
+    }
+#endif // #if DEBUG_LOGS
+
+    assert( !sentPacketEntry->acked );
+
+#if DEBUG_LOGS
+    printf( "ack packet %d\n", ack );
+#endif // #if DEBUG_LOGS
 
     for ( int i = 0; i < sentPacketEntry->numMessageIds; ++i )
     {
@@ -716,6 +732,10 @@ void Connection::ProcessMessageAck( uint16_t ack )
         {
             assert( sendQueueEntry->message );
             assert( sendQueueEntry->message->GetId() == messageId );
+
+#if DEBUG_LOGS
+            printf( "ack message %d\n", messageId );
+#endif // #if DEBUG_LOGS
 
             sendQueueEntry->message->Release();
 
@@ -730,6 +750,10 @@ void Connection::UpdateOldestUnackedMessageId()
 {
     const uint16_t stopMessageId = m_messageSendQueue->GetSequence();
 
+#if DEBUG_LOGS
+    uint16_t previous = m_oldestUnackedMessageId;
+#endif // #if DEBUG_LOGS
+
     while ( true )
     {
         if ( m_oldestUnackedMessageId == stopMessageId )
@@ -741,6 +765,14 @@ void Connection::UpdateOldestUnackedMessageId()
        
         ++m_oldestUnackedMessageId;
     }
+
+#if DEBUG_LOGS
+    uint16_t current = m_oldestUnackedMessageId;
+    if ( current != previous )
+    {
+        printf( "updated oldest unacked message from %d -> %d\n", previous, current );
+    }
+#endif // #if DEBUG_LOGS
 
     assert( !sequence_greater_than( m_oldestUnackedMessageId, stopMessageId ) );
 }
@@ -821,7 +853,7 @@ protected:
     {
         switch ( type )
         {
-            case MESSAGE_TEST:      return new TestMessage();
+            case MESSAGE_TEST: return new TestMessage();
             default:
                 return NULL;
         }
@@ -870,8 +902,6 @@ int MessagesMain()
             {
                 message->sequence = (uint16_t) numMessagesSent;
                 
-                printf( "sent message %d\n", message->sequence );
-
                 sender.SendMessage( message );
 
                 numMessagesSent++;
@@ -917,7 +947,14 @@ int MessagesMain()
         time += deltaTime;
 
         sender.AdvanceTime( time );
+
         receiver.AdvanceTime( time );
+
+        if ( sender.GetError() || receiver.GetError() )
+        {
+            printf( "connection error\n" );
+            return 1;
+        }
     }
 
     printf( "\nstopped\n\n" );

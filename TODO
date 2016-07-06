@@ -18,7 +18,21 @@ TODO
 
     This looks like a breakage. What is going on, and why wasn't it picked up in the message system inside yojimbo testing?
 
+    If every packet contains messages, eg. + 1.0 delta time, it keeps running forever and doesn't break.
 
+    It seems to only break because time moves slowly, and packets come through with no messages in them.
+
+    Could it be that packet id is wrapping around, and there are stale message entries still in there at the sequence # from the previous run? This could be bad.
+
+    Wrap around is definitely happening at the packet sequence level. Not sure if this is the cause yet.
+
+    This is really hard to track down and reason about, because the point where it eventually breaks is really far removed from the point of actual breakage.
+
+    What I'm going to do is to stick some temporary extra data in the packet, which is the oldest message id I will resend. If the oldest message id is newer than what the receiver is waiting on in the receive queue, then we know an error has occured where the sender has run ahead of the receiver.
+
+    Could it be the received buffer being fucked up, so that when it wraps around it has a stale entry in there from the previous cycle? This would have to be exceptionally rare, and would only show up when very few packets get through. But it could cause old received packets to stale up the acks in future cycles through the same sequence #s
+
+    What can I do to prove or disprove this is happening?
 
 
 
