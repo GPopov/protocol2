@@ -27,16 +27,6 @@ project "test"
     language "C++"
     kind "ConsoleApp"
     files { "test.cpp", "protocol2.h", "network2.h" }
-    links { "yojimbo" }
-    configuration "Debug"
-        links { debug_libs }
-    configuration "Release"
-        links { release_libs }
-
-project "yojimbo"
-    language "C++"
-    kind "StaticLib"
-    files { "yojimbo.h", "yojimbo.cpp", "yojimbo_*.h", "yojimbo_*.cpp" }
     configuration "Debug"
         links { debug_libs }
     configuration "Release"
@@ -76,7 +66,6 @@ project "007_client_server"
     language "C++"
     kind "ConsoleApp"
     files { "007_client_server.cpp", "protocol2.h", "network2.h" }
-    links { "yojimbo" }
     configuration "Debug"
         links { debug_libs }
     configuration "Release"
@@ -86,17 +75,6 @@ project "008_packet_encryption"
     language "C++"
     kind "ConsoleApp"
     files { "008_packet_encryption.cpp", "protocol2.h", "network2.h" }
-    links { "yojimbo" }
-    configuration "Debug"
-        links { debug_libs }
-    configuration "Release"
-        links { release_libs }
-
-project "009_securing_dedicated_servers"
-    language "C++"
-    kind "ConsoleApp"
-    files { "009_securing_dedicated_servers.cpp", "protocol2.h", "network2.h" }
-    links { "yojimbo" }
     configuration "Debug"
         links { debug_libs }
     configuration "Release"
@@ -126,15 +104,6 @@ if not os.is "windows" then
             if os.execute "make -j4 test" == 0 then
                 os.execute "./bin/test"
             end
-        end
-    }
-
-    newaction
-    {
-        trigger     = "yojimbo",
-        description = "Build yojimbo client/server protocol library",
-        execute = function ()
-            os.execute "make -j4 yojimbo"
         end
     }
 
@@ -222,17 +191,6 @@ if not os.is "windows" then
         execute = function ()
             if os.execute "make -j4 008_packet_encryption" == 0 then
                 os.execute "./bin/008_packet_encryption"
-            end
-        end
-    }
-
-    newaction
-    {
-        trigger     = "009",
-        description = "Build example source for securing dedicated servers",     
-        execute = function ()
-            if os.execute "make -j4 009_securing_dedicated_servers" == 0 then
-                os.execute "./bin/009_securing_dedicated_servers"
             end
         end
     }

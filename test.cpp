@@ -22,7 +22,12 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "yojimbo.h"
+#define NETWORK2_IMPLEMENTATION
+#define PROTOCOL2_IMPLEMENTATION
+
+#include "network2.h"
+#include "protocol2.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -677,7 +682,7 @@ void test_packet_sequence()
         uint8_t sequence_bytes[8];
         int num_sequence_bytes;
 
-        yojimbo::CompressPacketSequence( sequence, prefix_byte, num_sequence_bytes, sequence_bytes );
+        protocol2::CompressPacketSequence( sequence, prefix_byte, num_sequence_bytes, sequence_bytes );
 
         check( prefix_byte == ( 1 | (1<<1) | (1<<3) ) );
 
@@ -688,11 +693,11 @@ void test_packet_sequence()
         check( sequence_bytes[2] == 0x33 );
         check( sequence_bytes[3] == 0x44 );
 
-        int decoded_num_sequence_bytes = yojimbo::GetPacketSequenceBytes( prefix_byte );
+        int decoded_num_sequence_bytes = protocol2::GetPacketSequenceBytes( prefix_byte );
 
         check( decoded_num_sequence_bytes == num_sequence_bytes );
 
-        uint64_t decoded_sequence = yojimbo::DecompressPacketSequence( prefix_byte, sequence_bytes );
+        uint64_t decoded_sequence = protocol2::DecompressPacketSequence( prefix_byte, sequence_bytes );
 
         check( decoded_sequence == sequence );
     }
@@ -702,85 +707,9 @@ void test_packet_sequence()
         uint8_t prefix_byte;
         uint8_t sequence_bytes[8];
         int num_sequence_bytes;
-        yojimbo::CompressPacketSequence( sequence, prefix_byte, num_sequence_bytes, sequence_bytes );
-        uint64_t decoded_sequence = yojimbo::DecompressPacketSequence( prefix_byte, sequence_bytes );
+        protocol2::CompressPacketSequence( sequence, prefix_byte, num_sequence_bytes, sequence_bytes );
+        uint64_t decoded_sequence = protocol2::DecompressPacketSequence( prefix_byte, sequence_bytes );
         check( decoded_sequence == sequence );
-    }
-}
-
-void PrintBytes( const uint8_t * data, int data_bytes )
-{
-    for ( int i = 0; i < data_bytes; ++i )
-    {
-        printf( "%02x", (int) data[i] );
-        if ( i != data_bytes - 1 )
-            printf( "-" );
-    }
-    printf( " (%d bytes)", data_bytes );
-}
-
-#include <sodium.h>
-
-void test_packet_encryption()
-{
-    printf( "test_packet_encryption\n" );
-
-    using namespace yojimbo;
-
-    if ( !InitializeCrypto() )
-    {
-        printf( "error: failed to initialize crypto\n\n" );
-        exit( 1 );
-    }
-
-    uint8_t packet[1024];
-  
-    int packet_length = 1;
-    memset( packet, 0, sizeof( packet ) );
-    packet[0] = 1;  
-  
-    uint8_t key[KeyBytes];
-    uint8_t nonce[NonceBytes];
-
-    memset( key, 1, sizeof( key ) );
-    memset( nonce, 1, sizeof( nonce ) );
-
-    uint8_t encrypted_packet[2048];
-
-    int encrypted_length;
-    if ( !Encrypt( packet, packet_length, encrypted_packet, encrypted_length, nonce, key ) )
-    {
-        printf( "error: failed to encrypt\n" );
-        exit(1);
-    }
-
-    const int expected_encrypted_length = 17;
-    const uint8_t expected_encrypted_packet[] = { 0xfa, 0x6c, 0x91, 0xf7, 0xef, 0xdc, 0xed, 0x22, 0x09, 0x23, 0xd5, 0xbf, 0xa1, 0xe9, 0x17, 0x70, 0x14 };
-    if ( encrypted_length != expected_encrypted_length || memcmp( expected_encrypted_packet, encrypted_packet, encrypted_length ) != 0 )
-    {
-        printf( "\npacket encryption failure!\n\n" );
-
-        printf( " expected: " );
-        PrintBytes( expected_encrypted_packet, expected_encrypted_length );
-        printf( "\n" );
-
-        printf( "      got: " );
-        PrintBytes( encrypted_packet, encrypted_length );
-        printf( "\n\n" );
-    }
-
-    uint8_t decrypted_packet[2048];
-    int decrypted_length;
-    if ( !Decrypt( encrypted_packet, encrypted_length, decrypted_packet, decrypted_length, nonce, key ) )
-    {
-        printf( "error: failed to decrypt\n\n" );
-        exit(1);
-    }
-
-    if ( decrypted_length != packet_length || memcmp( packet, decrypted_packet, packet_length ) != 0 )
-    {
-        printf( "error: decrypted packet does not match original packet\n\n" );
-        exit(1);
     }
 }
 
@@ -794,6 +723,6 @@ int main()
     test_sequence_buffer();
     test_generate_ack_bits();
     test_packet_sequence();
-    test_packet_encryption();
+    
     return 0;
 }

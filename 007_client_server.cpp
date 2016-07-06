@@ -22,8 +22,6 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "yojimbo.h"
-
 #define NETWORK2_IMPLEMENTATION
 #define PROTOCOL2_IMPLEMENTATION
 
@@ -36,9 +34,17 @@
 #include <inttypes.h>
 #include <time.h>
 
-using namespace yojimbo;
 using namespace protocol2;
 using namespace network2;
+
+int main()
+{
+    printf( "\nclient server\n\n" );
+
+    return 0;
+}
+
+#if 0
 
 const uint32_t ProtocolId = 0x12341651;
 
@@ -1113,3 +1119,5 @@ int main()
 
     return 0;
 }
+
+#endif

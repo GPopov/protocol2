@@ -1,4 +1,16 @@
 
+Wednesday July 6th, 2016
+========================
+
+    Added a new reliable ordered messages example. Tracked down some tricky bugs.
+
+    Remove the securing dedicated servers example. Yojimbo is this example but has moved on much further. This code is old and has bugs. Can't reasonably maintain two versions of libyojimbo just for a single example program for secure dedicated servers. The whole point of libyojimbo is secure dedicated servers...
+
+    Cut down the other examples so they don't refer to old yojimbo source.
+
+    Remove the duplicate yojimbo source.
+
+
 Saturday May 28th, 2016
 =======================
 

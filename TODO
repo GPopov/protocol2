@@ -1,12 +1,20 @@
 DONE
 
+
 TODO
 
-    Simplify the packet encryption example so it is more self contained, eg. use the same private key on both sides. Keep it simple.
+    -------------
 
-    Cleanup and remove memory initialize and the stupid allocator stuff. There is no need for any of this.
+    Rebuild the client/server example without requiring complicated shit like network interface
 
-    Remove the queue and data structures I'm not using.
+    -------------
 
-    Remove the securing dedicated servers example. Yojimbo is this example but has moved on much further. This code is old and has bugs. Can't reasonably maintain two versions of libyojimbo just for a single example program for secure dedicated servers. The whole point of libyojimbo is secure dedicated servers...
-    
+    May be worthwhile having the connect token aspect split out into an example program, show how it's done?
+
+    -------------
+
+    Add a BUILDING.md
+
+    People should know how to build this when they get it.
+
+    -------------

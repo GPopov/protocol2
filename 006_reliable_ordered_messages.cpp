@@ -873,8 +873,10 @@ void interrupt_handler( int /*dummy*/ )
     quit = 1;
 }
 
-int MessagesMain()
+int main()
 {
+    printf( "\nreliable ordered messages\n\n" );
+
     TestPacketFactory packetFactory;
 
     TestMessageFactory messageFactory;
@@ -968,13 +970,4 @@ int MessagesMain()
     printf( "\nstopped\n\n" );
 
     return 0;
-}
-
-int main()
-{
-    printf( "\nreliable ordered messages\n\n" );
-
-    int result = MessagesMain();
-
-    return result;
 }
