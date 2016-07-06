@@ -4,6 +4,26 @@
 		"selected_items":
 		[
 			[
+				"CONNECTION_EARL",
+				"CONNECTION_ERROR_MESSAGE_SEND_QUEUE_FULL"
+			],
+			[
+				"MessageReceiv",
+				"MessageReceiveQueueSize"
+			],
+			[
+				"m_mess",
+				"m_messageSentPackets"
+			],
+			[
+				"old",
+				"oldest_message_id"
+			],
+			[
+				"m_rec",
+				"m_receiveMessageId"
+			],
+			[
 				"PACKET_P",
 				"PACKET_PROCESSOR_WRITE_PACKET_FAILED"
 			],
@@ -494,26 +514,6 @@
 			[
 				"test_",
 				"test_data_block_send_and_receive_packet_loss"
-			],
-			[
-				"CLIENT_STATE_SENDING",
-				"CLIENT_STATE_SENDING_CLIENT_DATA"
-			],
-			[
-				"UpdatESend",
-				"UpdateSendClientData"
-			],
-			[
-				"read",
-				"readyForConnection"
-			],
-			[
-				"SERVER",
-				"SERVER_CLIENT_STATE_READY_FOR_CONNECTION"
-			],
-			[
-				"fargmen",
-				"fragmentId"
 			]
 		]
 	},
@@ -714,13 +714,16 @@
 	],
 	"file_history":
 	[
-		"/Users/gaffer/git/protocol2/006_reliable_ordered_messages.cpp",
+		"/Users/gaffer/git/protocol2/clues.txt",
+		"/Users/gaffer/git/protocol2/clue2.txt",
+		"/Users/gaffer/git/protocol2/analysis.txt",
+		"/Users/gaffer/git/protocol2/TODO",
 		"/Users/gaffer/git/protocol2/output.txt",
 		"/Users/gaffer/git/protocol2/protocol2.h",
+		"/Users/gaffer/git/protocol2/006_reliable_ordered_messages.cpp",
 		"/Users/gaffer/git/protocol2/network2.h",
 		"/Users/gaffer/git/protocol2/004_sending_large_blocks_of_data.cpp",
 		"/Users/gaffer/git/protocol2/test.cpp",
-		"/Users/gaffer/git/protocol2/TODO",
 		"/Users/gaffer/git/protocol2/yojimbo.cpp",
 		"/Users/gaffer/git/protocol2/005_packet_aggregation.cpp",
 		"/Users/gaffer/git/protocol2/001_reading_and_writing_packets.cpp",
@@ -838,10 +841,7 @@
 		"/Users/gaffer/Desktop/Serialization Strategies/premake4.lua",
 		"/Users/gaffer/git/protocol2/vectorial/vec4f.h",
 		"/Users/gaffer/Desktop/Reading and Writing Packets/001_reading_and_writing_packets.cpp",
-		"/Users/gaffer/Desktop/Reading and Writing Packets/premake4.lua",
-		"/Users/gaffer/Desktop/Reading and Writing Packets/test.cpp",
-		"/Users/gaffer/git/protocol2/002_packet_fragmentation_and_reassembly.cpp",
-		"/Users/gaffer/git/protocol2/005_reliable_packets.cpp"
+		"/Users/gaffer/Desktop/Reading and Writing Packets/premake4.lua"
 	],
 	"find":
 	{
@@ -892,6 +892,58 @@
 		"case_sensitive": true,
 		"find_history":
 		[
+			"    TestMessage",
+			"ProcessPacketMessages",
+			"GetMessages",
+			"DEBUG_LOGS",
+			"printf",
+			"AdvanceTime",
+			"ProcessMessageAck",
+			"ReadPacket",
+			"65535",
+			"WritePacket",
+			"ConnectionPacket",
+			"AddMessagePacketEntry",
+			"m_messageSentPackets",
+			"put messages in packet",
+			"packet ",
+			"bool log",
+			"WritePacket",
+			"::WritePacket",
+			"WritePacket",
+			"Insert",
+			"SequenceBuffer",
+			"m_sentPackets",
+			"WritePacket",
+			" 4490 ",
+			" 4490",
+			"message 4489",
+			"late",
+			"received message",
+			"received ",
+			"blockMessage",
+			"packet 8388",
+			" 4490",
+			"message 4490",
+			"message 4489",
+			" 4489",
+			"ProcessPacketMessages",
+			"ReadPacket",
+			"MessagesToSend",
+			"UpdateOldest",
+			"measuredBits = ",
+			"MessagesToSend",
+			"11211",
+			"received",
+			"MessageAck",
+			"received",
+			"MessageAck",
+			"Acks",
+			"ProcessAck",
+			"m_receivedPackets",
+			"receivedPacket",
+			"ProcessPacketMessages",
+			"early",
 			"Simulator",
 			"class Message",
 			"Counter",
@@ -967,59 +1019,7 @@
 			"ConnectionDeniedPacket",
 			"ConnectionDenied",
 			"ConnectionChallenge",
-			"ConnectionDeniedPacket",
-			"ProcessConnectionRequest",
-			"protocol2::",
-			"Packet",
-			"CORE_",
-			"double time",
-			"yojimbo::",
-			"class Server",
-			"nullptr",
-			"class Server",
-			"Server",
-			"auto",
-			"nullptr",
-			": public Allocator",
-			"CORE_",
-			"CORE_DEBUG",
-			"YOJIMBO_NEW",
-			"packetBuf",
-			"queue::reserve",
-			"CORE_",
-			"core::",
-			"core",
-			"namespace core",
-			"CORE_ASSERT",
-			"todo",
-			"sanjuro",
-			"PacketFactor",
-			"m_packetFacto",
-			"PacketFactory",
-			"m_network",
-			"network2::",
-			"protocol2::",
-			"sender",
-			"SendPacket",
-			"IPv6",
-			"Internal",
-			"SocketType",
-			"BSDSocket",
-			"Hash",
-			"entries",
-			"values",
-			"DENIED",
-			"CONNECTION_DENIED",
-			"10.00",
-			"murmur_hash",
-			"ChallengeArraySize",
-			"ToString",
-			"ENDIAN",
-			"hash",
-			"ToString",
-			"Socket",
-			"GenerateSlicePacket",
-			"Sender"
+			"ConnectionDeniedPacket"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -1114,7 +1114,7 @@
 	"project": "protocol2.sublime-project",
 	"replace":
 	{
-		"height": 42.0
+		"height": 64.0
 	},
 	"save_all_on_build": true,
 	"select_file":
@@ -1124,11 +1124,43 @@
 		"selected_items":
 		[
 			[
+				"protocol2.h",
+				"protocol2/protocol2.h"
+			],
+			[
+				"006",
+				"protocol2/006_reliable_ordered_messages.cpp"
+			],
+			[
+				"protocol2h",
+				"protocol2/protocol2.h"
+			],
+			[
 				"todo",
 				"protocol2/TODO"
 			],
 			[
 				"output.txt",
+				"protocol2/output.txt"
+			],
+			[
+				"clue2.txt",
+				"protocol2/clue2.txt"
+			],
+			[
+				"clues.txt",
+				"protocol2/clues.txt"
+			],
+			[
+				"output.tx",
+				"protocol2/output.txt"
+			],
+			[
+				"output",
+				"protocol2/output.txt"
+			],
+			[
+				"out.u",
 				"protocol2/output.txt"
 			],
 			[
@@ -1140,20 +1172,8 @@
 				"protocol2/network2.h"
 			],
 			[
-				"protocol2h",
-				"protocol2/protocol2.h"
-			],
-			[
-				"006",
-				"protocol2/006_reliable_ordered_messages.cpp"
-			],
-			[
 				"test.cpp",
 				"protocol2/test.cpp"
-			],
-			[
-				"protocol2.h",
-				"protocol2/protocol2.h"
 			],
 			[
 				"30",
@@ -1614,26 +1634,6 @@
 			[
 				"cubes.h",
 				"cubes.h"
-			],
-			[
-				"physics",
-				"physics_ode.cpp"
-			],
-			[
-				"physics.h",
-				"physics.h"
-			],
-			[
-				"wouldbenice",
-				"WOULD BE NICE"
-			],
-			[
-				"serer.cpp",
-				"server.cpp"
-			],
-			[
-				"vec3f.h",
-				"vectorial/vec3f.h"
 			]
 		],
 		"width": 0.0

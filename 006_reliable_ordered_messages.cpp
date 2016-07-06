@@ -42,7 +42,6 @@ using namespace network2;
 const int MaxMessagesPerPacket = 64; 
 const int SlidingWindowSize = 256;
 const int MessageSendQueueSize = 1024;
-const int MessageSentPacketsSize = 256;
 const int MessageReceiveQueueSize = 1024;
 const int MessagePacketBudget = 1024;
 const float MessageResendRate = 0.1f;
@@ -313,6 +312,8 @@ protected:
     void ProcessMessageAck( uint16_t ack );
 
     void UpdateOldestUnackedMessageId();
+
+    int CalculateMessageOverheadBits();
     
 private:
 
@@ -349,7 +350,6 @@ Connection::Connection( PacketFactory & packetFactory, MessageFactory & messageF
 {
     assert( ( 65536 % SlidingWindowSize ) == 0 );
     assert( ( 65536 % MessageSendQueueSize ) == 0 );
-    assert( ( 65536 % MessageSentPacketsSize ) == 0 );
     assert( ( 65536 % MessageReceiveQueueSize ) == 0 );
     
     m_packetFactory = &packetFactory;
@@ -358,23 +358,17 @@ Connection::Connection( PacketFactory & packetFactory, MessageFactory & messageF
     
     m_error = CONNECTION_ERROR_NONE;
 
+    m_messageOverheadBits = CalculateMessageOverheadBits();
+
     m_sentPackets = new SequenceBuffer<SentPacketData>( SlidingWindowSize );
     
     m_receivedPackets = new SequenceBuffer<ReceivedPacketData>( SlidingWindowSize );
 
     m_messageSendQueue = new SequenceBuffer<MessageSendQueueEntry>( MessageSendQueueSize );
     
-    m_messageSentPackets = new SequenceBuffer<MessageSentPacketEntry>( MessageSentPacketsSize );
+    m_messageSentPackets = new SequenceBuffer<MessageSentPacketEntry>( SlidingWindowSize );
     
     m_messageReceiveQueue = new SequenceBuffer<MessageReceiveQueueEntry>( MessageReceiveQueueSize );
-
-    const int maxMessageType = m_messageFactory->GetNumTypes() - 1;
-
-    const int MessageIdBits = 16;
-    
-    const int MessageTypeBits = protocol2::bits_required( 0, maxMessageType );
-
-    m_messageOverheadBits = MessageIdBits + MessageTypeBits;
     
     m_sentPacketMessageIds = new uint16_t[ MaxMessagesPerPacket * MessageSendQueueSize ];
 
@@ -775,6 +769,17 @@ void Connection::UpdateOldestUnackedMessageId()
 #endif // #if DEBUG_LOGS
 
     assert( !sequence_greater_than( m_oldestUnackedMessageId, stopMessageId ) );
+}
+
+int Connection::CalculateMessageOverheadBits()
+{
+    const int maxMessageType = m_messageFactory->GetNumTypes() - 1;
+
+    const int MessageIdBits = 16;
+    
+    const int MessageTypeBits = protocol2::bits_required( 0, maxMessageType );
+
+    return MessageIdBits + MessageTypeBits;
 }
 
 struct TestPacketFactory : public PacketFactory

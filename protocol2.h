@@ -1459,14 +1459,12 @@ namespace protocol2
 
         bool IsAvailable( uint16_t sequence ) const
         {
-            const int index = sequence % m_size;
-            return !m_exists.GetBit( index );
+            return !m_exists.GetBit( sequence % m_size );
         }
 
         int GetIndex( uint16_t sequence ) const
         {
-            const int index = sequence % m_size;
-            return index;
+            return sequence % m_size;
         }
 
         const T * Find( uint16_t sequence ) const

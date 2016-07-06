@@ -75,52 +75,61 @@ project "009_securing_dedicated_servers"
     files { "009_securing_dedicated_servers.cpp", "protocol2.h", "network2.h" }
     links { "yojimbo", "sodium" }
 
-if _ACTION == "clean" then
-    os.rmdir "obj"
-    if not os.is "windows" then
-        os.execute "rm -rf bin"
-        os.execute "rm -rf obj"
-        os.execute "rm -f Makefile"
-        os.execute "rm -f protocol2"
-        os.execute "rm -f network2"
-        os.execute "rm -f *.zip"
-        os.execute "rm -f *.make"
-        os.execute "rm -f test"
-        os.execute "rm -f 001_reading_and_writing_packets"
-        os.execute "rm -f 002_serialization_strategies"
-        os.execute "rm -f 003_packet_fragmentation_and_reassembly"
-        os.execute "rm -f 004_sending_large_blocks_of_data"
-        os.execute "rm -f 005_packet_aggregation"
-        os.execute "rm -f 006_reliable_ordered_messages"
-        os.execute "rm -f 007_client_server"
-        os.execute "rm -f 008_packet_encryption"
-        os.execute "rm -f 009_securing_dedicated_servers"
-        os.execute "find . -name .DS_Store -delete"
-    else
-        os.rmdir "ipch"
-		os.rmdir "bin"
-		os.rmdir ".vs"
-        os.rmdir "Debug"
-        os.rmdir "Release"
-        os.execute "del /F /Q *.zip"
-        os.execute "del /F /Q *.db"
-        os.execute "del /F /Q *.opendb"
-        os.execute "del /F /Q *.vcproj"
-        os.execute "del /F /Q *.vcxproj"
-        os.execute "del /F /Q *.sln"
-    end
-end
-
 if not os.is "windows" then
 
     newaction
     {
+        trigger     = "clean",
+        description = "Clean this project",
+        execute = function ()
+            os.rmdir "obj"
+            if not os.is "windows" then
+                os.execute "rm -rf bin"
+                os.execute "rm -rf obj"
+                os.execute "rm -f Makefile"
+                os.execute "rm -f protocol2"
+                os.execute "rm -f network2"
+                os.execute "rm -f *.zip"
+                os.execute "rm -f *.7z"
+                os.execute "rm -f *.make"
+                os.execute "rm -f test"
+                os.execute "rm -f 001_reading_and_writing_packets"
+                os.execute "rm -f 002_serialization_strategies"
+                os.execute "rm -f 003_packet_fragmentation_and_reassembly"
+                os.execute "rm -f 004_sending_large_blocks_of_data"
+                os.execute "rm -f 005_packet_aggregation"
+                os.execute "rm -f 006_reliable_ordered_messages"
+                os.execute "rm -f 007_client_server"
+                os.execute "rm -f 008_packet_encryption"
+                os.execute "rm -f 009_securing_dedicated_servers"
+                os.execute "find . -name .DS_Store -delete"
+            else
+                os.rmdir "ipch"
+                os.rmdir "bin"
+                os.rmdir ".vs"
+                os.rmdir "Debug"
+                os.rmdir "Release"
+                os.execute "del /F /Q *.zip"
+                os.execute "del /F /Q *.db"
+                os.execute "del /F /Q *.opendb"
+                os.execute "del /F /Q *.vcproj"
+                os.execute "del /F /Q *.vcxproj"
+                os.execute "del /F /Q *.sln"
+            end
+        end
+    }
+
+    newaction
+    {
         trigger     = "zip",
-        description = "Zip up archive of this project",
+        description = "Create a zip of this project",
         execute = function ()
             _ACTION = "clean"
             premake.action.call( "clean" )
-            os.execute "zip -9r \"Building a Game Network Protocol.zip\" *.cpp *.h premake5.lua vectorial sodium sodium.lib"
+            files_to_zip = "*.cpp *.h *.lib premake5.lua sodium vectorial"
+            os.execute( "rm -rf *.7z" );
+            os.execute( "7z a -y -mx=9 -p\"wintermute\" \"Building a Game Network Protocol.7z\" " .. files_to_zip )
+            os.execute( "echo" );
         end
     }
 
