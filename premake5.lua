@@ -14,7 +14,7 @@ solution "NetworkProtocol"
         targetdir "bin/"
     end
     configurations { "Debug", "Release" }
-    flags { "ExtraWarnings", "FloatFast" }
+    flags { "ExtraWarnings", "FatalWarnings", "StaticRuntime", "FloatFast" }
     rtti "Off"
     configuration "Debug"
         flags { "Symbols" }
@@ -284,7 +284,7 @@ else
     newaction
     {
         trigger     = "solution",
-        description = "Open Yojimbo.sln",
+        description = "Build the solution and open it in Visual Studio",
         execute = function ()
             os.execute "premake5 vs2015"
             os.execute "start NetworkProtocol.sln"
