@@ -62,19 +62,19 @@ project "006_reliable_ordered_messages"
     kind "ConsoleApp"
     files { "006_reliable_ordered_messages.cpp", "protocol2.h", "network2.h" }
 
-project "007_client_server"
+project "007_packet_encryption"
     language "C++"
     kind "ConsoleApp"
-    files { "007_client_server.cpp", "protocol2.h", "network2.h" }
+    files { "007_packet_encryption.cpp", "protocol2.h", "network2.h" }
     configuration "Debug"
         links { debug_libs }
     configuration "Release"
         links { release_libs }
 
-project "008_packet_encryption"
+project "008_client_server"
     language "C++"
     kind "ConsoleApp"
-    files { "008_packet_encryption.cpp", "protocol2.h", "network2.h" }
+    files { "008_client_server.cpp", "protocol2.h", "network2.h" }
     configuration "Debug"
         links { debug_libs }
     configuration "Release"
@@ -101,7 +101,7 @@ if not os.is "windows" then
         trigger     = "test",
         description = "Build and run all unit tests",
         execute = function ()
-            if os.execute "make -j4 test" == 0 then
+            if os.execute "make -j32 test" == 0 then
                 os.execute "./bin/test"
             end
         end
@@ -112,7 +112,7 @@ if not os.is "windows" then
         trigger     = "001",
         description = "Build example source for reading and writing packets",
         execute = function ()
-            if os.execute "make -j4 001_reading_and_writing_packets" == 0 then
+            if os.execute "make -j32 001_reading_and_writing_packets" == 0 then
                 os.execute "./bin/001_reading_and_writing_packets"
             end
         end
@@ -123,7 +123,7 @@ if not os.is "windows" then
         trigger     = "002",
         description = "Build example source for serialization strategies",
         execute = function ()
-            if os.execute "make -j4 002_serialization_strategies" == 0 then
+            if os.execute "make -j32 002_serialization_strategies" == 0 then
                 os.execute "./bin/002_serialization_strategies"
             end
         end
@@ -134,7 +134,7 @@ if not os.is "windows" then
         trigger     = "003",
         description = "Build example source for packet fragmentation and reassembly",
         execute = function ()
-            if os.execute "make -j4 003_packet_fragmentation_and_reassembly" == 0 then
+            if os.execute "make -j32 003_packet_fragmentation_and_reassembly" == 0 then
                 os.execute "./bin/003_packet_fragmentation_and_reassembly"
             end
         end
@@ -145,7 +145,7 @@ if not os.is "windows" then
         trigger     = "004",
         description = "Build example source for sending large blocks of data",
         execute = function ()
-            if os.execute "make -j4 004_sending_large_blocks_of_data" == 0 then
+            if os.execute "make -j32 004_sending_large_blocks_of_data" == 0 then
                 os.execute "./bin/004_sending_large_blocks_of_data"
             end
         end
@@ -156,7 +156,7 @@ if not os.is "windows" then
         trigger     = "005",
         description = "Build example source for packet aggregation",
         execute = function ()
-            if os.execute "make -j4 005_packet_aggregation" == 0 then
+            if os.execute "make -j32 005_packet_aggregation" == 0 then
                 os.execute "./bin/005_packet_aggregation"
             end
         end
@@ -167,7 +167,7 @@ if not os.is "windows" then
         trigger     = "006",
         description = "Build example source for reliable ordered messages",
         execute = function ()
-            if os.execute "make -j4 006_reliable_ordered_messages" == 0 then
+            if os.execute "make -j32 006_reliable_ordered_messages" == 0 then
                 os.execute "./bin/006_reliable_ordered_messages"
             end
         end
@@ -176,10 +176,10 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "007",
-        description = "Build example source for client/server",
+        description = "Build example source for packet encryption",
         execute = function ()
-            if os.execute "make -j4 007_client_server" == 0 then
-                os.execute "./bin/007_client_server"
+            if os.execute "make -j32 007_packet_encryption" == 0 then
+                os.execute "./bin/007_packet_encryption"
             end
         end
     }
@@ -187,10 +187,10 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "008",
-        description = "Build example source for packet encryption",
+        description = "Build example source for client/server",
         execute = function ()
-            if os.execute "make -j4 008_packet_encryption" == 0 then
-                os.execute "./bin/008_packet_encryption"
+            if os.execute "make -j32 008_client_server" == 0 then
+                os.execute "./bin/008_client_server"
             end
         end
     }

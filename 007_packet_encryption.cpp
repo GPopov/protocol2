@@ -399,6 +399,16 @@ Packet * DecryptAndReadPacket( PacketFactory & packetFactory,
     return packet;
 }
 
+void PrintBytes( const char * label, const uint8_t * data, int data_bytes )
+{
+    printf( "%s: ", label );
+    for ( int i = 0; i < data_bytes; ++i )
+    {
+        printf( "0x%02x,", (int) data[i] );
+    }
+    printf( " (%d bytes)\n", data_bytes );
+}
+
 int main()
 {
     printf( "\npacket encryption\n\n" );
@@ -422,7 +432,7 @@ int main()
     uint8_t packetBuffer[MaxEncryptedPacketSize];
     uint8_t scratchBuffer[MaxEncryptedPacketSize];
 
-    const int NumPackets = 64;
+    const int NumPackets = 10;
 
     for ( int i = 0; i < NumPackets; ++i )
     {
@@ -442,7 +452,9 @@ int main()
         if ( !packetData )
             break;
 
-        printf( "encrypted packet is %d bytes\n", writePacketBytes );
+        printf( "successfully encrypted packet\n" );
+
+        PrintBytes( "encrypted packet", packetData, writePacketBytes );
 
         uint64_t sequence;
         Packet * readPacket = DecryptAndReadPacket( packetFactory, packetData, scratchBuffer, sequence, writePacketBytes, encryptionKey );
