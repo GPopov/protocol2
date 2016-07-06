@@ -1,5 +1,5 @@
 
-solution "Building a Game Network Protocol"
+solution "NetworkProtocol"
     platforms { "x64" }
     includedirs { ".", "vectorial" }
     if not os.is "windows" then
@@ -260,7 +260,7 @@ else
         description = "Open Yojimbo.sln",
         execute = function ()
             os.execute "premake5 vs2015"
-            os.execute "start \"Building a Game Network Protocol.sln\""
+            os.execute "start NetworkProtocol.sln"
         end
     }
 
