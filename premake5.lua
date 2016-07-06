@@ -1,4 +1,12 @@
 
+if os.is "windows" then
+    debug_libs = { "sodium-debug" }
+    release_libs = { "sodium-release" }
+else
+    debug_libs = { "sodium" }
+    release_libs = debug_libs
+end
+
 solution "NetworkProtocol"
     platforms { "x64" }
     includedirs { ".", "vectorial" }
@@ -19,13 +27,20 @@ project "test"
     language "C++"
     kind "ConsoleApp"
     files { "test.cpp", "protocol2.h", "network2.h" }
-    links { "yojimbo", "sodium" }
+    links { "yojimbo" }
+    configuration "Debug"
+        links { debug_libs }
+    configuration "Release"
+        links { release_libs }
 
 project "yojimbo"
     language "C++"
     kind "StaticLib"
     files { "yojimbo.h", "yojimbo.cpp", "yojimbo_*.h", "yojimbo_*.cpp" }
-    links { "sodium" }
+    configuration "Debug"
+        links { debug_libs }
+    configuration "Release"
+        links { release_libs }
 
 project "001_reading_and_writing_packets"
     language "C++"
@@ -61,19 +76,31 @@ project "007_client_server"
     language "C++"
     kind "ConsoleApp"
     files { "007_client_server.cpp", "protocol2.h", "network2.h" }
-    links { "yojimbo", "sodium" }
+    links { "yojimbo" }
+    configuration "Debug"
+        links { debug_libs }
+    configuration "Release"
+        links { release_libs }
 
 project "008_packet_encryption"
     language "C++"
     kind "ConsoleApp"
     files { "008_packet_encryption.cpp", "protocol2.h", "network2.h" }
-    links { "yojimbo", "sodium" }
+    links { "yojimbo" }
+    configuration "Debug"
+        links { debug_libs }
+    configuration "Release"
+        links { release_libs }
 
 project "009_securing_dedicated_servers"
     language "C++"
     kind "ConsoleApp"
     files { "009_securing_dedicated_servers.cpp", "protocol2.h", "network2.h" }
-    links { "yojimbo", "sodium" }
+    links { "yojimbo" }
+    configuration "Debug"
+        links { debug_libs }
+    configuration "Release"
+        links { release_libs }
 
 if not os.is "windows" then
 

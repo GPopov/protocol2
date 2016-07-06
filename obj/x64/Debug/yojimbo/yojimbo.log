@@ -1,0 +1,7 @@
+﻿  yojimbo_socket_interface.cpp
+  yojimbo_packet_processor.cpp
+  yojimbo_memory.cpp
+  yojimbo_crypto.cpp
+  yojimbo.cpp
+  Generating Code...
+  yojimbo.vcxproj -> C:\Users\Glenn Fiedler\protocol2\bin\x64\Debug\yojimbo.lib

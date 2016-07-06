@@ -1477,7 +1477,6 @@ int main()
 
         ClientServerPacketFactory packetFactory;
 
-        Address clientAddress( "::1", ClientPort );
         Address serverAddress( "::1", ServerPort );
 
         ClientServerNetworkInterface clientInterface( packetFactory, ClientPort );
