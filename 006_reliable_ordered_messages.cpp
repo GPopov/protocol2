@@ -22,17 +22,17 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <time.h>
-
 #define NETWORK2_IMPLEMENTATION
 #define PROTOCOL2_IMPLEMENTATION
 
 #include "network2.h"
 #include "protocol2.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <inttypes.h>
+#include <time.h>
 
 using namespace protocol2;
 using namespace network2;
@@ -608,9 +608,10 @@ void Connection::GetMessagesToSend( uint16_t * messageIds, int & numMessageIds )
     if ( m_oldestUnackedMessageId == m_sendMessageId )
         return;
 
+#if _DEBUG
     MessageSendQueueEntry * firstEntry = m_messageSendQueue->Find( m_oldestUnackedMessageId );
-
     assert( firstEntry );
+#endif // #if _DEBUG
     
     const int GiveUpBits = 8 * 8;
 
@@ -714,7 +715,7 @@ void Connection::ProcessMessageAck( uint16_t ack )
     printf( "ack packet %d\n", ack );
 #endif // #if DEBUG_LOGS
 
-    for ( int i = 0; i < sentPacketEntry->numMessageIds; ++i )
+    for ( int i = 0; i < (int) sentPacketEntry->numMessageIds; ++i )
     {
         const uint16_t messageId = sentPacketEntry->messageIds[i];
 
@@ -938,7 +939,11 @@ int MessagesMain()
 
             TestMessage * testMessage = (TestMessage*) message;
 
-            assert( testMessage->sequence == uint16_t( numMessagesReceived ) );
+            if ( testMessage->sequence != uint16_t( numMessagesReceived ) )
+			{
+				printf( "error: received out of sequence message!\n" );
+				return 1;
+			}
 
             printf( "received message %d\n", uint16_t( numMessagesReceived ) );
 

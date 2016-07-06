@@ -35,6 +35,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #define NETWORK2_SOCKETS 1
 #define NETWORK2_SIMULATOR 1
@@ -611,7 +612,6 @@ namespace network2
 
         if ( m_socket <= 0 )
         {
-            printf( "create socket failed: %s\n", strerror( errno ) );
             m_error = SOCKET_ERROR_CREATE_FAILED;
             return;
         }
@@ -641,7 +641,6 @@ namespace network2
 
             if ( ::bind( m_socket, (const sockaddr*) &sock_address, sizeof(sock_address) ) < 0 )
             {
-                printf( "bind socket failed (ipv6) - %s\n", strerror( errno ) );
                 m_socket = SOCKET_ERROR_BIND_IPV6_FAILED;
                 return;
             }
@@ -655,7 +654,6 @@ namespace network2
 
             if ( ::bind( m_socket, (const sockaddr*) &sock_address, sizeof(sock_address) ) < 0 )
             {
-                printf( "bind socket failed (ipv4) - %s\n", strerror( errno ) );
                 m_error = SOCKET_ERROR_BIND_IPV4_FAILED;
                 return;
             }
@@ -748,11 +746,6 @@ namespace network2
             socket_address.sin_port = htons( (unsigned short) address.GetPort() );
             size_t sent_bytes = sendto( m_socket, (const char*)packetData, (int) packetBytes, 0, (sockaddr*)&socket_address, sizeof(sockaddr_in) );
             result = sent_bytes == packetBytes;
-        }
-
-        if ( !result )
-        {
-            printf( "sendto failed: %s\n", strerror( errno ) );
         }
 
         return result;

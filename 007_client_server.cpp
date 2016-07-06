@@ -23,17 +23,18 @@
 */
 
 #include "yojimbo.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <time.h>
 
 #define NETWORK2_IMPLEMENTATION
 #define PROTOCOL2_IMPLEMENTATION
 
 #include "network2.h"
 #include "protocol2.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <inttypes.h>
+#include <time.h>
 
 using namespace yojimbo;
 using namespace protocol2;

@@ -25,6 +25,10 @@
 #ifndef YOJIMBO_H
 #define YOJIMBO_H
 
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "network2.h"
 #include "protocol2.h"
 #include "yojimbo_config.h"
