@@ -252,4 +252,16 @@ if not os.is "windows" then
         end
     }
 
+else
+
+    newaction
+    {
+        trigger     = "solution",
+        description = "Open Yojimbo.sln",
+        execute = function ()
+            os.execute "premake5 vs2015"
+            os.execute "start Yojimbo.sln"
+        end
+    }
+
 end
