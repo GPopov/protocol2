@@ -458,7 +458,6 @@ int main()
 
         uint64_t sequence;
         Packet * readPacket = DecryptAndReadPacket( packetFactory, packetData, scratchBuffer, sequence, writePacketBytes, encryptionKey );
-
         if ( !readPacket )
         {
             packetFactory.DestroyPacket( readPacket );
