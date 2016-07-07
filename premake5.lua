@@ -80,6 +80,15 @@ project "008_client_server"
     configuration "Release"
         links { release_libs }
 
+project "009_connect_tokens"
+    language "C++"
+    kind "ConsoleApp"
+    files { "009_connect_tokens.cpp", "protocol2.h", "network2.h" }
+    configuration "Debug"
+        links { debug_libs }
+    configuration "Release"
+        links { release_libs }
+
 if not os.is "windows" then
 
     newaction
@@ -191,6 +200,17 @@ if not os.is "windows" then
         execute = function ()
             if os.execute "make -j32 008_client_server" == 0 then
                 os.execute "./bin/008_client_server"
+            end
+        end
+    }
+
+    newaction
+    {
+        trigger     = "009",
+        description = "Build example source for connect tokens",
+        execute = function ()
+            if os.execute "make -j32 009_connect_tokens" == 0 then
+                os.execute "./bin/009_connect_tokens"
             end
         end
     }

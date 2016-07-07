@@ -5,16 +5,24 @@ TODO
 
     -------------
 
-    Rebuild the client/server example without requiring complicated shit like network interface
+    Bring across just the connect token aspects and put into a self contained example program 009_connect_tokens
 
     -------------
 
-    May be worthwhile having the connect token aspect split out into an example program, show how it's done?
+    Rebuild the client/server example without requiring complicated shit like network interface
 
     -------------
 
     Add a BUILDING.md
 
     People should know how to build this when they get it.
+
+    -------------
+
+    Now extend the reliable messages example to also including sending large blocks for the next example.
+
+    -------------
+
+    Packet compression example source code would be a great way to explore it, also self-contained.
 
     -------------
