@@ -5,10 +5,6 @@ TODO
 
     -------------
 
-    Bring across just the connect token aspects and put into a self contained example program 009_connect_tokens
-
-    -------------
-
     Rebuild the client/server example without requiring complicated shit like network interface
 
     -------------

@@ -10,6 +10,14 @@ Wednesday July 6th, 2016
 
     Remove the duplicate yojimbo source.
 
+    Brought across just the connect token aspects and put into a self contained example program 009_connect_tokens
+
+    Sketched out room for a messages and blocks example.
+
+    I think this is the last example source code for this series. Has already gone way beyond with libyojimbo. Need to finish R&D and write some new articles stat.
+
+
+
 
 Saturday May 28th, 2016
 =======================
