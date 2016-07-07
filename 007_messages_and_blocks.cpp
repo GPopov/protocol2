@@ -43,12 +43,15 @@ const int MessageSendQueueSize = 1024;
 const int MessageReceiveQueueSize = 1024;
 const int MessagePacketBudget = 1024;
 const float MessageResendRate = 0.1f;
+const int MaxBlockSize = 256 * 1024;
+const int BlockFragmentSize = 1024;
+const int MaxFragmentsPerBlock = MaxBlockSize / BlockFragmentSize;
 
 class Message : public Object
 {
 public:
 
-    Message( int type ) : m_refCount(1), m_id(0), m_type( type ) {}
+    Message( int type, bool block = false ) : m_refCount(1), m_id(0), m_type( type ), m_block( block ) {}
 
     void AssignId( uint16_t id ) { m_id = id; }
 
@@ -60,7 +63,9 @@ public:
 
     void Release() { assert( m_refCount > 0 ); m_refCount--; if ( m_refCount == 0 ) delete this; }
 
-    int GetRefCount() { return m_refCount; }
+    int GetRefCount() const { return m_refCount; }
+
+    bool IsBlockMessage() const { return m_block != 0; }
 
     virtual bool SerializeInternal( ReadStream & stream ) = 0;
 
@@ -70,7 +75,7 @@ public:
 
 protected:
 
-    ~Message()
+    virtual ~Message()
     {
         assert( m_refCount == 0 );
     }
@@ -78,11 +83,67 @@ protected:
 private:
 
     Message( const Message & other );
+
     const Message & operator = ( const Message & other );
 
     int m_refCount;
     uint32_t m_id : 16;
-    uint32_t m_type : 16;
+    uint32_t m_type : 15;
+    uint32_t m_block : 1;
+};
+
+class BlockMessage : public Message
+{
+public:
+
+    BlockMessage( int type ) : Message( type, true ), m_blockSize( 0 ), m_blockData( NULL ) {}
+
+    ~BlockMessage()
+    {
+        Disconnect();
+    }
+
+    void Connect( uint8_t * blockData, int blockSize )
+    {
+        Disconnect();
+
+        assert( blockData );
+        assert( blockSize > 0 );
+
+        m_blockData = blockData;
+        m_blockSize = blockSize;
+    }
+
+    void Disconnect()
+    {
+        if ( m_blockData )
+        {
+            delete [] m_blockData;
+            m_blockData = NULL;
+            m_blockSize = 0;
+        }
+    }
+
+    bool SerializeInternal( ReadStream & /*stream*/ ) { assert( false ); return false; }
+
+    bool SerializeInternal( WriteStream & /*stream*/ ) { assert( false ); return false; }
+
+    bool SerializeInternal( MeasureStream & /*stream*/ ) { assert( false ); return false; }
+
+    uint8_t * GetBlockData()
+    {
+        return m_blockData;
+    }
+
+    int GetBlockSize() const
+    {
+        return m_blockSize;
+    }
+
+private:
+
+    int m_blockSize;
+    uint8_t * m_blockData;
 };
 
 class MessageFactory
@@ -281,7 +342,8 @@ protected:
     {
         Message * message;
         double timeLastSent;
-        int measuredBits;
+        uint32_t measuredBits : 31;
+        uint32_t block : 1;
     };
 
     struct MessageSentPacketEntry
@@ -290,11 +352,65 @@ protected:
         uint16_t * messageIds;
         uint32_t numMessageIds : 16;                 // number of messages in this packet
         uint32_t acked : 1;                          // 1 if this sent packet has been acked
+        uint64_t block : 1;                          // 1 if this sent packet contains a large block fragment
+        uint64_t blockId : 16;                       // block id. valid only when sending block.
+        uint64_t fragmentId : 16;                    // fragment id. valid only when sending block.
     };
 
     struct MessageReceiveQueueEntry
     {
         Message * message;
+    };
+
+    struct SendBlockData
+    {
+        SendBlockData() : ackedFragment( MaxFragmentsPerBlock )
+        {
+            Reset();
+        }
+
+        void Reset()
+        {
+            active = false;
+            numFragments = 0;
+            numAckedFragments = 0;
+            messageId = 0;
+            blockSize = 0;
+        }
+
+        bool active;                                                    // true if we are currently sending a large block
+        int numFragments;                                               // number of fragments in the current large block being sent
+        int numAckedFragments;                                          // number of acked fragments in current block being sent
+        int blockSize;                                                  // send block size in bytes
+        uint16_t messageId;                                             // the message id of the block being sent
+        BitArray ackedFragment;                                         // has fragment n been received?
+        double fragmentSendTime[MaxFragmentsPerBlock];                  // time fragment n last sent in seconds.
+        uint8_t blockData[MaxBlockSize];                                // block data storage as it is received.
+    };
+
+    struct ReceiveBlockData
+    {
+        ReceiveBlockData() : receivedFragment( MaxFragmentsPerBlock )
+        {
+            Reset();
+        }
+
+        void Reset()
+        {
+            active = false;
+            numFragments = 0;
+            numReceivedFragments = 0;
+            messageId = 0;
+            blockSize = 0;
+        }
+
+        bool active;                                // true if we are currently receiving a large block
+        int numFragments;                           // number of fragments in this block
+        int numReceivedFragments;                   // number of fragments received.
+        uint16_t messageId;                         // message id of block being currently received.
+        uint32_t blockSize;                         // block size in bytes.
+        BitArray receivedFragment;                  // has fragment n been received?
+        uint8_t blockData[MaxBlockSize];            // block data for receive
     };
 
     void InsertAckPacketEntry( uint16_t sequence );
@@ -342,6 +458,10 @@ private:
     SequenceBuffer<MessageReceiveQueueEntry> * m_messageReceiveQueue;               // message receive queue
 
     uint16_t * m_sentPacketMessageIds;                                              // array of message ids, n ids per-sent packet
+
+    SendBlockData m_sendBlock;                                                      // data for block being sent
+
+    ReceiveBlockData m_receiveBlock;                                                // data for block being received
 };
 
 Connection::Connection( PacketFactory & packetFactory, MessageFactory & messageFactory )
@@ -454,22 +574,32 @@ void Connection::SendMessage( Message * message )
 
     assert( entry );
 
-    entry->message = message;
-    entry->measuredBits = 0;
-    entry->timeLastSent = -1.0;
-
-    MeasureStream measureStream( MessagePacketBudget / 2 );
-
-    message->SerializeInternal( measureStream );
-
-    if ( measureStream.GetError() )
+    if ( message->IsBlockMessage() )
     {
-        m_error = CONNECTION_ERROR_MESSAGE_SERIALIZE_MEASURE_FAILED;
-        message->Release();
-        return;
-    }
+        // todo: block message
 
-    entry->measuredBits = measureStream.GetBitsProcessed() + m_messageOverheadBits;
+        assert( false );
+    }
+    else
+    {
+        entry->message = message;
+        entry->block = 0;
+        entry->measuredBits = 0;
+        entry->timeLastSent = -1.0;
+
+        MeasureStream measureStream( MessagePacketBudget / 2 );
+
+        message->SerializeInternal( measureStream );
+
+        if ( measureStream.GetError() )
+        {
+            m_error = CONNECTION_ERROR_MESSAGE_SERIALIZE_MEASURE_FAILED;
+            message->Release();
+            return;
+        }
+
+        entry->measuredBits = measureStream.GetBitsProcessed() + m_messageOverheadBits;
+    }
 
     m_sendMessageId++;
 }
@@ -649,6 +779,7 @@ void Connection::AddMessagePacketEntry( const uint16_t * messageIds, int & numMe
     if ( sentPacket )
     {
         sentPacket->acked = 0;
+        sentPacket->block = 0;
         sentPacket->timeSent = m_time;
      
         const int sentPacketIndex = m_sentPackets->GetIndex( sequence );
@@ -659,6 +790,8 @@ void Connection::AddMessagePacketEntry( const uint16_t * messageIds, int & numMe
             sentPacket->messageIds[i] = messageIds[i];
     }
 }
+
+// todo: Connection::AddBlockPacketEntry
 
 void Connection::ProcessPacketMessages( const ConnectionPacket * packet )
 {
@@ -803,7 +936,8 @@ struct TestPacketFactory : public PacketFactory
 
 enum MessageType
 {
-    MESSAGE_TEST,
+    TEST_MESSAGE,
+    TEST_BLOCK_MESSAGE,
     NUM_MESSAGE_TYPES
 };
 
@@ -817,7 +951,7 @@ inline int GetNumBitsForMessage( uint16_t sequence )
 
 struct TestMessage : public Message
 {
-    TestMessage() : Message( MESSAGE_TEST )
+    TestMessage() : Message( TEST_MESSAGE )
     {
         sequence = 0;
     }
@@ -845,6 +979,11 @@ struct TestMessage : public Message
     uint16_t sequence;
 };
 
+struct TestBlockMessage : public BlockMessage
+{
+    TestBlockMessage() : BlockMessage( TEST_MESSAGE ) {}
+};
+
 class TestMessageFactory : public MessageFactory
 {
 public:
@@ -857,7 +996,8 @@ protected:
     {
         switch ( type )
         {
-            case MESSAGE_TEST: return new TestMessage();
+            case TEST_MESSAGE:          return new TestMessage();
+            case TEST_BLOCK_MESSAGE:    return new TestBlockMessage();
             default:
                 return NULL;
         }
@@ -902,15 +1042,30 @@ int main()
             if ( !sender.CanSendMessage() )
                 break;
 
-            TestMessage * message = (TestMessage*) messageFactory.Create( MESSAGE_TEST );
-            
-            if ( message )
+            if ( rand() % 100 )
             {
-                message->sequence = (uint16_t) numMessagesSent;
+                TestMessage * message = (TestMessage*) messageFactory.Create( TEST_MESSAGE );
                 
-                sender.SendMessage( message );
+                if ( message )
+                {
+                    message->sequence = (uint16_t) numMessagesSent;
+                    
+                    sender.SendMessage( message );
 
-                numMessagesSent++;
+                    numMessagesSent++;
+                }
+            }
+            else
+            {
+                TestBlockMessage * blockMessage = (TestBlockMessage*) messageFactory.Create( TEST_BLOCK_MESSAGE );
+
+                if ( blockMessage )
+                {
+                    // todo: setup block such that it is of random size and contents that are a function of message id
+                    // so it can be verified on the other side trivially without buffering a bunch of blocks.
+
+                    sender.SendMessage( blockMessage );
+                }
             }
         }
 
@@ -936,18 +1091,32 @@ int main()
             if ( !message )
                 break;
 
-            assert( message->GetType() == MESSAGE_TEST );
             assert( message->GetId() == (uint16_t) numMessagesReceived );
 
-            TestMessage * testMessage = (TestMessage*) message;
+            switch ( message->GetType() )
+            {
+                case TEST_MESSAGE:
+                {
+                    TestMessage * testMessage = (TestMessage*) message;
 
-            if ( testMessage->sequence != uint16_t( numMessagesReceived ) )
-			{
-				printf( "error: received out of sequence message!\n" );
-				return 1;
-			}
+                    if ( testMessage->sequence != uint16_t( numMessagesReceived ) )
+                    {
+                        printf( "error: received out of sequence message!\n" );
+                        return 1;
+                    }
 
-            printf( "received message %d\n", uint16_t( numMessagesReceived ) );
+                    printf( "received message %d\n", uint16_t( numMessagesReceived ) );
+                }
+                break;
+
+                case TEST_BLOCK_MESSAGE:
+                {
+                    // ...
+
+                    printf( "received block message %d\n", uint16_t( numMessagesReceived ) );
+                }
+                break;
+            }
 
             ++numMessagesReceived;
 
