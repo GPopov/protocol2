@@ -16,6 +16,20 @@ Wednesday July 6th, 2016
 
     I think this is the last example source code for this series. Has already gone way beyond with libyojimbo. Need to finish R&D and write some new articles stat.
 
+    Rebuild the client/server example without requiring complicated shit like network interface
+
+    eg. send packets directly over an actual socket, use the socket buffer as the queue.
+
+    There is example code for doing exactly this in one example already written.
+
+    I think the client and server need their own sockets though.
+
+    Yes. Progressing well. All I need now is an implementation for the send and receive packet functions.
+
+    Implement SendPacket function
+
+    Implement ReceivePacket function
+
 
 Saturday May 28th, 2016
 =======================

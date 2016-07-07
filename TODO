@@ -1,20 +1,8 @@
 DONE
 
-    Rebuild the client/server example without requiring complicated shit like network interface
-
-    eg. send packets directly over an actual socket, use the socket buffer as the queue.
-
-    There is example code for doing exactly this in one example already written.
-
-    I think the client and server need their own sockets though.
-
-    Yes. Progressing well. All I need now is an implementation for the send and receive packet functions.
-
 TODO
 
-    Implement SendPacket function
-
-    Implement ReceivePacket function
+    Implement messages and large blocks example
 
     -------------
 
@@ -24,10 +12,6 @@ TODO
 
     -------------
 
-    Now extend the reliable messages example to also including sending large blocks for the next example.
-
-    -------------
-
-    Packet compression example source code would be a great way to explore it, also self-contained.
+    Ship it. Go back to writing articles. We're done with R&D for a while.
 
     -------------
