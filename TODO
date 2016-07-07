@@ -1,10 +1,5 @@
 DONE
 
-
-TODO
-
-    -------------
-
     Rebuild the client/server example without requiring complicated shit like network interface
 
     eg. send packets directly over an actual socket, use the socket buffer as the queue.
@@ -12,6 +7,14 @@ TODO
     There is example code for doing exactly this in one example already written.
 
     I think the client and server need their own sockets though.
+
+    Yes. Progressing well. All I need now is an implementation for the send and receive packet functions.
+
+TODO
+
+    Implement SendPacket function
+
+    Implement ReceivePacket function
 
     -------------
 

@@ -37,8 +37,8 @@
 using namespace protocol2;
 using namespace network2;
 
-//const uint32_t ProtocolId = 0x12341651;
-
+const uint32_t ProtocolId = 0x12341651;
+const int MaxPacketSize = 1200;
 const int MaxClients = 32;
 const int ServerPort = 50000;
 const int ClientPort = 60000;
@@ -281,13 +281,18 @@ struct ServerClientData
 
 Packet * ReceivePacket( Socket * socket, PacketFactory * packetFactory, Address & address )
 {
-    // todo
+    uint8_t packetData[MaxPacketSize];
+    
+    int packetBytes = socket->ReceivePacket( address, packetData, MaxPacketSize );
+    
+    if ( !packetBytes )
+        return NULL;
 
-    (void)socket;
-    (void)packetFactory;
-    (void)address;
+    protocol2::PacketInfo info;
+    info.protocolId = ProtocolId;
+    info.packetFactory = packetFactory;
 
-    return NULL;
+    return protocol2::ReadPacket( info, packetData, packetBytes, NULL );
 }
 
 void SendPacket( Socket * socket, PacketFactory * packetFactory, const Address & address, Packet * packet )
@@ -297,12 +302,18 @@ void SendPacket( Socket * socket, PacketFactory * packetFactory, const Address &
     assert( address.IsValid() );
     assert( packet );
 
-    (void)socket;
-    (void)packetFactory;
-    (void)packet;
-    (void)address;
+    uint8_t packetData[MaxPacketSize];
 
-    // ...
+    protocol2::PacketInfo info;
+    info.protocolId = ProtocolId;
+    info.packetFactory = packetFactory;
+
+    const int packetSize = protocol2::WritePacket( info, packet, packetData, MaxPacketSize );
+
+    if ( packetSize > 0 )
+    {
+        socket->SendPacket( address, packetData, packetSize );
+    }
 
     packetFactory->DestroyPacket( packet );
 }
