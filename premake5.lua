@@ -62,28 +62,33 @@ project "006_reliable_ordered_messages"
     kind "ConsoleApp"
     files { "006_reliable_ordered_messages.cpp", "protocol2.h", "network2.h" }
 
-project "007_packet_encryption"
+project "007_messages_and_blocks"
     language "C++"
     kind "ConsoleApp"
-    files { "007_packet_encryption.cpp", "protocol2.h", "network2.h" }
+    files { "007_messages_and_blocks.cpp", "protocol2.h", "network2.h" }
+
+project "008_packet_encryption"
+    language "C++"
+    kind "ConsoleApp"
+    files { "008_packet_encryption.cpp", "protocol2.h", "network2.h" }
     configuration "Debug"
         links { debug_libs }
     configuration "Release"
         links { release_libs }
 
-project "008_client_server"
+project "009_client_server"
     language "C++"
     kind "ConsoleApp"
-    files { "008_client_server.cpp", "protocol2.h", "network2.h" }
+    files { "009_client_server.cpp", "protocol2.h", "network2.h" }
     configuration "Debug"
         links { debug_libs }
     configuration "Release"
         links { release_libs }
 
-project "009_connect_tokens"
+project "010_connect_tokens"
     language "C++"
     kind "ConsoleApp"
-    files { "009_connect_tokens.cpp", "protocol2.h", "network2.h" }
+    files { "010_connect_tokens.cpp", "protocol2.h", "network2.h" }
     configuration "Debug"
         links { debug_libs }
     configuration "Release"
@@ -185,10 +190,10 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "007",
-        description = "Build example source for packet encryption",
+        description = "Build example source for messages and blocks",
         execute = function ()
-            if os.execute "make -j32 007_packet_encryption" == 0 then
-                os.execute "./bin/007_packet_encryption"
+            if os.execute "make -j32 007_messages_and_blocks" == 0 then
+                os.execute "./bin/007_messages_and_blocks"
             end
         end
     }
@@ -196,10 +201,10 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "008",
-        description = "Build example source for client/server",
+        description = "Build example source for packet encryption",
         execute = function ()
-            if os.execute "make -j32 008_client_server" == 0 then
-                os.execute "./bin/008_client_server"
+            if os.execute "make -j32 008_packet_encryption" == 0 then
+                os.execute "./bin/008_packet_encryption"
             end
         end
     }
@@ -207,10 +212,21 @@ if not os.is "windows" then
     newaction
     {
         trigger     = "009",
+        description = "Build example source for client/server",
+        execute = function ()
+            if os.execute "make -j32 009_client_server" == 0 then
+                os.execute "./bin/009_client_server"
+            end
+        end
+    }
+
+    newaction
+    {
+        trigger     = "010",
         description = "Build example source for connect tokens",
         execute = function ()
-            if os.execute "make -j32 009_connect_tokens" == 0 then
-                os.execute "./bin/009_connect_tokens"
+            if os.execute "make -j32 010_connect_tokens" == 0 then
+                os.execute "./bin/010_connect_tokens"
             end
         end
     }
