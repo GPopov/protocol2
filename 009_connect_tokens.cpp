@@ -39,13 +39,8 @@
 #include <inttypes.h>
 #include <time.h>
 
-#include "rapidjson/document.h"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
-
 using namespace network2;
 using namespace protocol2;
-using namespace rapidjson;
 
 const uint32_t ProtocolId = 0x12398137;
 const int ServerPort = 50000;
