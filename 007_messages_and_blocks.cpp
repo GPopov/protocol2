@@ -436,7 +436,11 @@ protected:
 
     bool SendingBlockMessage();
 
-    const uint8_t * GetBlockFragmentToSend( uint16_t & messageId, uint16_t & fragmentId, int & fragmentBytes );
+    uint8_t * GetFragmentToSend( uint16_t & messageId, uint16_t & fragmentId, int & fragmentBytes );
+
+    void AddFragmentToPacket( uint16_t messageId, uint16_t fragmentId, uint8_t * fragmentData, int fragmentSize, Packet * packet );
+
+    void AddFragmentPacketEntry( uint16_t messageId, uint16_t fragmentId );
 
 private:
 
@@ -666,7 +670,7 @@ ConnectionPacket * Connection::WritePacket()
             uint16_t fragmentId;
             int fragmentBytes;
 
-            const uint8_t * fragmentData = GetBlockFragmentToSend( messageId, fragmentId, fragmentBytes );
+            uint8_t * fragmentData = GetFragmentToSend( messageId, fragmentId, fragmentBytes );
 
             if ( fragmentData )
             {
@@ -674,6 +678,10 @@ ConnectionPacket * Connection::WritePacket()
                 printf( " + messageId = %d\n", messageId );
                 printf( " + fragmentId = %d\n", fragmentId );
                 printf( " + fragmentBytes = %d\n", fragmentBytes );
+
+                AddFragmentToPacket( messageId, fragmentId, fragmentData, fragmentBytes, packet );
+
+                AddFragmentPacketEntry( messageId, fragmentId );
             }
             else
             {
@@ -947,7 +955,7 @@ bool Connection::SendingBlockMessage()
     return entry->block;
 }
 
-const uint8_t * Connection::GetBlockFragmentToSend( uint16_t & messageId, uint16_t & fragmentId, int & fragmentBytes )
+uint8_t * Connection::GetFragmentToSend( uint16_t & messageId, uint16_t & fragmentId, int & fragmentBytes )
 {
     messageId = 0;
     fragmentId = 0;
@@ -958,18 +966,22 @@ const uint8_t * Connection::GetBlockFragmentToSend( uint16_t & messageId, uint16
     assert( entry );
     assert( entry->block );
 
+    BlockMessage * blockMessage = (BlockMessage*) entry->message;
+
+    assert( blockMessage );
+
+    messageId = blockMessage->GetId();
+
+    const int blockSize = blockMessage->GetBlockSize();
+
     if ( !m_sendBlock.active )
     {
         // start sending this block
 
-        BlockMessage * blockMessage = (BlockMessage*) entry->message;
-
-        assert( blockMessage );
-
         m_sendBlock.active = true;
-        m_sendBlock.messageId = blockMessage->GetId();
-        m_sendBlock.blockSize = blockMessage->GetBlockSize();
-        m_sendBlock.numFragments = (int) ceil( blockMessage->GetBlockSize() / float( BlockFragmentSize ) );
+        m_sendBlock.messageId = messageId;
+        m_sendBlock.blockSize = blockSize;
+        m_sendBlock.numFragments = (int) ceil( blockSize / float( BlockFragmentSize ) );
         m_sendBlock.numAckedFragments = 0;
 
         printf( "sending block %d in %d fragments\n", (int) m_sendBlock.messageId, m_sendBlock.numFragments );
@@ -1002,98 +1014,52 @@ const uint8_t * Connection::GetBlockFragmentToSend( uint16_t & messageId, uint16
     
     fragmentId = (uint16_t) nextFragmentId;
 
-    printf( "fragmentId = %d\n", fragmentId );
+    printf( "sending fragment %d\n", fragmentId );
 
-    return NULL;
+    // allocate and return a copy of the fragment data
+
+    fragmentBytes = BlockFragmentSize;
+    int fragmentRemainder = blockSize % BlockFragmentSize;
+    if ( fragmentRemainder && fragmentId == m_sendBlock.numFragments - 1 )
+        fragmentBytes = fragmentRemainder;
+
+    uint8_t * fragmentData = new uint8_t[fragmentBytes];
+
+    memcpy( fragmentData, blockMessage->GetBlockData() + fragmentId * BlockFragmentSize, fragmentBytes );
+
+    return fragmentData;
+}
+
+void Connection::AddFragmentToPacket( uint16_t messageId, uint16_t fragmentId, uint8_t * fragmentData, int fragmentSize, Packet * packet )
+{
+    (void)messageId;
+    (void)fragmentId;
+    (void)fragmentData;
+    (void)fragmentSize;
+    (void)packet;
+
+    // todo
+}
+
+void Connection::AddFragmentPacketEntry( uint16_t messageId, uint16_t fragmentId )
+{
+    (void)messageId;
+    (void)fragmentId;
+
+    // todo
 }
 
 #if 0
 
-            /*
-                Large block mode. Split large blocks into fragments 
-                and send these fragments until they are all acked.
-            */
-
-            CORE_ASSERT( firstEntry->message->GetType() == BlockMessageType );
-
-            BlockMessage & blockMessage = static_cast<BlockMessage&>( *firstEntry->message );
-
-            Block & block = blockMessage.GetBlock();
-
-            CORE_ASSERT( block.GetSize() > m_config.maxSmallBlockSize );
-
-            if ( !m_sendLargeBlock.active )
-            {
-                m_sendLargeBlock.active = true;
-                m_sendLargeBlock.blockId = m_oldestUnackedMessageId;
-                m_sendLargeBlock.blockSize = block.GetSize();
-                m_sendLargeBlock.numFragments = (int) ceil( block.GetSize() / (float)m_config.blockFragmentSize );
-                m_sendLargeBlock.numAckedFragments = 0;
-
-//                    printf( "sending block %d in %d fragments\n", (int) firstMessageId, m_sendLargeBlock.numFragments );
-
-                CORE_ASSERT( m_sendLargeBlock.numFragments >= 0 );
-                CORE_ASSERT( m_sendLargeBlock.numFragments <= m_maxBlockFragments );
-
-                m_sendLargeBlock.acked_fragment->Clear();
-
-                for ( int i = 0; i < m_maxBlockFragments; ++i )
-                    m_sendLargeBlock.time_fragment_last_sent[i] = -1.0;
-            }
-
-            CORE_ASSERT( m_sendLargeBlock.active );
-
-            int fragmentId = -1;
-            for ( int i = 0; i < m_sendLargeBlock.numFragments; ++i )
-            {
-                if ( !m_sendLargeBlock.acked_fragment->GetBit(i) && 
-                      m_sendLargeBlock.time_fragment_last_sent[i] + m_config.resendRate < m_timeBase.time )
-                {
-                    fragmentId = i;
-                    m_sendLargeBlock.time_fragment_last_sent[i] = m_timeBase.time;
-                    break;
-                }
-            }
-
-            if ( fragmentId == -1 )
-                return nullptr;
-
-//                printf( "sending fragment %d\n", (int) fragmentId );
-
-            auto data = CORE_NEW( core::memory::scratch_allocator(), ReliableMessageChannelData, m_config );
-            data->largeBlock = 1;
-            data->blockSize = block.GetSize();
-            data->blockId = m_oldestUnackedMessageId;
-            data->fragmentId = fragmentId;
-            core::Allocator & a = core::memory::scratch_allocator();
-            data->fragment = (uint8_t*) a.Allocate( m_config.blockFragmentSize );
-            CORE_ASSERT( data->fragment );
-//                printf( "allocate fragment %p (send fragment)\n", data->fragment );
-
-            //printf( "create fragment %p\n", data->fragment );
-
-            int fragmentBytes = m_config.blockFragmentSize;
-            int fragmentRemainder = block.GetSize() % m_config.blockFragmentSize;
-            if ( fragmentRemainder && fragmentId == m_sendLargeBlock.numFragments - 1 )
-                fragmentBytes = fragmentRemainder;
-
-            CORE_ASSERT( fragmentBytes >= 0 );
-            CORE_ASSERT( fragmentBytes <= m_config.blockFragmentSize );
-            uint8_t * src = &( block.GetData()[fragmentId*m_config.blockFragmentSize] );
-            uint8_t * dst = data->fragment;
-            memcpy( dst, src, fragmentBytes );
-
-            auto sentPacketData = m_sentPackets->Insert( sequence );
-            CORE_ASSERT( sentPacketData );
-            sentPacketData->acked = 0;
-            sentPacketData->largeBlock = 1;
-            sentPacketData->blockId = m_oldestUnackedMessageId;
-            sentPacketData->fragmentId = fragmentId;
-            sentPacketData->timeSent = m_timeBase.time;
-            sentPacketData->messageIds = nullptr;
-            sentPacketData->numMessageIds = 0;
-
-            return data;
+    auto sentPacketData = m_sentPackets->Insert( sequence );
+    CORE_ASSERT( sentPacketData );
+    sentPacketData->acked = 0;
+    sentPacketData->largeBlock = 1;
+    sentPacketData->blockId = m_oldestUnackedMessageId;
+    sentPacketData->fragmentId = fragmentId;
+    sentPacketData->timeSent = m_timeBase.time;
+    sentPacketData->messageIds = nullptr;
+    sentPacketData->numMessageIds = 0;
 
 #endif 
 
