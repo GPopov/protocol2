@@ -648,7 +648,8 @@ ConnectionPacket * Connection::WritePacket()
     {
         if ( SendingBlockMessage() )
         {
-            // todo
+            printf( "sending block message\n" );
+            exit(1);
         }
         else
         {
@@ -903,15 +904,11 @@ int Connection::CalculateMessageOverheadBits()
 
 bool Connection::SendingBlockMessage()
 {
-    /*
     assert( HasMessagesToSend() );
 
     MessageSendQueueEntry * firstEntry = m_messageSendQueue->Find( m_oldestUnackedMessageId );
 
     return firstEntry->block;
-    */
-
-    return false;
 }
 
 struct TestPacketFactory : public PacketFactory
@@ -1042,7 +1039,7 @@ int main()
             if ( !sender.CanSendMessage() )
                 break;
 
-            //if ( rand() % 100 )
+            if ( rand() % 100 )
             {
                 TestMessage * message = (TestMessage*) messageFactory.Create( TEST_MESSAGE );
                 
@@ -1055,7 +1052,6 @@ int main()
                     numMessagesSent++;
                 }
             }
-            /*
             else
             {
                 TestBlockMessage * blockMessage = (TestBlockMessage*) messageFactory.Create( TEST_BLOCK_MESSAGE );
@@ -1072,7 +1068,6 @@ int main()
                     numMessagesSent++;
                 }
             }
-            */
         }
 
         ConnectionPacket * senderPacket = sender.WritePacket();
