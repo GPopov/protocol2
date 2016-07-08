@@ -191,17 +191,27 @@ struct ConnectionPacket : public Packet
     uint16_t sequence;
     uint16_t ack;
     uint32_t ack_bits;
-    uint16_t oldest_message_id;
+
     int numMessages;
     Message * messages[MaxMessagesPerPacket];
+
+    uint8_t * blockFragmentData;
+    uint64_t blockMessageId : 16;
+    uint64_t blockFragmentId : 16;
+    uint64_t blockFragmentSize : 16;
+    uint16_t blockNumFragments : 16;
 
     ConnectionPacket() : Packet( CONNECTION_PACKET )
     {
         sequence = 0;
         ack = 0;
         ack_bits = 0;
-        oldest_message_id = 0xFFFF;
         numMessages = 0;
+        blockFragmentData = NULL;
+        blockMessageId = 0;
+        blockFragmentId = 0;
+        blockFragmentSize = 0;
+        blockNumFragments = 0;
     }
 
     ~ConnectionPacket()
@@ -212,7 +222,14 @@ struct ConnectionPacket : public Packet
             messages[i]->Release();
             messages[i] = NULL;
         }
+
         numMessages = 0;
+
+        if ( blockFragmentData )
+        {
+            delete [] blockFragmentData;
+            blockFragmentData = NULL;
+        }
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
@@ -230,8 +247,6 @@ struct ConnectionPacket : public Packet
         serialize_bits( stream, ack_bits, 32 );
 
         // serialize messages
-
-        serialize_bits( stream, oldest_message_id, 16 );
 
         bool hasMessages = numMessages != 0;
 
@@ -287,6 +302,25 @@ struct ConnectionPacket : public Packet
                 if ( !messages[i]->SerializeInternal( stream ) )
                     return false;
             }
+        }
+
+        // serialize block fragment
+
+        bool hasFragment = Stream::IsWriting && blockFragmentData;
+
+        serialize_bool( stream, hasFragment );
+
+        if ( hasFragment )
+        {
+            serialize_bits( stream, blockMessageId, 16 );
+
+            serialize_int( stream, blockNumFragments, 1, MaxFragmentsPerBlock );
+
+            serialize_int( stream, blockFragmentId, 0, blockNumFragments - 1 );
+
+            serialize_int( stream, blockFragmentSize, 1, BlockFragmentSize );
+
+            serialize_bytes( stream, blockFragmentData, blockFragmentSize );
         }
 
         return true;
@@ -353,9 +387,9 @@ protected:
         uint16_t * messageIds;
         uint32_t numMessageIds : 16;                 // number of messages in this packet
         uint32_t acked : 1;                          // 1 if this sent packet has been acked
-        uint64_t block : 1;                          // 1 if this sent packet contains a large block fragment
-        uint64_t blockId : 16;                       // block id. valid only when sending block.
-        uint64_t fragmentId : 16;                    // fragment id. valid only when sending block.
+        uint64_t block : 1;                          // 1 if this sent packet contains a block fragment
+        uint64_t blockMessageId : 16;                // block id. valid only when sending block.
+        uint64_t blockFragmentId : 16;               // fragment id. valid only when sending block.
     };
 
     struct MessageReceiveQueueEntry
@@ -379,8 +413,8 @@ protected:
             blockSize = 0;
         }
 
-        bool active;                                                    // true if we are currently sending a large block
-        int numFragments;                                               // number of fragments in the current large block being sent
+        bool active;                                                    // true if we are currently sending a block
+        int numFragments;                                               // number of fragments in the current block being sent
         int numAckedFragments;                                          // number of acked fragments in current block being sent
         int blockSize;                                                  // send block size in bytes
         uint16_t messageId;                                             // the message id of the block being sent
@@ -405,13 +439,13 @@ protected:
             blockSize = 0;
         }
 
-        bool active;                                // true if we are currently receiving a large block
-        int numFragments;                           // number of fragments in this block
-        int numReceivedFragments;                   // number of fragments received.
-        uint16_t messageId;                         // message id of block being currently received.
-        uint32_t blockSize;                         // block size in bytes.
-        BitArray receivedFragment;                  // has fragment n been received?
-        uint8_t blockData[MaxBlockSize];            // block data for receive
+        bool active;                                                    // true if we are currently receiving a block
+        int numFragments;                                               // number of fragments in this block
+        int numReceivedFragments;                                       // number of fragments received.
+        uint16_t messageId;                                             // message id of block being currently received.
+        uint32_t blockSize;                                             // block size in bytes.
+        BitArray receivedFragment;                                      // has fragment n been received?
+        uint8_t blockData[MaxBlockSize];                                // block data for receive
     };
 
     void InsertAckPacketEntry( uint16_t sequence );
@@ -436,11 +470,13 @@ protected:
 
     bool SendingBlockMessage();
 
-    uint8_t * GetFragmentToSend( uint16_t & messageId, uint16_t & fragmentId, int & fragmentBytes );
+    uint8_t * GetFragmentToSend( uint16_t & messageId, uint16_t & fragmentId, int & fragmentBytes, int & numFragments );
 
-    void AddFragmentToPacket( uint16_t messageId, uint16_t fragmentId, uint8_t * fragmentData, int fragmentSize, Packet * packet );
+    void AddFragmentToPacket( uint16_t messageId, uint16_t fragmentId, uint8_t * fragmentData, int fragmentSize, int numFragments, ConnectionPacket * packet );
 
-    void AddFragmentPacketEntry( uint16_t messageId, uint16_t fragmentId );
+    void AddFragmentPacketEntry( uint16_t messageId, uint16_t fragmentId, uint16_t sequence );
+
+    void ProcessPacketFragment( const ConnectionPacket * packet );
 
 private:
 
@@ -651,8 +687,6 @@ ConnectionPacket * Connection::WritePacket()
 
     packet->sequence = m_sentPackets->GetSequence();
 
-    packet->oldest_message_id = m_oldestUnackedMessageId;
-
     GenerateAckBits( *m_receivedPackets, packet->ack, packet->ack_bits );
 
     InsertAckPacketEntry( packet->sequence );
@@ -664,31 +698,19 @@ ConnectionPacket * Connection::WritePacket()
     {
         if ( SendingBlockMessage() )
         {
-            printf( "sending block message\n" );
-
             uint16_t messageId;
             uint16_t fragmentId;
             int fragmentBytes;
+            int numFragments;
 
-            uint8_t * fragmentData = GetFragmentToSend( messageId, fragmentId, fragmentBytes );
+            uint8_t * fragmentData = GetFragmentToSend( messageId, fragmentId, fragmentBytes, numFragments );
 
             if ( fragmentData )
             {
-                printf( "fragment data to send:\n" );
-                printf( " + messageId = %d\n", messageId );
-                printf( " + fragmentId = %d\n", fragmentId );
-                printf( " + fragmentBytes = %d\n", fragmentBytes );
+                AddFragmentToPacket( messageId, fragmentId, fragmentData, fragmentBytes, numFragments, packet );
 
-                AddFragmentToPacket( messageId, fragmentId, fragmentData, fragmentBytes, packet );
-
-                AddFragmentPacketEntry( messageId, fragmentId );
+                AddFragmentPacketEntry( messageId, fragmentId, packet->sequence );
             }
-            else
-            {
-                printf( "no fragment data to send\n" );
-            }
-
-            exit(1);
         }
         else
         {
@@ -714,6 +736,8 @@ bool Connection::ReadPacket( ConnectionPacket * packet )
     ProcessAcks( packet->ack, packet->ack_bits );
 
     ProcessPacketMessages( packet );
+
+    ProcessPacketFragment( packet );
 
     m_receivedPackets->Insert( packet->sequence );
 
@@ -955,11 +979,12 @@ bool Connection::SendingBlockMessage()
     return entry->block;
 }
 
-uint8_t * Connection::GetFragmentToSend( uint16_t & messageId, uint16_t & fragmentId, int & fragmentBytes )
+uint8_t * Connection::GetFragmentToSend( uint16_t & messageId, uint16_t & fragmentId, int & fragmentBytes, int & numFragments )
 {
     messageId = 0;
     fragmentId = 0;
     fragmentBytes = 0;
+    numFragments = 0;
 
     MessageSendQueueEntry * entry = m_messageSendQueue->Find( m_oldestUnackedMessageId );
 
@@ -995,31 +1020,33 @@ uint8_t * Connection::GetFragmentToSend( uint16_t & messageId, uint16_t & fragme
             m_sendBlock.fragmentSendTime[i] = -1.0;
     }
 
+    numFragments = m_sendBlock.numFragments;
+
     // find the next fragment to send (there may not be one)
 
-    int nextFragmentId = -1;
+    fragmentId = 0xFFFF;
 
     for ( int i = 0; i < m_sendBlock.numFragments; ++i )
     {
         if ( !m_sendBlock.ackedFragment.GetBit( i ) && m_sendBlock.fragmentSendTime[i] + FragmentResendRate < m_time )
         {
-            nextFragmentId = i;
+            fragmentId = uint16_t( i );
             m_sendBlock.fragmentSendTime[i] = m_time;
             break;
         }
     }
 
-    if ( nextFragmentId == -1 )
+    if ( fragmentId == 0xFFFF )
         return NULL;
-    
-    fragmentId = (uint16_t) nextFragmentId;
 
-    printf( "sending fragment %d\n", fragmentId );
+//    printf( "sending fragment %d\n", fragmentId );
 
     // allocate and return a copy of the fragment data
 
     fragmentBytes = BlockFragmentSize;
-    int fragmentRemainder = blockSize % BlockFragmentSize;
+    
+    const int fragmentRemainder = blockSize % BlockFragmentSize;
+
     if ( fragmentRemainder && fragmentId == m_sendBlock.numFragments - 1 )
         fragmentBytes = fragmentRemainder;
 
@@ -1030,38 +1057,45 @@ uint8_t * Connection::GetFragmentToSend( uint16_t & messageId, uint16_t & fragme
     return fragmentData;
 }
 
-void Connection::AddFragmentToPacket( uint16_t messageId, uint16_t fragmentId, uint8_t * fragmentData, int fragmentSize, Packet * packet )
+void Connection::AddFragmentToPacket( uint16_t messageId, uint16_t fragmentId, uint8_t * fragmentData, int fragmentSize, int numFragments, ConnectionPacket * packet )
 {
-    (void)messageId;
-    (void)fragmentId;
-    (void)fragmentData;
-    (void)fragmentSize;
-    (void)packet;
+    assert( packet );
 
-    // todo
+    packet->blockFragmentData = fragmentData;
+    packet->blockMessageId = messageId;
+    packet->blockFragmentId = fragmentId;
+    packet->blockFragmentSize = fragmentSize;
+    packet->blockNumFragments = numFragments;
 }
 
-void Connection::AddFragmentPacketEntry( uint16_t messageId, uint16_t fragmentId )
+void Connection::AddFragmentPacketEntry( uint16_t messageId, uint16_t fragmentId, uint16_t sequence )
 {
-    (void)messageId;
-    (void)fragmentId;
+    MessageSentPacketEntry * sentPacket = m_messageSentPackets->Insert( sequence );
+    
+    assert( sentPacket );
 
-    // todo
+    if ( sentPacket )
+    {
+        sentPacket->numMessageIds = 0;
+        sentPacket->messageIds = NULL;
+        sentPacket->timeSent = m_time;
+        sentPacket->acked = 0;
+        sentPacket->block = 1;
+        sentPacket->blockMessageId = messageId;
+        sentPacket->blockFragmentId = fragmentId;
+    }
 }
 
-#if 0
-
-    auto sentPacketData = m_sentPackets->Insert( sequence );
-    CORE_ASSERT( sentPacketData );
-    sentPacketData->acked = 0;
-    sentPacketData->largeBlock = 1;
-    sentPacketData->blockId = m_oldestUnackedMessageId;
-    sentPacketData->fragmentId = fragmentId;
-    sentPacketData->timeSent = m_timeBase.time;
-    sentPacketData->messageIds = nullptr;
-    sentPacketData->numMessageIds = 0;
-
-#endif 
+void Connection::ProcessPacketFragment( const ConnectionPacket * packet )
+{  
+    if ( packet->blockFragmentData )
+    {
+        printf( "received block fragment\n" );
+        printf( " + blockMessageId = %d\n", packet->blockMessageId );
+        printf( " + blockFragmentId = %d\n", packet->blockFragmentId );
+        printf( " + blockFragmentSize = %d\n", packet->blockFragmentSize );
+    }
+}
 
 struct TestPacketFactory : public PacketFactory
 {

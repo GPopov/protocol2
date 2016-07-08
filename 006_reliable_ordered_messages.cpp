@@ -129,7 +129,6 @@ struct ConnectionPacket : public Packet
     uint16_t sequence;
     uint16_t ack;
     uint32_t ack_bits;
-    uint16_t oldest_message_id;
     int numMessages;
     Message * messages[MaxMessagesPerPacket];
 
@@ -138,7 +137,6 @@ struct ConnectionPacket : public Packet
         sequence = 0;
         ack = 0;
         ack_bits = 0;
-        oldest_message_id = 0xFFFF;
         numMessages = 0;
     }
 
@@ -168,8 +166,6 @@ struct ConnectionPacket : public Packet
         serialize_bits( stream, ack_bits, 32 );
 
         // serialize messages
-
-        serialize_bits( stream, oldest_message_id, 16 );
 
         bool hasMessages = numMessages != 0;
 
@@ -506,8 +502,6 @@ ConnectionPacket * Connection::WritePacket()
         return NULL;
 
     packet->sequence = m_sentPackets->GetSequence();
-
-    packet->oldest_message_id = m_oldestUnackedMessageId;
 
     GenerateAckBits( *m_receivedPackets, packet->ack, packet->ack_bits );
 
