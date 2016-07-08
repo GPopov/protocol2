@@ -409,7 +409,7 @@ protected:
             active = false;
             numFragments = 0;
             numAckedFragments = 0;
-            messageId = 0;
+            blockMessageId = 0;
             blockSize = 0;
         }
 
@@ -417,7 +417,7 @@ protected:
         int numFragments;                                               // number of fragments in the current block being sent
         int numAckedFragments;                                          // number of acked fragments in current block being sent
         int blockSize;                                                  // send block size in bytes
-        uint16_t messageId;                                             // the message id of the block being sent
+        uint16_t blockMessageId;                                        // the message id of the block being sent
         BitArray ackedFragment;                                         // has fragment n been received?
         double fragmentSendTime[MaxFragmentsPerBlock];                  // time fragment n last sent in seconds.
         uint8_t blockData[MaxBlockSize];                                // block data storage as it is received.
@@ -934,10 +934,42 @@ void Connection::ProcessMessageAck( uint16_t ack )
             sendQueueEntry->message->Release();
 
             m_messageSendQueue->Remove( messageId );
+
+            UpdateOldestUnackedMessageId();
         }
     }
 
-    UpdateOldestUnackedMessageId();
+    if ( sentPacketEntry->block && m_sendBlock.active && m_sendBlock.blockMessageId == sentPacketEntry->blockMessageId )
+    {        
+        const int messageId = sentPacketEntry->blockMessageId;
+        const int fragmentId = sentPacketEntry->blockFragmentId;
+
+        if ( !m_sendBlock.ackedFragment.GetBit( fragmentId ) )
+        {
+            printf( "ack fragment %d\n", fragmentId );
+
+            m_sendBlock.ackedFragment.SetBit( fragmentId );
+
+            m_sendBlock.numAckedFragments++;
+
+            if ( m_sendBlock.numAckedFragments == m_sendBlock.numFragments )
+            {
+                printf( "acked block %d\n", m_sendBlock.blockMessageId );
+
+                m_sendBlock.active = false;
+
+                MessageSendQueueEntry * sendQueueEntry = m_messageSendQueue->Find( messageId );
+
+                assert( sendQueueEntry );
+
+                sendQueueEntry->message->Release();
+
+                m_messageSendQueue->Remove( messageId );
+
+                UpdateOldestUnackedMessageId();
+            }
+        }
+    }
 }
 
 void Connection::UpdateOldestUnackedMessageId()
@@ -1004,12 +1036,12 @@ uint8_t * Connection::GetFragmentToSend( uint16_t & messageId, uint16_t & fragme
         // start sending this block
 
         m_sendBlock.active = true;
-        m_sendBlock.messageId = messageId;
         m_sendBlock.blockSize = blockSize;
+        m_sendBlock.blockMessageId = messageId;
         m_sendBlock.numFragments = (int) ceil( blockSize / float( BlockFragmentSize ) );
         m_sendBlock.numAckedFragments = 0;
 
-        printf( "sending block %d in %d fragments\n", (int) m_sendBlock.messageId, m_sendBlock.numFragments );
+        printf( "sending block %d in %d fragments\n", (int) m_sendBlock.blockMessageId, m_sendBlock.numFragments );
 
         assert( m_sendBlock.numFragments > 0 );
         assert( m_sendBlock.numFragments <= MaxFragmentsPerBlock );
@@ -1038,8 +1070,6 @@ uint8_t * Connection::GetFragmentToSend( uint16_t & messageId, uint16_t & fragme
 
     if ( fragmentId == 0xFFFF )
         return NULL;
-
-//    printf( "sending fragment %d\n", fragmentId );
 
     // allocate and return a copy of the fragment data
 
@@ -1094,6 +1124,10 @@ void Connection::ProcessPacketFragment( const ConnectionPacket * packet )
         printf( " + blockMessageId = %d\n", packet->blockMessageId );
         printf( " + blockFragmentId = %d\n", packet->blockFragmentId );
         printf( " + blockFragmentSize = %d\n", packet->blockFragmentSize );
+
+        // todo: actually process the receive for this block
+
+        exit(1);
     }
 }
 
