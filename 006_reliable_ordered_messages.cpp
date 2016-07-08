@@ -210,7 +210,7 @@ struct ConnectionPacket : public Packet
                 {
                     messages[i] = messageFactory->Create( messageTypes[i] );
 
-                    if ( messages[i] )
+                    if ( !messages[i] )
                         return false;
 
                     messages[i]->AssignId( messageIds[i] );

@@ -200,6 +200,7 @@ struct ConnectionPacket : public Packet
     uint64_t blockFragmentId : 16;
     uint64_t blockFragmentSize : 16;
     uint16_t blockNumFragments : 16;
+    int blockMessageType;
 
     ConnectionPacket() : Packet( CONNECTION_PACKET )
     {
@@ -212,6 +213,7 @@ struct ConnectionPacket : public Packet
         blockFragmentId = 0;
         blockFragmentSize = 0;
         blockNumFragments = 0;
+        blockMessageType = 0;
     }
 
     ~ConnectionPacket()
@@ -238,6 +240,10 @@ struct ConnectionPacket : public Packet
 
         assert( context );
 
+        MessageFactory * messageFactory = context->messageFactory;
+
+        const int maxMessageType = messageFactory->GetNumTypes() - 1;
+
         // serialize ack system
 
         serialize_bits( stream, sequence, 16 );
@@ -254,10 +260,6 @@ struct ConnectionPacket : public Packet
 
         if ( hasMessages )
         {
-            MessageFactory * messageFactory = context->messageFactory;
-
-            const int maxMessageType = messageFactory->GetNumTypes() - 1;
-
             serialize_int( stream, numMessages, 1, MaxMessagesPerPacket );
 
             int messageTypes[MaxMessagesPerPacket];
@@ -291,7 +293,7 @@ struct ConnectionPacket : public Packet
                 {
                     messages[i] = messageFactory->Create( messageTypes[i] );
 
-                    if ( messages[i] )
+                    if ( !messages[i] )
                         return false;
 
                     messages[i]->AssignId( messageIds[i] );
@@ -321,6 +323,11 @@ struct ConnectionPacket : public Packet
             serialize_int( stream, blockFragmentSize, 1, BlockFragmentSize );
 
             serialize_bytes( stream, blockFragmentData, blockFragmentSize );
+
+            if ( blockFragmentId == 0 )
+            {
+                serialize_int( stream, blockMessageType, 0, maxMessageType );
+            }
         }
 
         return true;
@@ -341,6 +348,7 @@ enum ConnectionError
     CONNECTION_ERROR_MESSAGE_DESYNC,
     CONNECTION_ERROR_MESSAGE_SEND_QUEUE_FULL,
     CONNECTION_ERROR_MESSAGE_SERIALIZE_MEASURE_FAILED,
+    CONNECTION_ERROR_MESSAGE_OUT_OF_MEMORY
 };
 
 class Connection
@@ -436,6 +444,7 @@ protected:
             numFragments = 0;
             numReceivedFragments = 0;
             messageId = 0;
+            messageType = 0;
             blockSize = 0;
         }
 
@@ -443,6 +452,7 @@ protected:
         int numFragments;                                               // number of fragments in this block
         int numReceivedFragments;                                       // number of fragments received.
         uint16_t messageId;                                             // message id of block being currently received.
+        int messageType;                                                // message type of the block being received.
         uint32_t blockSize;                                             // block size in bytes.
         BitArray receivedFragment;                                      // has fragment n been received?
         uint8_t blockData[MaxBlockSize];                                // block data for receive
@@ -470,9 +480,9 @@ protected:
 
     bool SendingBlockMessage();
 
-    uint8_t * GetFragmentToSend( uint16_t & messageId, uint16_t & fragmentId, int & fragmentBytes, int & numFragments );
+    uint8_t * GetFragmentToSend( uint16_t & messageId, uint16_t & fragmentId, int & fragmentBytes, int & numFragments, int & messageType );
 
-    void AddFragmentToPacket( uint16_t messageId, uint16_t fragmentId, uint8_t * fragmentData, int fragmentSize, int numFragments, ConnectionPacket * packet );
+    void AddFragmentToPacket( uint16_t messageId, uint16_t fragmentId, uint8_t * fragmentData, int fragmentSize, int numFragments, int messageType, ConnectionPacket * packet );
 
     void AddFragmentPacketEntry( uint16_t messageId, uint16_t fragmentId, uint16_t sequence );
 
@@ -598,6 +608,9 @@ void Connection::Reset()
     m_messageSendQueue->Reset();
     m_messageSentPackets->Reset();
     m_messageReceiveQueue->Reset();
+
+    m_sendBlock.Reset();
+    m_receiveBlock.Reset();
 }
 
 bool Connection::CanSendMessage() const
@@ -702,12 +715,13 @@ ConnectionPacket * Connection::WritePacket()
             uint16_t fragmentId;
             int fragmentBytes;
             int numFragments;
+            int messageType;
 
-            uint8_t * fragmentData = GetFragmentToSend( messageId, fragmentId, fragmentBytes, numFragments );
+            uint8_t * fragmentData = GetFragmentToSend( messageId, fragmentId, fragmentBytes, numFragments, messageType );
 
             if ( fragmentData )
             {
-                AddFragmentToPacket( messageId, fragmentId, fragmentData, fragmentBytes, numFragments, packet );
+                AddFragmentToPacket( messageId, fragmentId, fragmentData, fragmentBytes, numFragments, messageType, packet );
 
                 AddFragmentPacketEntry( messageId, fragmentId, packet->sequence );
             }
@@ -946,16 +960,12 @@ void Connection::ProcessMessageAck( uint16_t ack )
 
         if ( !m_sendBlock.ackedFragment.GetBit( fragmentId ) )
         {
-            printf( "ack fragment %d\n", fragmentId );
-
             m_sendBlock.ackedFragment.SetBit( fragmentId );
 
             m_sendBlock.numAckedFragments++;
 
             if ( m_sendBlock.numAckedFragments == m_sendBlock.numFragments )
             {
-                printf( "acked block %d\n", m_sendBlock.blockMessageId );
-
                 m_sendBlock.active = false;
 
                 MessageSendQueueEntry * sendQueueEntry = m_messageSendQueue->Find( messageId );
@@ -1011,13 +1021,8 @@ bool Connection::SendingBlockMessage()
     return entry->block;
 }
 
-uint8_t * Connection::GetFragmentToSend( uint16_t & messageId, uint16_t & fragmentId, int & fragmentBytes, int & numFragments )
+uint8_t * Connection::GetFragmentToSend( uint16_t & messageId, uint16_t & fragmentId, int & fragmentBytes, int & numFragments, int & messageType )
 {
-    messageId = 0;
-    fragmentId = 0;
-    fragmentBytes = 0;
-    numFragments = 0;
-
     MessageSendQueueEntry * entry = m_messageSendQueue->Find( m_oldestUnackedMessageId );
 
     assert( entry );
@@ -1041,8 +1046,6 @@ uint8_t * Connection::GetFragmentToSend( uint16_t & messageId, uint16_t & fragme
         m_sendBlock.numFragments = (int) ceil( blockSize / float( BlockFragmentSize ) );
         m_sendBlock.numAckedFragments = 0;
 
-        printf( "sending block %d in %d fragments\n", (int) m_sendBlock.blockMessageId, m_sendBlock.numFragments );
-
         assert( m_sendBlock.numFragments > 0 );
         assert( m_sendBlock.numFragments <= MaxFragmentsPerBlock );
 
@@ -1063,7 +1066,6 @@ uint8_t * Connection::GetFragmentToSend( uint16_t & messageId, uint16_t & fragme
         if ( !m_sendBlock.ackedFragment.GetBit( i ) && m_sendBlock.fragmentSendTime[i] + FragmentResendRate < m_time )
         {
             fragmentId = uint16_t( i );
-            m_sendBlock.fragmentSendTime[i] = m_time;
             break;
         }
     }
@@ -1072,6 +1074,8 @@ uint8_t * Connection::GetFragmentToSend( uint16_t & messageId, uint16_t & fragme
         return NULL;
 
     // allocate and return a copy of the fragment data
+
+    messageType = blockMessage->GetType();
 
     fragmentBytes = BlockFragmentSize;
     
@@ -1082,12 +1086,17 @@ uint8_t * Connection::GetFragmentToSend( uint16_t & messageId, uint16_t & fragme
 
     uint8_t * fragmentData = new uint8_t[fragmentBytes];
 
-    memcpy( fragmentData, blockMessage->GetBlockData() + fragmentId * BlockFragmentSize, fragmentBytes );
+    if ( fragmentData )
+    {
+        memcpy( fragmentData, blockMessage->GetBlockData() + fragmentId * BlockFragmentSize, fragmentBytes );
+
+        m_sendBlock.fragmentSendTime[fragmentId] = m_time;
+    }
 
     return fragmentData;
 }
 
-void Connection::AddFragmentToPacket( uint16_t messageId, uint16_t fragmentId, uint8_t * fragmentData, int fragmentSize, int numFragments, ConnectionPacket * packet )
+void Connection::AddFragmentToPacket( uint16_t messageId, uint16_t fragmentId, uint8_t * fragmentData, int fragmentSize, int numFragments, int messageType, ConnectionPacket * packet )
 {
     assert( packet );
 
@@ -1096,6 +1105,7 @@ void Connection::AddFragmentToPacket( uint16_t messageId, uint16_t fragmentId, u
     packet->blockFragmentId = fragmentId;
     packet->blockFragmentSize = fragmentSize;
     packet->blockNumFragments = numFragments;
+    packet->blockMessageType = messageType;
 }
 
 void Connection::AddFragmentPacketEntry( uint16_t messageId, uint16_t fragmentId, uint16_t sequence )
@@ -1120,16 +1130,218 @@ void Connection::ProcessPacketFragment( const ConnectionPacket * packet )
 {  
     if ( packet->blockFragmentData )
     {
-        printf( "received block fragment\n" );
-        printf( " + blockMessageId = %d\n", packet->blockMessageId );
-        printf( " + blockFragmentId = %d\n", packet->blockFragmentId );
-        printf( " + blockFragmentSize = %d\n", packet->blockFragmentSize );
+        const uint16_t messageId = packet->blockMessageId;
+        const uint16_t expectedMessageId = m_messageReceiveQueue->GetSequence();
 
-        // todo: actually process the receive for this block
+        // todo: may be necessary to bring back ignore old message, but if new message id, return false
 
-        exit(1);
+        if ( messageId != expectedMessageId )
+            return;
+
+        if ( !m_receiveBlock.active )
+        {
+            const int numFragments = packet->blockNumFragments;
+
+            assert( numFragments >= 0 );
+            assert( numFragments <= MaxFragmentsPerBlock );
+
+            m_receiveBlock.active = true;
+            m_receiveBlock.numFragments = numFragments;
+            m_receiveBlock.numReceivedFragments = 0;
+            m_receiveBlock.messageId = messageId;
+            m_receiveBlock.blockSize = 0;
+            m_receiveBlock.receivedFragment.Clear();
+        }
+
+        // todo: validate fragment
+
+        // receive the fragment
+
+        const uint16_t fragmentId = packet->blockFragmentId;
+
+        if ( !m_receiveBlock.receivedFragment.GetBit( fragmentId ) )
+        {
+            printf( "received fragment %d\n", fragmentId );
+
+            m_receiveBlock.receivedFragment.SetBit( fragmentId );
+
+            const int fragmentBytes = packet->blockFragmentSize;
+
+            memcpy( m_receiveBlock.blockData + fragmentId * BlockFragmentSize, packet->blockFragmentData, fragmentBytes );
+
+            if ( fragmentId == 0 )
+            {
+                m_receiveBlock.messageType = packet->blockMessageType;
+            }
+
+            if ( fragmentId == m_receiveBlock.numFragments - 1 )
+            {
+                m_receiveBlock.blockSize = ( m_receiveBlock.numFragments - 1 ) * BlockFragmentSize + fragmentBytes;
+
+                assert( m_receiveBlock.blockSize >= 0 && m_receiveBlock.blockSize <= MaxBlockSize );
+            }
+
+            m_receiveBlock.numReceivedFragments++;
+
+            if ( m_receiveBlock.numReceivedFragments == m_receiveBlock.numFragments )
+            {
+                Message * message = m_messageFactory->Create( m_receiveBlock.messageType );
+
+                assert( message );
+
+                if ( !message || !message->IsBlockMessage() )
+                {
+                    m_error = CONNECTION_ERROR_MESSAGE_DESYNC;
+                    return;
+                }
+
+                BlockMessage * blockMessage = (BlockMessage*) message;
+
+                uint8_t * blockData = new uint8_t[m_receiveBlock.blockSize];
+
+                // todo: out of memory error
+
+                assert( blockData );
+
+                blockMessage->Connect( blockData, m_receiveBlock.blockSize );
+
+                blockMessage->AssignId( messageId );
+
+                m_receiveBlock.active = false;
+
+                MessageReceiveQueueEntry * entry = m_messageReceiveQueue->Insert( messageId );
+
+                assert( entry );
+
+                entry->message = blockMessage;
+            }
+        }
     }
 }
+
+#if 0
+
+        if ( data->largeBlock )
+        {
+            /*
+                Large block mode.
+                This packet includes a fragment for the large block currently 
+                being received. Only one large block is sent at a time.
+            */
+
+            if ( !m_receiveLargeBlock.active )
+            {
+                const uint16_t expectedBlockId = m_receiveQueue->GetSequence();
+
+                if ( data->blockId != expectedBlockId )
+                {
+//                        printf( "unexpected large block id\n" );
+                    return false;
+                }
+
+                const int numFragments = (int) ceil( data->blockSize / (float)m_config.blockFragmentSize );
+
+                CORE_ASSERT( numFragments >= 0 );
+                CORE_ASSERT( numFragments <= m_maxBlockFragments );
+
+                if ( numFragments < 0 || numFragments > m_maxBlockFragments )
+                {
+                    //printf( "large block num fragments outside of range\n" );
+                    return false;
+                }
+
+//                    printf( "receiving large block %d (%d bytes)\n", data->blockId, data->blockSize );
+
+                m_receiveLargeBlock.active = true;
+                m_receiveLargeBlock.numFragments = numFragments;
+                m_receiveLargeBlock.numReceivedFragments = 0;
+                m_receiveLargeBlock.blockId = data->blockId;
+                m_receiveLargeBlock.blockSize = data->blockSize;
+
+                CORE_ASSERT( m_config.largeBlockAllocator );
+                uint8_t * blockData = (uint8_t*) m_config.largeBlockAllocator->Allocate( data->blockSize );
+                m_receiveLargeBlock.block.Connect( *m_config.largeBlockAllocator, blockData, data->blockSize );
+                
+                m_receiveLargeBlock.received_fragment->Clear();
+            }
+
+            CORE_ASSERT( m_receiveLargeBlock.active );
+
+            if ( data->blockId != m_receiveLargeBlock.blockId )
+            {
+//                    printf( "unexpected large block id. got %d but was expecting %d\n", data->blockId, m_receiveLargeBlock.blockId );
+                return false;
+            }
+
+            CORE_ASSERT( data->blockId == m_receiveLargeBlock.blockId );
+            CORE_ASSERT( data->blockSize == m_receiveLargeBlock.blockSize );
+            CORE_ASSERT( data->fragmentId < m_receiveLargeBlock.numFragments );
+
+            if ( data->blockId != m_receiveLargeBlock.blockId )
+            {
+//                    printf( "recieve large block id mismatch. got %d but was expecting %d\n", data->blockId, m_receiveLargeBlock.blockId );
+                return false;
+            }
+
+            if ( data->blockSize != m_receiveLargeBlock.blockSize )
+            {
+//                    printf( "large block size mismatch. got %d but was expecting %d\n", data->blockSize, m_receiveLargeBlock.blockSize );
+                return false;
+            }
+
+            if ( data->fragmentId >= m_receiveLargeBlock.numFragments )
+            {
+//                    printf( "large block fragment out of bounds.\n" );
+                return false;
+            }
+
+            if ( !m_receiveLargeBlock.received_fragment->GetBit( data->fragmentId ) )
+            {
+/*
+                printf( "received fragment " << data->fragmentId << " of large block " << m_receiveLargeBlock.blockId
+                     << " (" << m_receiveLargeBlock.numReceivedFragments+1 << "/" << m_receiveLargeBlock.numFragments << ")" << endl;
+                     */
+
+                m_receiveLargeBlock.received_fragment->SetBit( data->fragmentId );
+
+                Block & block = m_receiveLargeBlock.block;
+
+                int fragmentBytes = m_config.blockFragmentSize;
+                int fragmentRemainder = block.GetSize() % m_config.blockFragmentSize;
+                if ( fragmentRemainder && data->fragmentId == m_receiveLargeBlock.numFragments - 1 )
+                    fragmentBytes = fragmentRemainder;
+
+//                    printf( "fragment bytes = %d\n", fragmentBytes );
+
+                CORE_ASSERT( fragmentBytes >= 0 );
+                CORE_ASSERT( fragmentBytes <= m_config.blockFragmentSize );
+                uint8_t * src = data->fragment;
+                uint8_t * dst = &( block.GetData()[data->fragmentId*m_config.blockFragmentSize] );
+                memcpy( dst, src, fragmentBytes );
+
+                m_receiveLargeBlock.numReceivedFragments++;
+
+                if ( m_receiveLargeBlock.numReceivedFragments == m_receiveLargeBlock.numFragments )
+                {
+//                        printf( "received large block %d (%d bytes)\n", m_receiveLargeBlock.blockId, m_receiveLargeBlock.block->size() );
+
+                    auto blockMessage = (BlockMessage*) m_config.messageFactory->Create( BlockMessageType );
+                    CORE_ASSERT( blockMessage );
+                    blockMessage->Connect( m_receiveLargeBlock.block );
+                    blockMessage->SetId( m_receiveLargeBlock.blockId );
+
+                    auto entry = m_receiveQueue->Insert( m_receiveLargeBlock.blockId );
+                    CORE_ASSERT( entry );
+                    entry->message = blockMessage;
+
+                    m_receiveLargeBlock.active = false;
+
+                    CORE_ASSERT( !m_receiveLargeBlock.block.IsValid() );
+                }
+            }
+        }
+
+#endif // #if 0
 
 struct TestPacketFactory : public PacketFactory
 {
@@ -1198,7 +1410,7 @@ struct TestMessage : public Message
 
 struct TestBlockMessage : public BlockMessage
 {
-    TestBlockMessage() : BlockMessage( TEST_MESSAGE ) {}
+    TestBlockMessage() : BlockMessage( TEST_BLOCK_MESSAGE ) {}
 };
 
 class TestMessageFactory : public MessageFactory
@@ -1278,9 +1490,7 @@ int main()
 
                 if ( blockMessage )
                 {
-                    printf( "send block message: %d\n", uint16_t( numMessagesSent ) );
-
-                    const int blockSize = min( 1 + (int)numMessagesSent * 33, MaxBlockSize );
+                    const int blockSize = 1 + ( (int)numMessagesSent * 33 ) % MaxBlockSize;
 
                     uint8_t * blockData = new uint8_t[blockSize];
 
@@ -1301,6 +1511,8 @@ int main()
 
         assert( senderPacket );
         assert( receiverPacket );
+
+        // todo: need to actually serialize these packets and put them through the simulator
 
         if ( ( rand() % 100 ) == 0 )
             sender.ReadPacket( receiverPacket );
@@ -1338,9 +1550,9 @@ int main()
 
                 case TEST_BLOCK_MESSAGE:
                 {
-                    // ...
+                    // todo: validate block size and contents
 
-                    printf( "received block message %d\n", uint16_t( numMessagesReceived ) );
+                    printf( "received block %d\n", uint16_t( numMessagesReceived ) );
                 }
                 break;
             }

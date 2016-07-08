@@ -2,7 +2,15 @@ DONE
 
 TODO
 
-    Implement messages and large blocks example
+    I'm pretty sure the block code doesn't work with out of order yet.
+
+    I also found a bugs in the serialize function which wasn't getting called for the connection packet. Both 006 and 007.
+
+    To fix this I really need to actually serialize connection packets and put them through the packet simulator.
+
+    Do this, and then try to break the examples. This is important.
+
+    Also need to add the code to check that the block size and contents validate.
 
     -------------
 
@@ -12,6 +20,6 @@ TODO
 
     -------------
 
-    Ship it. Go back to writing articles. We're done with R&D for a while.
+    Ship it. Go back to writing articles. You're done with R&D for a while.
 
     -------------
