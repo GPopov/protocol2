@@ -701,19 +701,10 @@ void Connection::ProcessMessageAck( uint16_t ack )
 {
     MessageSentPacketEntry * sentPacketEntry = m_messageSentPackets->Find( ack );
 
-#if DEBUG_LOGS
     if ( !sentPacketEntry )
-    {
-        printf( "can't find packet %d to ack\n", ack );
         return;
-    }
-#endif // #if DEBUG_LOGS
 
     assert( !sentPacketEntry->acked );
-
-#if DEBUG_LOGS
-    printf( "ack packet %d\n", ack );
-#endif // #if DEBUG_LOGS
 
     for ( int i = 0; i < (int) sentPacketEntry->numMessageIds; ++i )
     {
@@ -725,10 +716,6 @@ void Connection::ProcessMessageAck( uint16_t ack )
         {
             assert( sendQueueEntry->message );
             assert( sendQueueEntry->message->GetId() == messageId );
-
-#if DEBUG_LOGS
-            printf( "ack message %d\n", messageId );
-#endif // #if DEBUG_LOGS
 
             sendQueueEntry->message->Release();
 
@@ -743,10 +730,6 @@ void Connection::UpdateOldestUnackedMessageId()
 {
     const uint16_t stopMessageId = m_messageSendQueue->GetSequence();
 
-#if DEBUG_LOGS
-    uint16_t previous = m_oldestUnackedMessageId;
-#endif // #if DEBUG_LOGS
-
     while ( true )
     {
         if ( m_oldestUnackedMessageId == stopMessageId )
@@ -758,14 +741,6 @@ void Connection::UpdateOldestUnackedMessageId()
        
         ++m_oldestUnackedMessageId;
     }
-
-#if DEBUG_LOGS
-    uint16_t current = m_oldestUnackedMessageId;
-    if ( current != previous )
-    {
-        printf( "updated oldest unacked message from %d -> %d\n", previous, current );
-    }
-#endif // #if DEBUG_LOGS
 
     assert( !sequence_greater_than( m_oldestUnackedMessageId, stopMessageId ) );
 }

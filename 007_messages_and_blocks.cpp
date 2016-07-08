@@ -417,6 +417,8 @@ protected:
 
     void ProcessAcks( uint16_t ack, uint32_t ack_bits );
 
+    bool HasMessagesToSend();
+
     void GetMessagesToSend( uint16_t * messageIds, int & numMessageIds );
 
     void AddMessagePacketEntry( const uint16_t * messageIds, int & numMessageIds, uint16_t sequence );
@@ -428,6 +430,8 @@ protected:
     void UpdateOldestUnackedMessageId();
 
     int CalculateMessageOverheadBits();
+
+    bool SendingBlockMessage();
     
 private:
 
@@ -574,19 +578,13 @@ void Connection::SendMessage( Message * message )
 
     assert( entry );
 
-    if ( message->IsBlockMessage() )
-    {
-        // todo: block message
+    entry->block = message->IsBlockMessage();
+    entry->message = message;
+    entry->measuredBits = 0;
+    entry->timeLastSent = -1.0;
 
-        assert( false );
-    }
-    else
+    if ( !message->IsBlockMessage() )
     {
-        entry->message = message;
-        entry->block = 0;
-        entry->measuredBits = 0;
-        entry->timeLastSent = -1.0;
-
         MeasureStream measureStream( MessagePacketBudget / 2 );
 
         message->SerializeInternal( measureStream );
@@ -643,22 +641,31 @@ ConnectionPacket * Connection::WritePacket()
 
     InsertAckPacketEntry( packet->sequence );
 
-    int numMessageIds;
-    
+    int numMessageIds = 0;
     uint16_t messageIds[MaxMessagesPerPacket];
 
-    GetMessagesToSend( messageIds, numMessageIds );
-
-    AddMessagePacketEntry( messageIds, numMessageIds, packet->sequence );
-
-    packet->numMessages = numMessageIds;
-
-    for ( int i = 0; i < numMessageIds; ++i )
+    if ( HasMessagesToSend() )
     {
-        MessageSendQueueEntry * entry = m_messageSendQueue->Find( messageIds[i] );
-        assert( entry && entry->message );
-        packet->messages[i] = entry->message;
-        entry->message->AddRef();
+        if ( SendingBlockMessage() )
+        {
+            // todo
+        }
+        else
+        {
+            GetMessagesToSend( messageIds, numMessageIds );
+
+            AddMessagePacketEntry( messageIds, numMessageIds, packet->sequence );
+
+            packet->numMessages = numMessageIds;
+
+            for ( int i = 0; i < numMessageIds; ++i )
+            {
+                MessageSendQueueEntry * entry = m_messageSendQueue->Find( messageIds[i] );
+                assert( entry && entry->message );
+                packet->messages[i] = entry->message;
+                entry->message->AddRef();
+            }
+        }
     }
 
     return packet;
@@ -731,18 +738,17 @@ void Connection::ProcessAcks( uint16_t ack, uint32_t ack_bits )
     }
 }
 
+bool Connection::HasMessagesToSend()
+{
+    return m_oldestUnackedMessageId != m_sendMessageId;
+}
+
 void Connection::GetMessagesToSend( uint16_t * messageIds, int & numMessageIds )
 {
+    assert( HasMessagesToSend() );
+
     numMessageIds = 0;
 
-    if ( m_oldestUnackedMessageId == m_sendMessageId )
-        return;
-
-#if _DEBUG
-    MessageSendQueueEntry * firstEntry = m_messageSendQueue->Find( m_oldestUnackedMessageId );
-    assert( firstEntry );
-#endif // #if _DEBUG
-    
     const int GiveUpBits = 8 * 8;
 
     int availableBits = MessagePacketBudget * 8;
@@ -754,6 +760,12 @@ void Connection::GetMessagesToSend( uint16_t * messageIds, int & numMessageIds )
         const uint16_t messageId = m_oldestUnackedMessageId + i;
 
         MessageSendQueueEntry * entry = m_messageSendQueue->Find( messageId );
+
+        if ( !entry )
+            continue;
+
+        if ( entry->block )
+            break;
         
         if ( entry && ( entry->timeLastSent + MessageResendRate <= m_time ) && ( availableBits - entry->measuredBits >= 0 ) )
         {
@@ -834,19 +846,10 @@ void Connection::ProcessMessageAck( uint16_t ack )
 {
     MessageSentPacketEntry * sentPacketEntry = m_messageSentPackets->Find( ack );
 
-#if DEBUG_LOGS
     if ( !sentPacketEntry )
-    {
-        printf( "can't find packet %d to ack\n", ack );
         return;
-    }
-#endif // #if DEBUG_LOGS
 
     assert( !sentPacketEntry->acked );
-
-#if DEBUG_LOGS
-    printf( "ack packet %d\n", ack );
-#endif // #if DEBUG_LOGS
 
     for ( int i = 0; i < (int) sentPacketEntry->numMessageIds; ++i )
     {
@@ -858,10 +861,6 @@ void Connection::ProcessMessageAck( uint16_t ack )
         {
             assert( sendQueueEntry->message );
             assert( sendQueueEntry->message->GetId() == messageId );
-
-#if DEBUG_LOGS
-            printf( "ack message %d\n", messageId );
-#endif // #if DEBUG_LOGS
 
             sendQueueEntry->message->Release();
 
@@ -876,10 +875,6 @@ void Connection::UpdateOldestUnackedMessageId()
 {
     const uint16_t stopMessageId = m_messageSendQueue->GetSequence();
 
-#if DEBUG_LOGS
-    uint16_t previous = m_oldestUnackedMessageId;
-#endif // #if DEBUG_LOGS
-
     while ( true )
     {
         if ( m_oldestUnackedMessageId == stopMessageId )
@@ -891,14 +886,6 @@ void Connection::UpdateOldestUnackedMessageId()
        
         ++m_oldestUnackedMessageId;
     }
-
-#if DEBUG_LOGS
-    uint16_t current = m_oldestUnackedMessageId;
-    if ( current != previous )
-    {
-        printf( "updated oldest unacked message from %d -> %d\n", previous, current );
-    }
-#endif // #if DEBUG_LOGS
 
     assert( !sequence_greater_than( m_oldestUnackedMessageId, stopMessageId ) );
 }
@@ -912,6 +899,19 @@ int Connection::CalculateMessageOverheadBits()
     const int MessageTypeBits = protocol2::bits_required( 0, maxMessageType );
 
     return MessageIdBits + MessageTypeBits;
+}
+
+bool Connection::SendingBlockMessage()
+{
+    /*
+    assert( HasMessagesToSend() );
+
+    MessageSendQueueEntry * firstEntry = m_messageSendQueue->Find( m_oldestUnackedMessageId );
+
+    return firstEntry->block;
+    */
+
+    return false;
 }
 
 struct TestPacketFactory : public PacketFactory
@@ -1042,7 +1042,7 @@ int main()
             if ( !sender.CanSendMessage() )
                 break;
 
-            if ( rand() % 100 )
+            //if ( rand() % 100 )
             {
                 TestMessage * message = (TestMessage*) messageFactory.Create( TEST_MESSAGE );
                 
@@ -1055,18 +1055,24 @@ int main()
                     numMessagesSent++;
                 }
             }
+            /*
             else
             {
                 TestBlockMessage * blockMessage = (TestBlockMessage*) messageFactory.Create( TEST_BLOCK_MESSAGE );
 
                 if ( blockMessage )
                 {
+                    printf( "send block message: %d\n", uint16_t( numMessagesSent ) );
+
                     // todo: setup block such that it is of random size and contents that are a function of message id
                     // so it can be verified on the other side trivially without buffering a bunch of blocks.
 
                     sender.SendMessage( blockMessage );
+
+                    numMessagesSent++;
                 }
             }
+            */
         }
 
         ConnectionPacket * senderPacket = sender.WritePacket();
@@ -1101,7 +1107,7 @@ int main()
 
                     if ( testMessage->sequence != uint16_t( numMessagesReceived ) )
                     {
-                        printf( "error: received out of sequence message!\n" );
+                        printf( "error: received out of sequence message. expected %d, got %d\n", uint16_t( numMessagesReceived ), testMessage->sequence );
                         return 1;
                     }
 
