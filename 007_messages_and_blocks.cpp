@@ -1226,7 +1226,7 @@ void Connection::ProcessPacketFragment( const ConnectionPacket * packet )
             {
                 m_receiveBlock.blockSize = ( m_receiveBlock.numFragments - 1 ) * BlockFragmentSize + fragmentBytes;
 
-                assert( m_receiveBlock.blockSize >= 0 && m_receiveBlock.blockSize <= MaxBlockSize );
+                assert( m_receiveBlock.blockSize <= MaxBlockSize );
             }
 
             m_receiveBlock.numReceivedFragments++;
