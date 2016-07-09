@@ -1177,7 +1177,17 @@ void Connection::ProcessPacketFragment( const ConnectionPacket * packet )
 
         // validate fragment
 
-        // todo
+        if ( fragmentId >= m_receiveBlock.numFragments )
+        {
+            m_error = CONNECTION_ERROR_MESSAGE_DESYNC;
+            return;
+        }
+
+        if ( numFragments != m_receiveBlock.numFragments )
+        {
+            m_error = CONNECTION_ERROR_MESSAGE_DESYNC;
+            return;
+        }
 
         // receive the fragment
 
