@@ -433,8 +433,15 @@ protected:
     {
         SendBlockData() : ackedFragment( MaxFragmentsPerBlock )
         {
+			blockData = new uint8_t[MaxBlockSize];
             Reset();
         }
+
+		~SendBlockData()
+		{
+			delete [] blockData;
+			blockData = NULL;
+		}
 
         void Reset()
         {
@@ -452,15 +459,22 @@ protected:
         uint16_t blockMessageId;                                        // the message id of the block being sent
         BitArray ackedFragment;                                         // has fragment n been received?
         double fragmentSendTime[MaxFragmentsPerBlock];                  // time fragment n last sent in seconds.
-        uint8_t blockData[MaxBlockSize];                                // block data storage as it is received.
+        uint8_t * blockData;                                            // block data storage as it is received.
     };
 
     struct ReceiveBlockData
     {
         ReceiveBlockData() : receivedFragment( MaxFragmentsPerBlock )
         {
+			blockData = new uint8_t[MaxBlockSize];
             Reset();
         }
+
+		~ReceiveBlockData()
+		{
+			delete [] blockData;
+			blockData = NULL;
+		}
 
         void Reset()
         {
@@ -479,7 +493,7 @@ protected:
         int messageType;                                                // message type of the block being received.
         uint32_t blockSize;                                             // block size in bytes.
         BitArray receivedFragment;                                      // has fragment n been received?
-        uint8_t blockData[MaxBlockSize];                                // block data for receive
+        uint8_t * blockData;											// block data for receive
     };
 
     void InsertAckPacketEntry( uint16_t sequence );
@@ -1177,13 +1191,13 @@ void Connection::ProcessPacketFragment( const ConnectionPacket * packet )
 
         // validate fragment
 
-        if ( fragmentId >= m_receiveBlock.numFragments )
+        if ( packet->blockFragmentId >= m_receiveBlock.numFragments )
         {
             m_error = CONNECTION_ERROR_MESSAGE_DESYNC;
             return;
         }
 
-        if ( numFragments != m_receiveBlock.numFragments )
+        if ( packet->blockNumFragments != m_receiveBlock.numFragments )
         {
             m_error = CONNECTION_ERROR_MESSAGE_DESYNC;
             return;
@@ -1375,7 +1389,7 @@ void SendPacket( Simulator & simulator, void * context, PacketFactory & packetFa
 }
 
 
-Packet * ReceivePacket( Simulator & simulator, void * context, PacketFactory & packetFactory, Address & from, const Address & to )
+Packet * ReceivePacket( Simulator & simulator, void * context, PacketFactory & packetFactory, Address & from, Address & to )
 {
     int packetBytes;
 
@@ -1497,35 +1511,23 @@ int main()
 
         while ( true )
         {
-            Address from;
-
-            Packet * packet = ReceivePacket( simulator, &context, packetFactory, from, senderAddress );
-
+			Address to, from;
+            Packet * packet = ReceivePacket( simulator, &context, packetFactory, from, to );
             if ( !packet )
                 break;
             
             if ( packet->GetType() == CONNECTION_PACKET )
             {
-                sender.ReadPacket( (ConnectionPacket*) packet );
+				if ( to == receiverAddress )
+				{
+					receiver.ReadPacket( (ConnectionPacket*) packet );
+				}
+				else if ( to == senderAddress )
+				{
+					sender.ReadPacket( (ConnectionPacket*) packet );
+				}
             }        
             
-            packetFactory.DestroyPacket( packet );
-        }
-
-        while ( true )
-        {
-            Address from;
-
-            Packet * packet = ReceivePacket( simulator, &context, packetFactory, from, receiverAddress );
-
-            if ( !packet )
-                break;
-
-            if ( packet->GetType() == CONNECTION_PACKET )
-            {
-                receiver.ReadPacket( (ConnectionPacket*) packet );
-            }        
-
             packetFactory.DestroyPacket( packet );
         }
 
@@ -1602,9 +1604,9 @@ int main()
             printf( "connection error\n" );
             return 1;
         }
-    }
+	}
 
-    printf( "\nstopped\n\n" );
+	printf( "\nstopped\n\n" );
 
     return 0;
 }

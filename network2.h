@@ -245,7 +245,7 @@ namespace network2
         
         void SendPacket( const Address & from, const Address & to, uint8_t * packetData, int packetSize );
 
-        uint8_t * ReceivePacket( Address & from, const Address & to, int & packetSize );
+        uint8_t * ReceivePacket( Address & from, Address & to, int & packetSize );
 
         void Update( double t );
     };
@@ -932,7 +932,7 @@ namespace network2
         }
     }
 
-    uint8_t * Simulator::ReceivePacket( Address & from, const Address & to, int & packetSize )
+    uint8_t * Simulator::ReceivePacket( Address & from, Address & to, int & packetSize )
     { 
         int oldestEntryIndex = -1;
         double oldestEntryTime = 0;
@@ -942,9 +942,6 @@ namespace network2
             const Entry & entry = m_entries[i];
 
             if ( !entry.packetData )
-                continue;
-
-            if ( entry.to != to )
                 continue;
 
             if ( oldestEntryIndex == -1 || m_entries[i].deliveryTime < oldestEntryTime )
@@ -963,6 +960,7 @@ namespace network2
 
         uint8_t *packetData = entry.packetData;
 
+		to = entry.to;
         from = entry.from;
         packetSize = entry.packetSize;
 

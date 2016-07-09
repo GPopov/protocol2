@@ -868,7 +868,7 @@ void SendPacket( Simulator & simulator, void * context, PacketFactory & packetFa
 }
 
 
-Packet * ReceivePacket( Simulator & simulator, void * context, PacketFactory & packetFactory, Address & from, const Address & to )
+Packet * ReceivePacket( Simulator & simulator, void * context, PacketFactory & packetFactory, Address & from, Address & to )
 {
     int packetBytes;
 
@@ -967,35 +967,23 @@ int main()
 
         while ( true )
         {
-            Address from;
-
-            Packet * packet = ReceivePacket( simulator, &context, packetFactory, from, senderAddress );
-
+			Address to, from;
+            Packet * packet = ReceivePacket( simulator, &context, packetFactory, from, to );
             if ( !packet )
                 break;
             
             if ( packet->GetType() == CONNECTION_PACKET )
             {
-                sender.ReadPacket( (ConnectionPacket*) packet );
+				if ( to == receiverAddress )
+				{
+					receiver.ReadPacket( (ConnectionPacket*) packet );
+				}
+				else if ( to == senderAddress )
+				{
+					sender.ReadPacket( (ConnectionPacket*) packet );
+				}
             }        
             
-            packetFactory.DestroyPacket( packet );
-        }
-
-        while ( true )
-        {
-            Address from;
-
-            Packet * packet = ReceivePacket( simulator, &context, packetFactory, from, receiverAddress );
-
-            if ( !packet )
-                break;
-
-            if ( packet->GetType() == CONNECTION_PACKET )
-            {
-                receiver.ReadPacket( (ConnectionPacket*) packet );
-            }        
-
             packetFactory.DestroyPacket( packet );
         }
 
