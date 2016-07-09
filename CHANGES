@@ -8,7 +8,13 @@ Saturday July 9th, 2016
 
     Test messages and blocks again. Working fine. Good stuff.
 
-    
+    Back ported to windows and linux.
+
+    Added #if SOAK modes to 007 and 006, because it's a bit rude for them to loop forever by default.
+
+    OK. This is good, we're done here. Later on, clean up this archive and add a README.md and BUILDING.md etc, but that's it!
+
+
 Friday July 8th, 2016
 =====================
 

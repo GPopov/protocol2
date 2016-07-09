@@ -25,6 +25,8 @@
 #define NETWORK2_IMPLEMENTATION
 #define PROTOCOL2_IMPLEMENTATION
 
+//#define SOAK 1
+
 #include "network2.h"
 #include "protocol2.h"
 
@@ -1423,6 +1425,8 @@ int main()
 {
     printf( "\nmessages and blocks\n\n" );
 
+    srand( (unsigned int) time( NULL ) );
+
     TestPacketFactory packetFactory;
 
     TestMessageFactory messageFactory;
@@ -1447,10 +1451,15 @@ int main()
 
     uint64_t numMessagesSent = 0;
     uint64_t numMessagesReceived = 0;
+    uint64_t numBlocksReceived = 0;
 
     signal( SIGINT, interrupt_handler );    
 
+#if SOAK
     while ( !quit )
+#else // #if SOAK
+    for ( int i = 0; i < 20000; ++i )
+#endif // if SOAK
     {
         const int messagesToSend = random_int( 0, 32 );
 
@@ -1582,6 +1591,8 @@ int main()
                     }
 
                     printf( "received block %d\n", uint16_t( numMessagesReceived ) );
+
+                    numBlocksReceived++;
                 }
                 break;
             }
@@ -1606,7 +1617,33 @@ int main()
         }
 	}
 
-	printf( "\nstopped\n\n" );
+#if SOAK
+    printf( "\nstopped\n\n" );
+#else // #if SOAK
+    if ( !quit )
+    {
+        if ( numMessagesReceived > 0 && numBlocksReceived > 0 )
+        {
+            printf( "\nsuccess: %d messages received, %d blocks received\n\n", (int) numMessagesReceived, (int) numBlocksReceived );
+        }
+        else
+        {
+            if ( numBlocksReceived == 0 )
+            {
+                printf( "error: no blocks received. something went wrong\n\n" );
+            }
+            else
+            {
+                printf( "error: no messages received. something went wrong\n\n" );
+            }
+            return 1;
+        }
+    }
+    else
+    {
+        printf( "\nstopped\n\n" );
+    }
+#endif // #if SOAK
 
     return 0;
 }

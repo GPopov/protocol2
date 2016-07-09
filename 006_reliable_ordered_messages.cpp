@@ -34,6 +34,8 @@
 #include <inttypes.h>
 #include <time.h>
 
+//#define SOAK 1
+
 using namespace protocol2;
 using namespace network2;
 
@@ -902,6 +904,8 @@ int main()
 {
     printf( "\nreliable ordered messages\n\n" );
 
+    srand( (unsigned int) time( NULL ) );
+
     TestPacketFactory packetFactory;
 
     TestMessageFactory messageFactory;
@@ -929,7 +933,11 @@ int main()
 
     signal( SIGINT, interrupt_handler );    
 
+#if SOAK
     while ( !quit )
+#else // #if SOAK
+    for ( int i = 0; i < 10000; ++i )
+#endif // if SOAK
     {
         const int messagesToSend = random_int( 0, 32 );
 
@@ -1027,7 +1035,26 @@ int main()
         }
     }
 
+#if SOAK
     printf( "\nstopped\n\n" );
+#else // #if SOAK
+    if ( !quit )
+    {
+        if ( numMessagesReceived > 0 )
+        {
+            printf( "\nsuccess: %d messages received\n\n", (int) numMessagesReceived );
+        }
+        else
+        {
+            printf( "error: no messages received. something went wrong\n\n" );
+            return 1;
+        }
+    }
+    else
+    {
+        printf( "\nstopped\n\n" );
+    }
+#endif // #if SOAK
 
     return 0;
 }
