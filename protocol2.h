@@ -1795,11 +1795,11 @@ namespace protocol2
         return stream.GetBytesProcessed();
     }
 
-    Packet* ReadPacket( const PacketInfo & info, 
-                        const uint8_t * buffer, 
-                        int bufferSize, 
-                        Object * header, 
-                        int * errorCode )
+    Packet * ReadPacket( const PacketInfo & info, 
+                         const uint8_t * buffer, 
+                         int bufferSize, 
+                         Object * header, 
+                         int * errorCode )
     {
         assert( buffer );
         assert( bufferSize > 0 );

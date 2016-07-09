@@ -165,7 +165,9 @@ namespace network2
         SOCKET_ERROR_SET_NON_BLOCKING_FAILED,
         SOCKET_ERROR_SOCKOPT_IPV6_ONLY_FAILED,
         SOCKET_ERROR_BIND_IPV4_FAILED,
-        SOCKET_ERROR_BIND_IPV6_FAILED
+        SOCKET_ERROR_BIND_IPV6_FAILED,
+        SOCKET_ERROR_GET_SOCKNAME_IPV4_FAILED,
+        SOCKET_ERROR_GET_SOCKNAME_IPV6_FAILED    
     };
 
 #if NETWORK2_PLATFORM == NETWORK2_PLATFORM_WINDOWS
@@ -241,9 +243,9 @@ namespace network2
         void SetPacketLoss( float percent );
         void SetDuplicates( float percent );
         
-        void SendPacket( const Address & from, const Address & to, uint8_t *packetData, int packetSize );
+        void SendPacket( const Address & from, const Address & to, uint8_t * packetData, int packetSize );
 
-        uint8_t* ReceivePacket( Address & from, Address & to, int & packetSize );
+        uint8_t * ReceivePacket( Address & from, const Address & to, int & packetSize );
 
         void Update( double t );
     };
@@ -659,9 +661,35 @@ namespace network2
             }
         }
 
-        // todo: get the actual port we bound to in the case of passing in port 0 we must ask the OS
+        // if bound to port 0 find the actual port we got
 
         m_port = port;
+
+        if ( m_port == 0 )
+        {
+            if ( type == SOCKET_TYPE_IPV6 )
+            {
+                struct sockaddr_in6 sin;
+                socklen_t len = sizeof( sin );
+                if ( getsockname( m_socket, (struct sockaddr*)&sin, &len ) == -1 )
+                {
+                    m_error = SOCKET_ERROR_GET_SOCKNAME_IPV6_FAILED;
+                    return;
+                }
+                m_port = ntohs( sin.sin6_port );
+            }
+            else
+            {
+                struct sockaddr_in sin;
+                socklen_t len = sizeof( sin );
+                if ( getsockname( m_socket, (struct sockaddr*)&sin, &len ) == -1 )
+                {
+                    m_error = SOCKET_ERROR_GET_SOCKNAME_IPV4_FAILED;
+                    return;
+                }
+                m_port = ntohs( sin.sin_port );
+            }
+        }
 
         // set non-blocking io
 
@@ -875,7 +903,8 @@ namespace network2
 
         double delay = m_latency / 1000.0;
 
-        delay += random_float( -m_jitter, +m_jitter ) / 1000.0;
+        if ( m_jitter > 0 )
+            delay += random_float( -m_jitter, +m_jitter ) / 1000.0;
 
         entry.from = from;
         entry.to = to;
@@ -903,7 +932,7 @@ namespace network2
         }
     }
 
-    uint8_t * Simulator::ReceivePacket( Address & from, Address & to, int & packetSize )
+    uint8_t * Simulator::ReceivePacket( Address & from, const Address & to, int & packetSize )
     { 
         int oldestEntryIndex = -1;
         double oldestEntryTime = 0;
@@ -913,6 +942,9 @@ namespace network2
             const Entry & entry = m_entries[i];
 
             if ( !entry.packetData )
+                continue;
+
+            if ( entry.to != to )
                 continue;
 
             if ( oldestEntryIndex == -1 || m_entries[i].deliveryTime < oldestEntryTime )
@@ -931,7 +963,6 @@ namespace network2
 
         uint8_t *packetData = entry.packetData;
 
-        to = entry.to;
         from = entry.from;
         packetSize = entry.packetSize;
 

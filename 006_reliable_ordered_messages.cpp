@@ -37,6 +37,8 @@
 using namespace protocol2;
 using namespace network2;
 
+const uint32_t ProtocolId = 0x12311616;
+const int MaxPacketSize = 4096;
 const int MaxMessagesPerPacket = 64; 
 const int SlidingWindowSize = 256;
 const int MessageSendQueueSize = 1024;
@@ -204,7 +206,14 @@ struct ConnectionPacket : public Packet
 
             for ( int i = 0; i < numMessages; ++i )
             {
-                serialize_int( stream, messageTypes[i], 0, maxMessageType );
+                if ( maxMessageType > 0 )
+                {
+                    serialize_int( stream, messageTypes[i], 0, maxMessageType );
+                }
+                else 
+                {
+                    messageTypes[i] = 0;
+                }
 
                 if ( Stream::IsReading )
                 {
@@ -833,6 +842,53 @@ protected:
     }
 };
 
+void SendPacket( Simulator & simulator, void * context, PacketFactory & packetFactory, const Address & from, const Address & to, Packet * packet )
+{
+    assert( packet );
+
+    uint8_t * packetData = new uint8_t[MaxPacketSize];
+
+    protocol2::PacketInfo info;
+    info.context = context;
+    info.protocolId = ProtocolId;
+    info.packetFactory = &packetFactory;
+
+    const int packetSize = protocol2::WritePacket( info, packet, packetData, MaxPacketSize );
+
+    if ( packetSize > 0 )
+    {
+        simulator.SendPacket( from, to, packetData, packetSize );
+    }
+    else
+    {
+        delete [] packetData;
+    }
+
+    packetFactory.DestroyPacket( packet );
+}
+
+
+Packet * ReceivePacket( Simulator & simulator, void * context, PacketFactory & packetFactory, Address & from, const Address & to )
+{
+    int packetBytes;
+
+    uint8_t * packetData = simulator.ReceivePacket( from, to, packetBytes );
+
+    if ( !packetData )
+        return NULL;
+
+    protocol2::PacketInfo info;
+    info.context = context;
+    info.protocolId = ProtocolId;
+    info.packetFactory = &packetFactory;
+
+    Packet * packet = protocol2::ReadPacket( info, packetData, packetBytes, NULL );
+
+    delete [] packetData;
+
+    return packet;
+}
+
 #include <signal.h>
 
 static volatile int quit = 0;
@@ -849,6 +905,17 @@ int main()
     TestPacketFactory packetFactory;
 
     TestMessageFactory messageFactory;
+
+    Simulator simulator;
+
+    simulator.SetLatency( 1000 );
+    simulator.SetJitter( 1000 );
+    simulator.SetPacketLoss( 99 );
+    simulator.SetDuplicates( 10 );
+
+    ConnectionContext context;
+
+    context.messageFactory = &messageFactory;
 
     Connection sender( packetFactory, messageFactory );
 
@@ -889,14 +956,48 @@ int main()
         assert( senderPacket );
         assert( receiverPacket );
 
-        if ( ( rand() % 100 ) == 0 )
-            sender.ReadPacket( receiverPacket );
+        const int SenderPort = 5000;
+        const int ReceiverPort = 6000;
 
-        if ( ( rand() % 100 ) == 0 )
-            receiver.ReadPacket( senderPacket );
+        Address senderAddress( "::1", SenderPort );
+        Address receiverAddress( "::1", ReceiverPort );
 
-        packetFactory.DestroyPacket( senderPacket );
-        packetFactory.DestroyPacket( receiverPacket );
+        SendPacket( simulator, &context, packetFactory, senderAddress, receiverAddress, senderPacket );
+        SendPacket( simulator, &context, packetFactory, receiverAddress, senderAddress, receiverPacket );
+
+        while ( true )
+        {
+            Address from;
+
+            Packet * packet = ReceivePacket( simulator, &context, packetFactory, from, senderAddress );
+
+            if ( !packet )
+                break;
+            
+            if ( packet->GetType() == CONNECTION_PACKET )
+            {
+                sender.ReadPacket( (ConnectionPacket*) packet );
+            }        
+            
+            packetFactory.DestroyPacket( packet );
+        }
+
+        while ( true )
+        {
+            Address from;
+
+            Packet * packet = ReceivePacket( simulator, &context, packetFactory, from, receiverAddress );
+
+            if ( !packet )
+                break;
+
+            if ( packet->GetType() == CONNECTION_PACKET )
+            {
+                receiver.ReadPacket( (ConnectionPacket*) packet );
+            }        
+
+            packetFactory.DestroyPacket( packet );
+        }
 
         while ( true )
         {

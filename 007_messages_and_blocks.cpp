@@ -37,6 +37,8 @@
 using namespace protocol2;
 using namespace network2;
 
+const uint32_t ProtocolId = 0x12341241;
+const int MaxPacketSize = 4096;
 const int MaxMessagesPerPacket = 64; 
 const int SlidingWindowSize = 256;
 const int MessageSendQueueSize = 1024;
@@ -287,8 +289,15 @@ struct ConnectionPacket : public Packet
 
             for ( int i = 0; i < numMessages; ++i )
             {
-                serialize_int( stream, messageTypes[i], 0, maxMessageType );
-
+                if ( maxMessageType > 0 )
+                {
+                    serialize_int( stream, messageTypes[i], 0, maxMessageType );
+                }
+                else 
+                {
+                    messageTypes[i] = 0;
+                }
+    
                 if ( Stream::IsReading )
                 {
                     messages[i] = messageFactory->Create( messageTypes[i] );
@@ -318,9 +327,24 @@ struct ConnectionPacket : public Packet
 
             serialize_int( stream, blockNumFragments, 1, MaxFragmentsPerBlock );
 
-            serialize_int( stream, blockFragmentId, 0, blockNumFragments - 1 );
+            if ( blockNumFragments > 1 )
+            {
+                serialize_int( stream, blockFragmentId, 0, blockNumFragments - 1 );
+            }
+            else
+            {
+                blockFragmentId = 0;
+            }
 
             serialize_int( stream, blockFragmentSize, 1, BlockFragmentSize );
+
+            if ( Stream::IsReading )
+            {
+                blockFragmentData = new uint8_t[blockFragmentSize];
+
+                if ( !blockFragmentData )
+                    return false;
+            }
 
             serialize_bytes( stream, blockFragmentData, blockFragmentSize );
 
@@ -348,7 +372,7 @@ enum ConnectionError
     CONNECTION_ERROR_MESSAGE_DESYNC,
     CONNECTION_ERROR_MESSAGE_SEND_QUEUE_FULL,
     CONNECTION_ERROR_MESSAGE_SERIALIZE_MEASURE_FAILED,
-    CONNECTION_ERROR_MESSAGE_OUT_OF_MEMORY
+    CONNECTION_ERROR_OUT_OF_MEMORY
 };
 
 class Connection
@@ -1133,8 +1157,6 @@ void Connection::ProcessPacketFragment( const ConnectionPacket * packet )
         const uint16_t messageId = packet->blockMessageId;
         const uint16_t expectedMessageId = m_messageReceiveQueue->GetSequence();
 
-        // todo: may be necessary to bring back ignore old message, but if new message id, return false
-
         if ( messageId != expectedMessageId )
             return;
 
@@ -1153,7 +1175,9 @@ void Connection::ProcessPacketFragment( const ConnectionPacket * packet )
             m_receiveBlock.receivedFragment.Clear();
         }
 
-        // todo: validate fragment
+        // validate fragment
+
+        // todo
 
         // receive the fragment
 
@@ -1185,6 +1209,8 @@ void Connection::ProcessPacketFragment( const ConnectionPacket * packet )
 
             if ( m_receiveBlock.numReceivedFragments == m_receiveBlock.numFragments )
             {
+                // receive for this block has completed
+
                 Message * message = m_messageFactory->Create( m_receiveBlock.messageType );
 
                 assert( message );
@@ -1199,9 +1225,13 @@ void Connection::ProcessPacketFragment( const ConnectionPacket * packet )
 
                 uint8_t * blockData = new uint8_t[m_receiveBlock.blockSize];
 
-                // todo: out of memory error
+                if ( !blockData )
+                {
+                    m_error = CONNECTION_ERROR_OUT_OF_MEMORY;
+                    return;
+                }
 
-                assert( blockData );
+                memcpy( blockData, m_receiveBlock.blockData, m_receiveBlock.blockSize );
 
                 blockMessage->Connect( blockData, m_receiveBlock.blockSize );
 
@@ -1218,130 +1248,6 @@ void Connection::ProcessPacketFragment( const ConnectionPacket * packet )
         }
     }
 }
-
-#if 0
-
-        if ( data->largeBlock )
-        {
-            /*
-                Large block mode.
-                This packet includes a fragment for the large block currently 
-                being received. Only one large block is sent at a time.
-            */
-
-            if ( !m_receiveLargeBlock.active )
-            {
-                const uint16_t expectedBlockId = m_receiveQueue->GetSequence();
-
-                if ( data->blockId != expectedBlockId )
-                {
-//                        printf( "unexpected large block id\n" );
-                    return false;
-                }
-
-                const int numFragments = (int) ceil( data->blockSize / (float)m_config.blockFragmentSize );
-
-                CORE_ASSERT( numFragments >= 0 );
-                CORE_ASSERT( numFragments <= m_maxBlockFragments );
-
-                if ( numFragments < 0 || numFragments > m_maxBlockFragments )
-                {
-                    //printf( "large block num fragments outside of range\n" );
-                    return false;
-                }
-
-//                    printf( "receiving large block %d (%d bytes)\n", data->blockId, data->blockSize );
-
-                m_receiveLargeBlock.active = true;
-                m_receiveLargeBlock.numFragments = numFragments;
-                m_receiveLargeBlock.numReceivedFragments = 0;
-                m_receiveLargeBlock.blockId = data->blockId;
-                m_receiveLargeBlock.blockSize = data->blockSize;
-
-                CORE_ASSERT( m_config.largeBlockAllocator );
-                uint8_t * blockData = (uint8_t*) m_config.largeBlockAllocator->Allocate( data->blockSize );
-                m_receiveLargeBlock.block.Connect( *m_config.largeBlockAllocator, blockData, data->blockSize );
-                
-                m_receiveLargeBlock.received_fragment->Clear();
-            }
-
-            CORE_ASSERT( m_receiveLargeBlock.active );
-
-            if ( data->blockId != m_receiveLargeBlock.blockId )
-            {
-//                    printf( "unexpected large block id. got %d but was expecting %d\n", data->blockId, m_receiveLargeBlock.blockId );
-                return false;
-            }
-
-            CORE_ASSERT( data->blockId == m_receiveLargeBlock.blockId );
-            CORE_ASSERT( data->blockSize == m_receiveLargeBlock.blockSize );
-            CORE_ASSERT( data->fragmentId < m_receiveLargeBlock.numFragments );
-
-            if ( data->blockId != m_receiveLargeBlock.blockId )
-            {
-//                    printf( "recieve large block id mismatch. got %d but was expecting %d\n", data->blockId, m_receiveLargeBlock.blockId );
-                return false;
-            }
-
-            if ( data->blockSize != m_receiveLargeBlock.blockSize )
-            {
-//                    printf( "large block size mismatch. got %d but was expecting %d\n", data->blockSize, m_receiveLargeBlock.blockSize );
-                return false;
-            }
-
-            if ( data->fragmentId >= m_receiveLargeBlock.numFragments )
-            {
-//                    printf( "large block fragment out of bounds.\n" );
-                return false;
-            }
-
-            if ( !m_receiveLargeBlock.received_fragment->GetBit( data->fragmentId ) )
-            {
-/*
-                printf( "received fragment " << data->fragmentId << " of large block " << m_receiveLargeBlock.blockId
-                     << " (" << m_receiveLargeBlock.numReceivedFragments+1 << "/" << m_receiveLargeBlock.numFragments << ")" << endl;
-                     */
-
-                m_receiveLargeBlock.received_fragment->SetBit( data->fragmentId );
-
-                Block & block = m_receiveLargeBlock.block;
-
-                int fragmentBytes = m_config.blockFragmentSize;
-                int fragmentRemainder = block.GetSize() % m_config.blockFragmentSize;
-                if ( fragmentRemainder && data->fragmentId == m_receiveLargeBlock.numFragments - 1 )
-                    fragmentBytes = fragmentRemainder;
-
-//                    printf( "fragment bytes = %d\n", fragmentBytes );
-
-                CORE_ASSERT( fragmentBytes >= 0 );
-                CORE_ASSERT( fragmentBytes <= m_config.blockFragmentSize );
-                uint8_t * src = data->fragment;
-                uint8_t * dst = &( block.GetData()[data->fragmentId*m_config.blockFragmentSize] );
-                memcpy( dst, src, fragmentBytes );
-
-                m_receiveLargeBlock.numReceivedFragments++;
-
-                if ( m_receiveLargeBlock.numReceivedFragments == m_receiveLargeBlock.numFragments )
-                {
-//                        printf( "received large block %d (%d bytes)\n", m_receiveLargeBlock.blockId, m_receiveLargeBlock.block->size() );
-
-                    auto blockMessage = (BlockMessage*) m_config.messageFactory->Create( BlockMessageType );
-                    CORE_ASSERT( blockMessage );
-                    blockMessage->Connect( m_receiveLargeBlock.block );
-                    blockMessage->SetId( m_receiveLargeBlock.blockId );
-
-                    auto entry = m_receiveQueue->Insert( m_receiveLargeBlock.blockId );
-                    CORE_ASSERT( entry );
-                    entry->message = blockMessage;
-
-                    m_receiveLargeBlock.active = false;
-
-                    CORE_ASSERT( !m_receiveLargeBlock.block.IsValid() );
-                }
-            }
-        }
-
-#endif // #if 0
 
 struct TestPacketFactory : public PacketFactory
 {
@@ -1433,6 +1339,53 @@ protected:
     }
 };
 
+void SendPacket( Simulator & simulator, void * context, PacketFactory & packetFactory, const Address & from, const Address & to, Packet * packet )
+{
+    assert( packet );
+
+    uint8_t * packetData = new uint8_t[MaxPacketSize];
+
+    protocol2::PacketInfo info;
+    info.context = context;
+    info.protocolId = ProtocolId;
+    info.packetFactory = &packetFactory;
+
+    const int packetSize = protocol2::WritePacket( info, packet, packetData, MaxPacketSize );
+
+    if ( packetSize > 0 )
+    {
+        simulator.SendPacket( from, to, packetData, packetSize );
+    }
+    else
+    {
+        delete [] packetData;
+    }
+
+    packetFactory.DestroyPacket( packet );
+}
+
+
+Packet * ReceivePacket( Simulator & simulator, void * context, PacketFactory & packetFactory, Address & from, const Address & to )
+{
+    int packetBytes;
+
+    uint8_t * packetData = simulator.ReceivePacket( from, to, packetBytes );
+
+    if ( !packetData )
+        return NULL;
+
+    protocol2::PacketInfo info;
+    info.context = context;
+    info.protocolId = ProtocolId;
+    info.packetFactory = &packetFactory;
+
+    Packet * packet = protocol2::ReadPacket( info, packetData, packetBytes, NULL );
+
+    delete [] packetData;
+
+    return packet;
+}
+
 #include <signal.h>
 
 static volatile int quit = 0;
@@ -1444,11 +1397,22 @@ void interrupt_handler( int /*dummy*/ )
 
 int main()
 {
-    printf( "\nreliable ordered messages\n\n" );
+    printf( "\nmessages and blocks\n\n" );
 
     TestPacketFactory packetFactory;
 
     TestMessageFactory messageFactory;
+
+    Simulator simulator;
+
+    //simulator.SetLatency( 1000 );
+    //simulator.SetJitter( 1000 );
+    simulator.SetPacketLoss( 99 );
+    //simulator.SetDuplicates( 10 );
+
+    ConnectionContext context;
+
+    context.messageFactory = &messageFactory;
 
     Connection sender( packetFactory, messageFactory );
 
@@ -1490,7 +1454,7 @@ int main()
 
                 if ( blockMessage )
                 {
-                    const int blockSize = 1 + ( int( numMessagesSent ) * 33 ) % MaxBlockSize;
+                    const int blockSize = 1 + ( int( numMessagesSent ) * 33 ) % ( MaxBlockSize / 10 );
 
                     uint8_t * blockData = new uint8_t[blockSize];
 
@@ -1512,16 +1476,48 @@ int main()
         assert( senderPacket );
         assert( receiverPacket );
 
-        // todo: need to actually serialize these packets and put them through the simulator
+        const int SenderPort = 5000;
+        const int ReceiverPort = 6000;
 
-        if ( ( rand() % 100 ) == 0 )
-            sender.ReadPacket( receiverPacket );
+        Address senderAddress( "::1", SenderPort );
+        Address receiverAddress( "::1", ReceiverPort );
 
-        if ( ( rand() % 100 ) == 0 )
-            receiver.ReadPacket( senderPacket );
+        SendPacket( simulator, &context, packetFactory, senderAddress, receiverAddress, senderPacket );
+        SendPacket( simulator, &context, packetFactory, receiverAddress, senderAddress, receiverPacket );
 
-        packetFactory.DestroyPacket( senderPacket );
-        packetFactory.DestroyPacket( receiverPacket );
+        while ( true )
+        {
+            Address from;
+
+            Packet * packet = ReceivePacket( simulator, &context, packetFactory, from, senderAddress );
+
+            if ( !packet )
+                break;
+            
+            if ( packet->GetType() == CONNECTION_PACKET )
+            {
+                sender.ReadPacket( (ConnectionPacket*) packet );
+            }        
+            
+            packetFactory.DestroyPacket( packet );
+        }
+
+        while ( true )
+        {
+            Address from;
+
+            Packet * packet = ReceivePacket( simulator, &context, packetFactory, from, receiverAddress );
+
+            if ( !packet )
+                break;
+
+            if ( packet->GetType() == CONNECTION_PACKET )
+            {
+                receiver.ReadPacket( (ConnectionPacket*) packet );
+            }        
+
+            packetFactory.DestroyPacket( packet );
+        }
 
         while ( true )
         {
@@ -1556,7 +1552,7 @@ int main()
 
                     const int blockSize = blockMessage->GetBlockSize();
 
-                    const int expectedBlockSize = 1 + ( int( numMessagesReceived ) * 33 ) % MaxBlockSize;
+                    const int expectedBlockSize = 1 + ( int( numMessagesReceived ) * 33 ) % ( MaxBlockSize / 10 );
 
                     if ( blockSize  != expectedBlockSize )
                     {

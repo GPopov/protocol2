@@ -1,4 +1,26 @@
 
+Friday July 8th, 2016
+=====================
+
+    Add the code to check that the block size and contents validate.
+
+    I'm pretty sure the block code doesn't work with out of order yet.
+
+    I also found a bugs in the serialize function which wasn't getting called for the connection packet. Both 006 and 007.
+
+    To fix this I really need to actually serialize connection packets and put them through the packet simulator.
+
+    Do this, and then try to break the examples. This is important.
+
+    Setup the structure for send/recv. Now I need the implementation, and may need to bring back some simulator updates from yojimbo, eg. read packets from simulator only to a specific address.
+
+    OK. As expected, works fine under a bunch of packet loss, but bunch of packet loss *and* bunch of out of order, and it craps out.
+
+    Port actual packet serialize over to 006 example.
+
+    Ugh. Looks like even the 006 example is crapping out under super high jitter...
+
+
 Thursday July 7th, 2016
 =======================
 
