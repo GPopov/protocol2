@@ -1030,6 +1030,8 @@ int main()
 
         receiver.AdvanceTime( time );
 
+        simulator.Update( time );
+
         if ( sender.GetError() || receiver.GetError() )
         {
             printf( "connection error\n" );

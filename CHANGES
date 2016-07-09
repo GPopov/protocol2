@@ -1,4 +1,14 @@
 
+Saturday July 9th, 2016
+=======================
+
+    Seems that the problem was that I was not advancing time on the simulator. Fixed.
+
+    Messages are working. Good there was no logic error in there.
+
+    Test messages and blocks again. Working fine. Good stuff.
+
+    
 Friday July 8th, 2016
 =====================
 

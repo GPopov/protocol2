@@ -1405,10 +1405,10 @@ int main()
 
     Simulator simulator;
 
-    //simulator.SetLatency( 1000 );
-    //simulator.SetJitter( 1000 );
+    simulator.SetLatency( 1000 );
+    simulator.SetJitter( 1000 );
     simulator.SetPacketLoss( 99 );
-    //simulator.SetDuplicates( 10 );
+    simulator.SetDuplicates( 10 );
 
     ConnectionContext context;
 
@@ -1584,6 +1584,8 @@ int main()
         sender.AdvanceTime( time );
 
         receiver.AdvanceTime( time );
+
+        simulator.Update( time );
 
         if ( sender.GetError() || receiver.GetError() )
         {
