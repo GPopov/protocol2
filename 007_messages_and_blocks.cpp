@@ -1490,7 +1490,7 @@ int main()
 
                 if ( blockMessage )
                 {
-                    const int blockSize = 1 + ( (int)numMessagesSent * 33 ) % MaxBlockSize;
+                    const int blockSize = 1 + ( int( numMessagesSent ) * 33 ) % MaxBlockSize;
 
                     uint8_t * blockData = new uint8_t[blockSize];
 
@@ -1550,7 +1550,28 @@ int main()
 
                 case TEST_BLOCK_MESSAGE:
                 {
-                    // todo: validate block size and contents
+                    TestBlockMessage * blockMessage = (TestBlockMessage*) message;
+
+                    const uint8_t * blockData = blockMessage->GetBlockData();
+
+                    const int blockSize = blockMessage->GetBlockSize();
+
+                    const int expectedBlockSize = 1 + ( int( numMessagesReceived ) * 33 ) % MaxBlockSize;
+
+                    if ( blockSize  != expectedBlockSize )
+                    {
+                        printf( "error: block size mismatch. expected %d, got %d\n", expectedBlockSize, blockSize );
+                        return 1;
+                    }
+
+                    for ( int i = 0; i < blockSize; ++i )
+                    {
+                        if ( blockData[i] != uint8_t( numMessagesReceived + i ) )
+                        {
+                            printf( "error: block data mismatch. expected %d, but blockData[%d] = %d\n", uint8_t( numMessagesReceived + i ), i, blockData[i] );
+                            return 1;
+                        }
+                    }
 
                     printf( "received block %d\n", uint16_t( numMessagesReceived ) );
                 }
