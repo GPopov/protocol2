@@ -29,11 +29,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-//#define SOAK_TEST 1                // uncomment this line to loop forever and soak
+//#define SOAK 1                // uncomment this line to loop forever and soak
 
-#if !SOAK_TEST
+#if !SOAK
 const int NumIterations = 16;
-#endif // #if !SOAK_TEST
+#endif // #if !SOAK
 
 const int MaxPacketsPerIteration = 8;
 
@@ -282,11 +282,11 @@ int main()
         writePacketHeaders[i] = new TestPacketHeader();
     }
 
-#if !SOAK_TEST
+#ifndef SOAK
     for ( int i = 0; i < NumIterations; ++i )
-#else // #if !SOAK_TEST
+#else // #ifndef SOAK
     for ( uint32_t i = 0; ; ++i )
-#endif // #if !SOAK_TEST
+#endif // #ifndef SOAK
     {
         int numReadPackets = 0;
         int numWritePackets = 0;

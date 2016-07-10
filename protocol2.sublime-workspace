@@ -4,6 +4,18 @@
 		"selected_items":
 		[
 			[
+				"packet",
+				"packets"
+			],
+			[
+				"MessageRece",
+				"MessageReceiveQueueEntry"
+			],
+			[
+				"blo",
+				"block"
+			],
+			[
 				"serverAdd",
 				"serverAddressString"
 			],
@@ -502,18 +514,6 @@
 			[
 				"test_client_and_",
 				"test_client_and_server_data_reconnect"
-			],
-			[
-				"datablock",
-				"dataBlockReceiver"
-			],
-			[
-				"ClientServerDatABlock",
-				"ClientServerDataBlockSender"
-			],
-			[
-				"ClientSer",
-				"ClientServerDataBlockSender"
 			]
 		]
 	},
@@ -714,22 +714,25 @@
 	],
 	"file_history":
 	[
-		"/Users/gaffer/git/protocol2/premake5.lua",
 		"/Users/gaffer/git/protocol2/TODO",
-		"/Users/gaffer/git/protocol2/009_client_server.cpp",
-		"/Users/gaffer/git/protocol2/CHANGES",
+		"/Users/gaffer/git/protocol2/005_packet_aggregation.cpp",
 		"/Users/gaffer/git/protocol2/004_sending_large_blocks_of_data.cpp",
-		"/Users/gaffer/git/protocol2/network2.h",
+		"/Users/gaffer/git/protocol2/003_packet_fragmentation_and_reassembly.cpp",
+		"/Users/gaffer/git/protocol2/002_serialization_strategies.cpp",
+		"/Users/gaffer/git/protocol2/001_reading_and_writing_packets.make",
+		"/Users/gaffer/git/protocol2/001_reading_and_writing_packets.cpp",
 		"/Users/gaffer/git/protocol2/007_messages_and_blocks.cpp",
+		"/Users/gaffer/git/protocol2/008_packet_encryption.cpp",
+		"/Users/gaffer/git/protocol2/006_reliable_ordered_messages.cpp",
+		"/Users/gaffer/git/protocol2/CHANGES",
+		"/Users/gaffer/git/protocol2/009_client_server.cpp",
+		"/Users/gaffer/git/protocol2/protocol2.h",
+		"/Users/gaffer/git/protocol2/network2.h",
+		"/Users/gaffer/git/protocol/external/nvImage/nvImage.h",
+		"/Users/gaffer/git/protocol2/premake5.lua",
 		"/Users/gaffer/git/protocol2/009_connect_tokens.cpp",
 		"/Users/gaffer/git/protocol2/007_packet_encryption.cpp",
-		"/Users/gaffer/git/protocol2/005_packet_aggregation.cpp",
-		"/Users/gaffer/git/protocol2/002_serialization_strategies.cpp",
-		"/Users/gaffer/git/protocol2/008_packet_encryption.cpp",
-		"/Users/gaffer/git/protocol2/003_packet_fragmentation_and_reassembly.cpp",
 		"/Users/gaffer/git/protocol2/test.cpp",
-		"/Users/gaffer/git/protocol2/006_reliable_ordered_messages.cpp",
-		"/Users/gaffer/git/protocol2/protocol2.h",
 		"/Users/gaffer/git/protocol2/yojimbo.h",
 		"/Users/gaffer/git/protocol2/yojimbo_socket_interface.cpp",
 		"/Users/gaffer/git/protocol2/yojimbo_socket_interface.h",
@@ -740,7 +743,6 @@
 		"/Users/gaffer/git/protocol2/yojimbo_crypto.cpp",
 		"/Users/gaffer/git/protocol2/LICENCE",
 		"/Users/gaffer/git/protocol2/009_securing_dedicated_servers.cpp",
-		"/Users/gaffer/git/protocol2/001_reading_and_writing_packets.cpp",
 		"/Users/gaffer/git/protocol2/yojimbo.cpp",
 		"/Users/gaffer/git/protocol2/yojimbo_allocator.h",
 		"/Users/gaffer/git/protocol2/yojimbo_array.h",
@@ -839,9 +841,7 @@
 		"/Users/gaffer/Documents/STOCKS",
 		"/Users/gaffer/Documents/STUFF",
 		"/Users/gaffer/Documents/THIS WEEK",
-		"/Users/gaffer/Documents/UNITY",
-		"/Volumes/NO NAME/dropbox.txt",
-		"/Users/gaffer/Desktop/patreon.txt"
+		"/Users/gaffer/Documents/UNITY"
 	],
 	"find":
 	{
@@ -892,6 +892,90 @@
 		"case_sensitive": true,
 		"find_history":
 		[
+			"todo",
+			"SOAK_TEST",
+			"vectorial",
+			"= 256",
+			"= 250",
+			"ReceiveQueueSize",
+			"CONNECTION_ERROR_MESSAGE_DESYNC",
+			"connection error",
+			"ReceiveQueueSize",
+			"ReceiveMessage",
+			"1290",
+			"todo",
+			"// todo",
+			"simulator",
+			"Serialize*",
+			"// todo",
+			"todo",
+			"random_float",
+			"// todo",
+			"Serialize(",
+			"numFragments",
+			"AddFragmentToPacket",
+			"ReadPacket",
+			"1804",
+			"SendPacket(",
+			"ConnectionContext",
+			"ReceivePacket",
+			"ReadPacket",
+			"DestroyPacket",
+			"todo",
+			"CONNECTION_ERROR_OUT",
+			"memcpy",
+			"ReadPacket",
+			"Connect",
+			"Serialize",
+			"Create(",
+			"packet->blockMessageType",
+			"messageType = ",
+			"AddFragmentToPacket",
+			"packet->block",
+			"blockMessageId = ",
+			"m_receiveBlock",
+			"MESSAGE_DESYNC",
+			"CONNECTION_ERROR",
+			"ProcessAck",
+			"AddFragment",
+			"ProcessPacketMessages",
+			"sending block ",
+			"large block",
+			"AddMessage",
+			"AddFragmentToPacket",
+			"blockSize",
+			"AddFragmentTo",
+			"oldest_mess",
+			"AddFragmentToPacket",
+			"GetBlock",
+			"#ig 0",
+			"printf",
+			"block size",
+			"TestBlockMessage",
+			"AssignId",
+			"FragmentToSend",
+			"SendingBlock",
+			"AddMessagePacketEntry",
+			"AddMessages",
+			"SendingBlockMessage",
+			"HasMessagesToSend",
+			"DEBUG_LOGS",
+			"DEBUG_LOG",
+			"HasMessages",
+			"HasMessagesToSend",
+			"GetMessagesToSend",
+			"GetMessages",
+			"GetMessagesToSend",
+			"created block message",
+			"GetMessagesToSend",
+			"BlockMessage`",
+			"SendMessage",
+			"MESSAGE_TEST",
+			"MessageFactory",
+			"Message",
+			"m_messageSendQueue",
+			"m_messageSentPackets",
+			"const int",
 			"Hash",
 			"m_networkInterface",
 			"Decrypt",
@@ -935,91 +1019,7 @@
 			" 4490 ",
 			" 4490",
 			"message 4489",
-			"late",
-			"received message",
-			"received ",
-			"blockMessage",
-			"packet 8388",
-			" 4490",
-			"message 4490",
-			"message 4489",
-			" 4489",
-			"ProcessPacketMessages",
-			"ReadPacket",
-			"MessagesToSend",
-			"UpdateOldest",
-			"measuredBits = ",
-			"MessagesToSend",
-			"11211",
-			"received",
-			"MessageAck",
-			"received",
-			"MessageAck",
-			"Acks",
-			"ProcessAck",
-			"m_receivedPackets",
-			"receivedPacket",
-			"ProcessPacketMessages",
-			"early",
-			"Simulator",
-			"class Message",
-			"Counter",
-			"_IMPLEMENTATION",
-			"(int) numMess",
-			"PROTOCOL2_DECLARE_VIRTUAL_SERIALIZE_FUNCTIONS",
-			"MaxMessagesPerPacket",
-			"queue",
-			"reliable_mes",
-			"PACKET_CONNECTION_DISCONNECT",
-			"DisconnectPacket",
-			"Disconnect();",
-			"Destroy",
-			"SOCKET_INTERFACE_COUNTER_ENCRYPTED_PACKETS_READ",
-			"SOCKET_INTERFACE_COUNTER_PACKETS_WRITTEN",
-			"#if DEBUG",
-			"NETWORK2_SOCKETS",
-			"error",
-			"YOJIMBO_SECURE",
-			"rawFormat",
-			"rawMode",
-			"sockaddr_storage",
-			"addrinfo",
-			"PROTOCOL2_SER",
-			"PROTOCOL2_ASSERT_ON",
-			"PROTOCOL2_SERIALIZE_CHECKS",
-			"#define PROTOCOL2_SERIALIZE_CHECKS              1\n",
-			"PROTOCOL2_ASSERT_ON_SERIALIZE_CHECK",
-			"ProcessConnectionRequest",
-			"PacketFactory",
-			"ChallengeToken",
-			"crc32 mismatch",
-			"215",
-			"Encrypt",
-			"ChallengeToken",
-			"GenerateToken",
-			"TokenBytes",
-			"AuthBytes",
-			"TokenBytes",
-			"queue::",
-			"// todo",
-			"ConnectionRequestDenied",
-			"todo",
-			"disconnected client %d:",
-			"ProcessDisc",
-			"// todo",
-			"CONNECTION_RESPONSE",
-			"FULL",
-			"DISCONNECT",
-			"DISCONNECTED",
-			"// todo",
-			"ConnectClient",
-			"ReadPackets",
-			"// todo",
-			"ConnectionResponsePacket",
-			"FindExistingClientIndex",
-			"KeepAlivePacket",
-			"Process",
-			"KeepAlivePacket"
+			"late"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -1124,28 +1124,60 @@
 		"selected_items":
 		[
 			[
-				"changes",
-				"protocol2/CHANGES"
-			],
-			[
 				"todo",
 				"protocol2/TODO"
 			],
 			[
-				"004",
-				"protocol2/004_sending_large_blocks_of_data.cpp"
+				"msesages",
+				"protocol2/006_reliable_ordered_messages.cpp"
+			],
+			[
+				"008",
+				"protocol2/008_packet_encryption.cpp"
+			],
+			[
+				"messages",
+				"protocol2/007_messages_and_blocks.cpp"
+			],
+			[
+				"006",
+				"protocol2/006_reliable_ordered_messages.cpp"
+			],
+			[
+				"002",
+				"protocol2/002_serialization_strategies.cpp"
+			],
+			[
+				"007",
+				"protocol2/007_messages_and_blocks.cpp"
+			],
+			[
+				"blocks.cpp",
+				"protocol2/007_messages_and_blocks.cpp"
+			],
+			[
+				"changes",
+				"protocol2/CHANGES"
 			],
 			[
 				"network2.h",
 				"protocol2/network2.h"
 			],
 			[
-				"client",
+				"protocol2.h",
+				"protocol2/protocol2.h"
+			],
+			[
+				"client_server.cpp",
 				"protocol2/009_client_server.cpp"
 			],
 			[
-				"007",
-				"protocol2/007_messages_and_blocks.cpp"
+				"004",
+				"protocol2/004_sending_large_blocks_of_data.cpp"
+			],
+			[
+				"client",
+				"protocol2/009_client_server.cpp"
 			],
 			[
 				"premake5.lua",
@@ -1168,36 +1200,16 @@
 				"protocol2/003_packet_fragmentation_and_reassembly.cpp"
 			],
 			[
-				"002",
-				"protocol2/002_serialization_strategies.cpp"
-			],
-			[
 				"005",
 				"protocol2/005_packet_aggregation.cpp"
-			],
-			[
-				"008",
-				"protocol2/008_packet_encryption.cpp"
-			],
-			[
-				"006",
-				"protocol2/006_reliable_ordered_messages.cpp"
 			],
 			[
 				"test.cpp",
 				"protocol2/test.cpp"
 			],
 			[
-				"client_server.cpp",
-				"protocol2/007_client_server.cpp"
-			],
-			[
 				"procesor.cpp",
 				"protocol2/yojimbo_packet_processor.cpp"
-			],
-			[
-				"protocol2.h",
-				"protocol2/protocol2.h"
 			],
 			[
 				"packet_processor.cpp",
@@ -1622,18 +1634,6 @@
 			[
 				"simulation.h",
 				"src/Cubes/Simulation.h"
-			],
-			[
-				"cha",
-				"CHANGES"
-			],
-			[
-				"wouldbe",
-				"WOULD BE NICE"
-			],
-			[
-				"server.cpp",
-				"server.cpp"
 			]
 		],
 		"width": 0.0

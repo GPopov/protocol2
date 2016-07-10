@@ -42,7 +42,7 @@ using namespace network2;
 const uint32_t ProtocolId = 0x12341241;
 const int MaxPacketSize = 4096;
 const int MaxMessagesPerPacket = 64; 
-const int SlidingWindowSize = 256;
+const int SlidingWindowSize = 1024;
 const int MessageSendQueueSize = 1024;
 const int MessageReceiveQueueSize = 1024;
 const int MessagePacketBudget = 1024;

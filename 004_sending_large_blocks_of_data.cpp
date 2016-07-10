@@ -39,13 +39,13 @@ const int MaxChunkSize = SliceSize * MaxSlicesPerChunk;
 const float SliceMinimumResendTime = 0.1f;
 const float MinimumTimeBetweenAcks = 0.1f;
 
-//#define SOAK_TEST 1                // uncomment this line to loop forever and soak
+//#define SOAK 1                // uncomment this line to loop forever and soak
 
-#if SOAK_TEST
+#if SOAK
 const int NumChunksToSend = -1;
-#else // #if SOAK_TEST
+#else // #if SOAK
 const int NumChunksToSend = 32;
-#endif // #if SOAK_TEST
+#endif // #if SOAK
 
 const uint32_t ProtocolId = 0x11223344;
 
