@@ -34,7 +34,7 @@
 #include <inttypes.h>
 #include <time.h>
 
-//#define SOAK 1
+#define SOAK 1
 
 using namespace protocol2;
 using namespace network2;
@@ -44,7 +44,7 @@ const int MaxPacketSize = 4096;
 const int MaxMessagesPerPacket = 64; 
 const int SlidingWindowSize = 256;
 const int MessageSendQueueSize = 1024;
-const int MessageReceiveQueueSize = 1024;
+const int MessageReceiveQueueSize = 256;
 const int MessagePacketBudget = 1024;
 const float MessageResendRate = 0.1f;
 
@@ -995,7 +995,8 @@ int main()
             packetFactory.DestroyPacket( packet );
         }
 
-        while ( true )
+        //while ( true )
+        for ( int i = 0; i < 1; i++ )
         {
             Message * message = receiver.ReceiveMessage();
 

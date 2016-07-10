@@ -25,7 +25,7 @@
 #define NETWORK2_IMPLEMENTATION
 #define PROTOCOL2_IMPLEMENTATION
 
-//#define SOAK 1
+#define SOAK 1
 
 #include "network2.h"
 #include "protocol2.h"
