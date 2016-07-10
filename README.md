@@ -1,24 +1,18 @@
-Building a Game Network Protocol Example Source Code
-====================================================
+Example Source Code
+===================
 
-Thanks for your support!
+This is the example source code for [Building a Game Network Protocol](http://gafferongames.com/building-a-game-network-protocol/).
 
-Here is the example source code for [Building a Game Network Protocol](http://gafferongames.com/building-a-game-network-protocol/).
+My goal for this source code is to provide you with self contained implementations of key concepts from each article in this series that you can study, rip apart and learn from. There is a lot to say for having a working implementation or testbed demonstrating just one concept at a time, and I have done my best to keep each example lightweight self contained, so each
+example stands on its own.
 
-My goal for this source code is to provide you with self contained implementations of key concepts from each article that you can study, rip apart and learn from. 
-
-I have done my best to keep each example lightweight self contained, and resisted the temptation to turn too much of it into library like code.
-
-You will still find some extremely lightweight library like components in protocol2.h and network2.h, for functionality which is common across all samples, 
-but I did my best to keep this to the bare minimum so each sample stands on its own.
+You will still find some extremely lightweight library like components in protocol2.h and network2.h, for functionality which is common across all samples, but I did my best to keep this to the bare minimum. My hope is that if you look at each example
+you can understand the concepts for that article, and potentially rip that code and modify it to do what you want for learning
+purposes.
 
 Although I have done my best to make the code as correct as possible, this source code is not production ready.
 
-If you would like production ready code to use in your game, please consider [libyojimbo](http://gafferongames.com/2016/06/17/introducing-libyojimbo/) instead.
-
-cheers
-
-- Glenn
+If you would like production ready code to use in your game, please consider [libyojimbo](http://gafferongames.com/2016/06/17/introducing-libyojimbo/) instead, which is a hardened, library form of the network protocol described in "Building a Game Network Protocol".
 
 ## Building on Windows
 
