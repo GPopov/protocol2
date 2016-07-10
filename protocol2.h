@@ -1422,13 +1422,13 @@ namespace protocol2
                 m_sequence = sequence + 1;
                 m_first_entry = false;
             }
-            else if ( sequence_greater_than( sequence + 1, m_sequence ) )
-            {
-                m_sequence = sequence + 1;
-            }
             else if ( sequence_less_than( sequence, m_sequence - m_size ) )
             {
                 return NULL;
+            }
+            else if ( sequence_greater_than( sequence + 1, m_sequence ) )
+            {
+                m_sequence = sequence + 1;
             }
 
             const int index = sequence % m_size;

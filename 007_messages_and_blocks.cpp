@@ -25,7 +25,7 @@
 #define NETWORK2_IMPLEMENTATION
 #define PROTOCOL2_IMPLEMENTATION
 
-#define SOAK 1
+//#define SOAK 1
 
 #include "network2.h"
 #include "protocol2.h"
@@ -683,10 +683,11 @@ void Connection::SendMessage( Message * message )
 
     if ( message->IsBlockMessage() )
     {
+#if _DEBUG
         BlockMessage * blockMessage = (BlockMessage*) message;
-
         assert( blockMessage->GetBlockSize() > 0 );
         assert( blockMessage->GetBlockSize() <= MaxBlockSize );
+#endif // #if _DEBUG
     }
     else
     {
@@ -787,13 +788,14 @@ bool Connection::ReadPacket( ConnectionPacket * packet )
     assert( packet );
     assert( packet->GetType() == CONNECTION_PACKET );
 
+    if ( !m_receivedPackets->Insert( packet->sequence ) )
+		return false;
+
     ProcessAcks( packet->ack, packet->ack_bits );
 
-    ProcessPacketMessages( packet );
+	ProcessPacketMessages( packet );
 
     ProcessPacketFragment( packet );
-
-    m_receivedPackets->Insert( packet->sequence );
 
     return true;
 }
@@ -957,11 +959,14 @@ void Connection::ProcessPacketMessages( const ConnectionPacket * packet )
 
         assert( entry );
 
-        if ( entry )
-        {
-            entry->message = message;
-            entry->message->AddRef();
-        }
+		if ( !entry )
+		{
+			m_error = CONNECTION_ERROR_MESSAGE_DESYNC;
+			return;
+		}
+
+        entry->message = message;
+        entry->message->AddRef();
     }
 }
 
@@ -1267,7 +1272,13 @@ void Connection::ProcessPacketFragment( const ConnectionPacket * packet )
 
                 MessageReceiveQueueEntry * entry = m_messageReceiveQueue->Insert( messageId );
 
-                assert( entry );
+				assert( entry );
+
+				if ( !entry )
+				{
+					m_error = CONNECTION_ERROR_MESSAGE_DESYNC;
+					return;
+				}
 
                 entry->message = blockMessage;
             }
@@ -1458,7 +1469,7 @@ int main()
 #if SOAK
     while ( !quit )
 #else // #if SOAK
-    for ( int i = 0; i < 20000; ++i )
+    for ( int iteration = 0; iteration < 20000; ++iteration )
 #endif // if SOAK
     {
         const int messagesToSend = random_int( 0, 32 );

@@ -34,7 +34,7 @@
 #include <inttypes.h>
 #include <time.h>
 
-#define SOAK 1
+//#define SOAK 1
 
 using namespace protocol2;
 using namespace network2;
@@ -936,7 +936,7 @@ int main()
 #if SOAK
     while ( !quit )
 #else // #if SOAK
-    for ( int i = 0; i < 10000; ++i )
+    for ( int iteration = 0; iteration < 10000; ++iteration )
 #endif // if SOAK
     {
         const int messagesToSend = random_int( 0, 32 );
