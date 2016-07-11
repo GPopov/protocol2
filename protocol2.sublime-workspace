@@ -715,6 +715,8 @@
 	"file_history":
 	[
 		"/Users/gaffer/git/protocol2/TODO",
+		"/Users/gaffer/Documents/KARAOKI",
+		"/Users/gaffer/git/protocol2/premake5.lua",
 		"/Users/gaffer/git/protocol2/005_packet_aggregation.cpp",
 		"/Users/gaffer/git/protocol2/004_sending_large_blocks_of_data.cpp",
 		"/Users/gaffer/git/protocol2/003_packet_fragmentation_and_reassembly.cpp",
@@ -729,7 +731,6 @@
 		"/Users/gaffer/git/protocol2/protocol2.h",
 		"/Users/gaffer/git/protocol2/network2.h",
 		"/Users/gaffer/git/protocol/external/nvImage/nvImage.h",
-		"/Users/gaffer/git/protocol2/premake5.lua",
 		"/Users/gaffer/git/protocol2/009_connect_tokens.cpp",
 		"/Users/gaffer/git/protocol2/007_packet_encryption.cpp",
 		"/Users/gaffer/git/protocol2/test.cpp",
@@ -840,8 +841,7 @@
 		"/Users/gaffer/Documents/PREP",
 		"/Users/gaffer/Documents/STOCKS",
 		"/Users/gaffer/Documents/STUFF",
-		"/Users/gaffer/Documents/THIS WEEK",
-		"/Users/gaffer/Documents/UNITY"
+		"/Users/gaffer/Documents/THIS WEEK"
 	],
 	"find":
 	{
@@ -1128,6 +1128,10 @@
 				"protocol2/TODO"
 			],
 			[
+				"premake5.lua",
+				"protocol2/premake5.lua"
+			],
+			[
 				"msesages",
 				"protocol2/006_reliable_ordered_messages.cpp"
 			],
@@ -1178,10 +1182,6 @@
 			[
 				"client",
 				"protocol2/009_client_server.cpp"
-			],
-			[
-				"premake5.lua",
-				"protocol2/premake5.lua"
 			],
 			[
 				"pre",

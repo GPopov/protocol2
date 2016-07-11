@@ -995,8 +995,7 @@ int main()
             packetFactory.DestroyPacket( packet );
         }
 
-        //while ( true )
-        for ( int i = 0; i < 1; i++ )
+        while ( true )
         {
             Message * message = receiver.ReceiveMessage();
 
